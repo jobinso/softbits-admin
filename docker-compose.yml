@@ -1,0 +1,40 @@
+# softbits-admin Docker Compose Configuration
+# Frontend-only - backend is handled by softbits-bridge
+# Admin Console (AdminIT)
+
+services:
+  softbits-admin:
+    build:
+      context: ..
+      dockerfile: softbits-admin/Dockerfile
+    container_name: softbits-admin
+    restart: unless-stopped
+    environment:
+      - INTERNAL_SERVICE_SECRET=${INTERNAL_SERVICE_SECRET}
+    ports:
+      - "${ADMIN_UI_PORT:-3080}:3080"
+    networks:
+      - softbits-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 64M
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3080/nginx-health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  softbits-network:
+    external: true

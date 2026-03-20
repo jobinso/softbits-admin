@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <rect width="32" height="32" rx="8" fill="#00d4aa"/>
+  <!-- Shield -->
+  <path d="M16 5L7 9v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V9L16 5z" fill="#0a0f1a" opacity="0.9"/>
+  <!-- Gear/cog inside shield -->
+  <circle cx="16" cy="15" r="3" fill="none" stroke="#00d4aa" stroke-width="1.5"/>
+  <path d="M16 10.5v1.2M16 17.3v1.2M19.5 15h-1.2M13.7 15h-1.2M18.7 12.3l-.85.85M14.15 16.85l-.85.85M18.7 17.7l-.85-.85M14.15 13.15l-.85-.85" stroke="#00d4aa" stroke-width="1.2" stroke-linecap="round"/>
+</svg>
