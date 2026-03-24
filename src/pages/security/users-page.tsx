@@ -281,7 +281,7 @@ export default function UsersPage() {
     setErpLookupLoading(true);
     try {
       const result = await getErpOperator(form.sysproOperator.trim());
-      const op = result.data;
+      const op = result.data?.operator;
       if (!op) {
         toast.error('Operator not found in ERP');
         return;

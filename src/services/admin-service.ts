@@ -1,7 +1,7 @@
 import { api, getAuthToken, setAuthToken } from './api';
 import axios from 'axios';
 import { STORAGE_KEYS } from '../utils/constants';
-import type { ApiResponse, User, AdminRole, Device, SystemHealth, ProjectType, ProjectTypeStatus, ProjectTypeField, Currency, ExchangeRateProvider, ExchangeRate, OptionSet, OptionSetItem, Warehouse, WarehouseErpLink, ErpWarehouseBrowse, Patch, PatchLevel, PatchHistoryEntry, ComplianceData, ConnectSyncStatus, ConnectSyncHistoryEntry, Territory, SalesRep, Pipeline, Stage, RateCard, BillingRole, PosTerminal, GpsSalesData, GpsTerminalFilter, InfuseTestResult, McpTestConnectionResult, DocumentStats, StorageProvider, StagedDocument, RetentionPolicy, ExpiringDocument, RetentionLogEntry, ApprovalWorkflow } from '../types';
+import type { ApiResponse, User, AdminRole, Device, SystemHealth, SystemSetting, ProjectType, ProjectTypeStatus, ProjectTypeField, Currency, ExchangeRateProvider, ExchangeRate, OptionSet, OptionSetItem, Warehouse, WarehouseErpLink, ErpWarehouseBrowse, Patch, PatchLevel, PatchHistoryEntry, ComplianceData, ConnectSyncStatus, ConnectSyncHistoryEntry, Territory, SalesRep, Pipeline, Stage, RateCard, BillingRole, PosTerminal, GpsSalesData, GpsTerminalFilter, InfuseTestResult, McpTestConnectionResult, DocumentStats, StorageProvider, StagedDocument, RetentionPolicy, ExpiringDocument, RetentionLogEntry, ApprovalWorkflow, Provider, ProviderType } from '../types';
 
 // Raw API for routes mounted at /admin/* (without /api prefix)
 const rawApi = axios.create({ headers: { 'Content-Type': 'application/json' } });
@@ -245,7 +245,7 @@ export async function getToken(tokenId: string) {
   return response.data;
 }
 
-export async function createToken(data: { name: string; description?: string; expiresInDays?: number }) {
+export async function createToken(data: { name: string; description?: string; expiresInDays?: number; userId?: string; permissions?: string[] }) {
   const response = await rawApi.post('/admin/tokens', data);
   return response.data;
 }
@@ -402,18 +402,18 @@ export async function executeDevTask(taskId: string) {
 
 // ===== Config =====
 
-export async function getConfigFiles() {
-  const response = await rawApi.get('/admin/config/files');
+export async function getConfigFiles(folder: string = 'query') {
+  const response = await rawApi.get('/admin/config/files', { params: { folder } });
   return response.data;
 }
 
-export async function getConfigFile(filename: string) {
-  const response = await rawApi.get(`/admin/config/files/${filename}`);
+export async function getConfigFile(filename: string, folder: string = 'query') {
+  const response = await rawApi.get(`/admin/config/files/${encodeURIComponent(filename)}`, { params: { folder } });
   return response.data;
 }
 
-export async function updateConfigFile(filename: string, data: Record<string, unknown>) {
-  const response = await rawApi.put(`/admin/config/files/${filename}`, data);
+export async function updateConfigFile(filename: string, content: string, folder: string = 'query') {
+  const response = await rawApi.put(`/admin/config/files/${encodeURIComponent(filename)}`, { content }, { params: { folder } });
   return response.data;
 }
 
@@ -509,8 +509,13 @@ export async function rollbackPatch(patchCode: string, data?: { notes?: string }
 
 // ===== Endpoints =====
 
-export async function getEndpoints() {
-  const response = await rawApi.get('/admin/endpoints');
+export async function getEndpoints(params?: { entity?: string; action?: string; group?: string; search?: string }) {
+  const response = await rawApi.get('/admin/endpoints', { params });
+  return response.data;
+}
+
+export async function getEndpointGroups() {
+  const response = await rawApi.get('/admin/endpoint-groups');
   return response.data;
 }
 
@@ -835,18 +840,6 @@ export async function updateInfuseConfig(data: Record<string, unknown>) {
 
 export async function getInfuseStatus() {
   const response = await rawApi.get('/admin/infuse/status');
-  return response.data;
-}
-
-// ===== OAuth Settings =====
-
-export async function getOAuthSettings() {
-  const response = await rawApi.get('/admin/oauth-settings');
-  return response.data;
-}
-
-export async function updateOAuthSettings(data: Record<string, unknown>) {
-  const response = await rawApi.put('/admin/oauth-settings', data);
   return response.data;
 }
 
@@ -1458,7 +1451,7 @@ export async function deleteWorkApiKey(id: number) {
 
 export async function getDocumentStats(): Promise<DocumentStats> {
   const response = await api.get('/documents/config/stats');
-  return response.data;
+  return response.data?.data ?? response.data;
 }
 
 export async function getStorageProviders(): Promise<StorageProvider[]> {
@@ -1468,37 +1461,42 @@ export async function getStorageProviders(): Promise<StorageProvider[]> {
 
 export async function getStagedDocuments(limit = 50): Promise<StagedDocument[]> {
   const response = await api.get('/documents/staged', { params: { limit } });
-  return response.data;
+  return response.data?.data ?? response.data;
 }
 
 export async function approveStagedDocument(id: string) {
   const response = await api.put(`/documents/staged/${id}/approve`, {});
-  return response.data;
+  return response.data?.data ?? response.data;
 }
 
 export async function rejectStagedDocument(id: string, notes?: string) {
   const response = await api.put(`/documents/staged/${id}/reject`, { notes });
-  return response.data;
+  return response.data?.data ?? response.data;
 }
 
 export async function getRetentionPolicies(): Promise<RetentionPolicy[]> {
   const response = await api.get('/documents/retention/policies');
-  return response.data;
+  return response.data?.data ?? response.data;
 }
 
-export async function createRetentionPolicy(data: { policyName: string; documentType?: string | null; retentionPeriodDays: number; action: string; notifyDaysBefore: number }) {
+export async function createRetentionPolicy(data: { policyName: string; documentType?: string | null; retentionPeriodDays: number; action: string; notifyRoles?: string | null; notifyDaysBefore: number }) {
   const response = await api.post('/documents/retention/policies', data);
-  return response.data;
+  return response.data?.data ?? response.data;
+}
+
+export async function updateRetentionPolicy(id: string, data: Partial<{ policyName: string; documentType: string | null; retentionPeriodDays: number; action: string; notifyRoles: string | null; notifyDaysBefore: number }>) {
+  const response = await api.put(`/documents/retention/policies/${id}`, data);
+  return response.data?.data ?? response.data;
 }
 
 export async function deleteRetentionPolicy(id: string) {
   const response = await api.delete(`/documents/retention/policies/${id}`);
-  return response.data;
+  return response.data?.data ?? response.data;
 }
 
 export async function getExpiringDocuments(days = 30): Promise<ExpiringDocument[]> {
   const response = await api.get('/documents/retention/expiring', { params: { days } });
-  return response.data;
+  return response.data?.data ?? response.data;
 }
 
 export async function extendDocumentRetention(documentId: string, newExpiryDate: string) {
@@ -1513,25 +1511,124 @@ export async function exemptDocumentRetention(documentId: string) {
 
 export async function getRetentionLog(limit = 50): Promise<RetentionLogEntry[]> {
   const response = await api.get('/documents/retention/log', { params: { limit } });
-  return response.data;
+  return response.data?.data ?? response.data;
 }
 
 export async function triggerRetentionEnforcement() {
   const response = await api.post('/documents/retention/enforce', {});
-  return response.data;
+  return response.data?.data ?? response.data;
+}
+
+export async function getArchivedDocuments(params?: { limit?: number; offset?: number; search?: string }) {
+  const response = await api.get('/documents/archive', { params });
+  return response.data?.data ?? response.data;
 }
 
 export async function getApprovalWorkflows(): Promise<ApprovalWorkflow[]> {
   const response = await api.get('/documents/approval/workflows');
-  return response.data;
+  return response.data?.data ?? response.data;
 }
 
 export async function createApprovalWorkflow(data: { workflowName: string; documentType?: string | null; requiredApprovals: number; approvalRoles: string[]; sequentialApproval: boolean; autoPublishOnApproval: boolean }) {
   const response = await api.post('/documents/approval/workflows', data);
-  return response.data;
+  return response.data?.data ?? response.data;
 }
 
 export async function deleteApprovalWorkflow(id: string) {
   const response = await api.delete(`/documents/approval/workflows/${id}`);
+  return response.data?.data ?? response.data;
+}
+
+// ===== Providers =====
+
+export async function getProviders(params?: { category?: string; typeCode?: string; isActive?: boolean }): Promise<ApiResponse<Provider[]>> {
+  const response = await rawApi.get('/api/admin/providers', { params });
+  return response.data;
+}
+
+export async function getProviderTypes(category?: string): Promise<ApiResponse<ProviderType[]>> {
+  const response = await rawApi.get('/api/admin/providers/types', { params: category ? { category } : {} });
+  return response.data;
+}
+
+export async function getProvidersByType(typeCode: string): Promise<ApiResponse<Provider[]>> {
+  const response = await rawApi.get(`/api/admin/providers/by-type/${encodeURIComponent(typeCode)}`);
+  return response.data;
+}
+
+export async function getProvidersByApp(appCode: string): Promise<ApiResponse<Provider[]>> {
+  const response = await rawApi.get(`/api/admin/providers/by-app/${encodeURIComponent(appCode)}`);
+  return response.data;
+}
+
+export async function getProvider(id: string): Promise<ApiResponse<Provider>> {
+  const response = await rawApi.get(`/api/admin/providers/${id}`);
+  return response.data;
+}
+
+export async function createProvider(data: Record<string, unknown>): Promise<ApiResponse<Provider>> {
+  const response = await rawApi.post('/api/admin/providers', data);
+  return response.data;
+}
+
+export async function updateProvider(id: string, data: Record<string, unknown>): Promise<ApiResponse<Provider>> {
+  const response = await rawApi.put(`/api/admin/providers/${id}`, data);
+  return response.data;
+}
+
+export async function deleteProvider(id: string): Promise<ApiResponse<Provider>> {
+  const response = await rawApi.delete(`/api/admin/providers/${id}`);
+  return response.data;
+}
+
+export async function destroyProvider(id: string): Promise<ApiResponse<{ deleted: boolean; name: string }>> {
+  const response = await rawApi.delete(`/api/admin/providers/${id}/permanent`);
+  return response.data;
+}
+
+export async function testProvider(id: string): Promise<{ ok: boolean; message: string }> {
+  const response = await rawApi.post(`/api/admin/providers/${id}/test`);
+  return response.data?.data || response.data;
+}
+
+export async function setProviderDefault(id: string): Promise<ApiResponse<Provider>> {
+  const response = await rawApi.put(`/api/admin/providers/${id}/default`);
+  return response.data;
+}
+
+export async function updateProviderApplications(id: string, applications: string[]) {
+  const response = await rawApi.put(`/api/admin/providers/${id}/applications`, { applications });
+  return response.data;
+}
+
+export async function getProviderApiDetails(id: string) {
+  const response = await rawApi.get(`/api/admin/providers/${id}/api-details`);
+  return response.data;
+}
+
+// ===== System Settings =====
+
+export async function getSystemSettings(): Promise<ApiResponse<SystemSetting[]>> {
+  const response = await rawApi.get('/admin/settings');
+  return response.data;
+}
+
+export async function getSystemSetting(key: string): Promise<ApiResponse<SystemSetting>> {
+  const response = await rawApi.get(`/admin/settings/${encodeURIComponent(key)}`);
+  return response.data;
+}
+
+export async function updateSystemSetting(key: string, data: { value: string; description?: string }): Promise<ApiResponse<SystemSetting>> {
+  const response = await rawApi.put(`/admin/settings/${encodeURIComponent(key)}`, data);
+  return response.data;
+}
+
+export async function createSystemSetting(data: { key: string; value: string; description?: string; dataType?: string }): Promise<ApiResponse<SystemSetting>> {
+  const response = await rawApi.post('/admin/settings', data);
+  return response.data;
+}
+
+export async function deleteSystemSetting(key: string): Promise<ApiResponse<unknown>> {
+  const response = await rawApi.delete(`/admin/settings/${encodeURIComponent(key)}`);
   return response.data;
 }

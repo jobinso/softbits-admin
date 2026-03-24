@@ -4,7 +4,7 @@
 
 AdminIT is the system administration console for the softBITS platform. It is a React SPA that replaced the former vanilla HTML/JS admin console (31,000 lines across `admin.html` + 30 JS modules in Bridge).
 
-AdminIT manages all 16 admin sections: Dashboard, Security (Users/Roles/Tokens/Devices), Services, Cache, Config (Project Types/Currencies/Option Sets/Warehouses), Licensing, Patches, and 9 app-specific admin pages (ConnectIT, StackIT, FlipIT, FloorIT, LabelIT, ShopIT, InfuseIT, WorkIT, PulpIT).
+AdminIT manages all 17 admin sections: Dashboard, Security (Users/Roles/Tokens/Devices), Services, Cache, Config (Project Types/Currencies/Option Sets/Warehouses), Licensing, Patches, Providers, and 9 app-specific admin pages (ConnectIT, StackIT, FlipIT, FloorIT, LabelIT, ShopIT, InfuseIT, WorkIT, PulpIT).
 
 ## Architecture
 
@@ -35,7 +35,7 @@ graph TB
 | React | 18.2.0 | UI framework |
 | TypeScript | 5.3.3 | Type safety |
 | Vite | 7.3.0 | Build tool |
-| Zustand | 4.4.7 | Client state (auth, sidebar) |
+| Zustand | 5.0.12 | Client state (auth, sidebar) |
 | TanStack Query | 5.12.2 | Server state management |
 | Axios | 1.6.2 | HTTP client with JWT refresh |
 | React Router | 6.21.0 | Client-side routing |
@@ -134,7 +134,7 @@ AdminIT uses shared React components from `softbits-shared/components/`:
 - App-aware (hides disabled apps)
 - Persisted to localStorage
 
-### Page Inventory (16 sections)
+### Page Inventory (17 sections)
 
 | Route | Page | Source JS Module |
 |-------|------|-----------------|
@@ -151,6 +151,7 @@ AdminIT uses shared React components from `softbits-shared/components/`:
 | `/config/warehouses` | Warehouses | admin-warehouses.js |
 | `/licensing` | License Management | admin-licensing.js |
 | `/patches` | System Patches | admin-patches.js |
+| `/providers` | Provider Management | admin-providers.js |
 | `/apps/connect` | ConnectIT Admin | admin-connectit.js |
 | `/apps/stack` | StackIT Admin | admin-stackit.js |
 | `/apps/flip` | FlipIT Admin | admin-flipit.js |

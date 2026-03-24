@@ -26,6 +26,8 @@ import {
   ChevronRight,
   PanelLeftClose,
   PanelLeftOpen,
+  FileCode,
+  Plug,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import clsx from 'clsx';
@@ -33,7 +35,6 @@ import { useSidebar } from '@/hooks/use-sidebar';
 import { useAuth } from '@/hooks/use-auth';
 import { ADMIN_TABS } from '@/utils/constants';
 import type { AppStatus } from '@/types';
-import { config } from '@/config';
 
 const iconMap: Record<string, LucideIcon> = {
   LayoutDashboard,
@@ -57,6 +58,8 @@ const iconMap: Record<string, LucideIcon> = {
   Brain,
   Briefcase,
   FileText,
+  FileCode,
+  Plug,
 };
 
 interface SubNavItem {
@@ -80,8 +83,10 @@ const BRIDGE_NAV: NavItem[] = [
   { id: 'services', label: 'Services', icon: 'Server', path: '/services' },
   { id: 'cache', label: 'Cache', icon: 'Database', path: '/cache' },
   { id: 'config', label: 'Config', icon: 'Settings', path: '/config' },
+  { id: 'erp-config', label: 'ERP Config', icon: 'FileCode', path: '/erp-config' },
   { id: 'licensing', label: 'Licensing', icon: 'Key', path: '/licensing' },
   { id: 'patches', label: 'Patches', icon: 'Package', path: '/patches' },
+  { id: 'providers', label: 'Providers', icon: 'Plug', path: '/providers' },
 ];
 
 function getAppNav(): NavItem[] {
@@ -122,7 +127,7 @@ export default function Sidebar() {
   useEffect(() => {
     const fetchHealth = async () => {
       try {
-        const res = await fetch(`${config.bridgeUrl}/health`);
+        const res = await fetch('/health');
         const data = await res.json();
         setBridgeOnline(true);
         if (data.version) setBridgeVersion(data.version);

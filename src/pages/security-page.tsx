@@ -1,14 +1,16 @@
 import { useState } from 'react';
-import { Users, ShieldCheck, KeyRound, Smartphone } from 'lucide-react';
+import { Users, ShieldCheck, KeyRound, Smartphone, Globe, Mail } from 'lucide-react';
 import { Tabs, PageHeader } from '@/components/shared';
 import type { TabItem } from '@/components/shared';
-import { UsersPage, RolesPage, TokensPage, DevicesPage } from './security';
+import { UsersPage, RolesPage, TokensPage, DevicesPage, EndpointsPage, ProvidersPage } from './security';
 
 const tabs: TabItem[] = [
   { id: 'users', label: 'Users', icon: <Users className="w-4 h-4" /> },
   { id: 'roles', label: 'Roles', icon: <ShieldCheck className="w-4 h-4" /> },
   { id: 'tokens', label: 'Tokens', icon: <KeyRound className="w-4 h-4" /> },
   { id: 'devices', label: 'Devices', icon: <Smartphone className="w-4 h-4" /> },
+  { id: 'endpoints', label: 'Endpoints', icon: <Globe className="w-4 h-4" /> },
+  { id: 'providers', label: 'Provider', icon: <Mail className="w-4 h-4" /> },
 ];
 
 export default function SecurityPage() {
@@ -24,6 +26,8 @@ export default function SecurityPage() {
       {activeTab === 'roles' && <RolesPage />}
       {activeTab === 'tokens' && <TokensPage />}
       {activeTab === 'devices' && <DevicesPage />}
+      {activeTab === 'endpoints' && <EndpointsPage />}
+      {activeTab === 'providers' && <ProvidersPage />}
     </div>
   );
 }

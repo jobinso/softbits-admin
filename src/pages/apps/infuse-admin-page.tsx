@@ -1,58 +1,82 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Cpu, Save, Zap, Eye, EyeOff } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Cpu, Save, Zap, Server, Star, Wifi, WifiOff, RefreshCw, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Button, Card, Tabs, StatusBadge, LoadingSpinner, PageHeader } from '@/components/shared';
+import { Button, Card, Tabs, StatusBadge, LoadingSpinner, PageHeader, DataTable, TableCard } from '@/components/shared';
+import type { ColumnDef } from '@/components/shared';
 import type { TabItem } from '@/components/shared';
-import type { InfuseConfig } from '@/types';
+import type { InfuseConfig, Provider } from '@/types';
 import {
   getInfuseConfig,
   updateInfuseConfig,
-  testInfuseConnection,
   testMcpConnection,
   getInfuseStatus,
+  getProviders,
+  testProvider,
 } from '@/services/admin-service';
 
 // ===== Constants =====
 
-const PROVIDERS = [
-  { value: 'anthropic', label: 'Anthropic (Claude)' },
-  { value: 'openai', label: 'OpenAI (GPT)' },
-  { value: 'ollama', label: 'Ollama (Local)' },
-  { value: 'lmstudio', label: 'LM Studio (Local)' },
-  { value: 'vllm', label: 'vLLM (High-Throughput)' },
-];
-
-const MODELS: Record<string, Array<{ value: string; label: string }>> = {
-  anthropic: [
-    { value: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4' },
-    { value: 'claude-opus-4-20250514', label: 'Claude Opus 4' },
-    { value: 'claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku' },
-  ],
-  openai: [
-    { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
-    { value: 'gpt-4o', label: 'GPT-4o' },
-    { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
-  ],
-  ollama: [
-    { value: 'qwen2.5:7b', label: 'Qwen 2.5 7B' },
-    { value: 'llama3.1:8b', label: 'Llama 3.1 8B' },
-    { value: 'mistral:7b', label: 'Mistral 7B' },
-    { value: 'custom', label: 'Custom Model' },
-  ],
-  vllm: [
-    { value: 'meta-llama/Llama-3.1-8B-Instruct', label: 'Llama 3.1 8B Instruct' },
-    { value: 'mistralai/Mistral-7B-Instruct-v0.3', label: 'Mistral 7B Instruct' },
-    { value: 'custom', label: 'Custom Model' },
-  ],
-  lmstudio: [
-    { value: 'custom', label: 'Custom Model (loaded in LM Studio)' },
-  ],
+// Map ProviderTypeCode to the aiProvider string used in infuse.json
+const PROVIDER_TYPE_MAP: Record<string, string> = {
+  'AI_ANTHROPIC': 'anthropic',
+  'AI_OPENAI': 'openai',
+  'AI_OLLAMA': 'ollama',
+  'AI_LMSTUDIO': 'lmstudio',
+  'AI_VLLM': 'vllm',
 };
 
 const tabs: TabItem[] = [
   { id: 'config', label: 'Configuration', icon: <Cpu className="w-4 h-4" /> },
+  { id: 'services', label: 'Services', icon: <Server className="w-4 h-4" /> },
   { id: 'mcptest', label: 'MCP Testing', icon: <Zap className="w-4 h-4" /> },
+];
+
+const serviceColumns: ColumnDef<Provider>[] = [
+  {
+    key: 'Name', label: 'Name', sortable: true,
+    render: (val, row) => (
+      <div className="flex items-center gap-2">
+        <span className="font-medium text-semantic-text-default">{val}</span>
+        {row.IsDefault && <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0" />}
+      </div>
+    ),
+  },
+  {
+    key: 'ProviderTypeCode', label: 'Type', width: 180, sortable: true,
+    render: (_val, row) => <span className="text-semantic-text-faint">{row.TypeDisplayName || row.ProviderTypeCode}</span>,
+  },
+  {
+    key: 'IsActive', label: 'Status', width: 100,
+    render: (val) => <StatusBadge status={val ? 'success' : 'danger'} label={val ? 'Active' : 'Inactive'} size="sm" />,
+  },
+  {
+    key: 'LastTestStatus', label: 'Health', width: 110,
+    render: (val, row) => {
+      if (!val) return <span className="text-semantic-text-faint text-xs">Not tested</span>;
+      const statusMap: Record<string, 'success' | 'warning' | 'danger'> = { ok: 'success', warning: 'warning', error: 'danger' };
+      return (
+        <span title={row.LastTestError || undefined}>
+          <StatusBadge status={statusMap[val as string] || 'danger'} label={val === 'ok' ? 'OK' : val === 'warning' ? 'Warning' : 'Failed'} size="sm" />
+        </span>
+      );
+    },
+  },
+  {
+    key: 'Configuration', label: 'Config', width: 200,
+    render: (val) => {
+      if (!val || typeof val !== 'object') return <span className="text-semantic-text-faint">-</span>;
+      const keys = Object.keys(val as Record<string, unknown>);
+      if (keys.length === 0) return <span className="text-semantic-text-faint">-</span>;
+      const summary = keys.slice(0, 3).join(', ') + (keys.length > 3 ? ` (+${keys.length - 3})` : '');
+      return <span className="text-xs text-semantic-text-faint" title={JSON.stringify(val, null, 2)}>{summary}</span>;
+    },
+  },
+  {
+    key: 'LastTestedAt', label: 'Last Tested', width: 140,
+    render: (val) => <span className="text-xs text-semantic-text-faint">{val ? new Date(val as string).toLocaleString() : '-'}</span>,
+  },
 ];
 
 // ===== Component =====
@@ -63,23 +87,11 @@ export default function InfuseAdminPage() {
 
   // Config form state
   const [enabled, setEnabled] = useState(false);
-  const [provider, setProvider] = useState('anthropic');
-  const [model, setModel] = useState('');
-  const [customModel, setCustomModel] = useState('');
-  const [apiKey, setApiKey] = useState('');
-  const [apiKeyMasked, setApiKeyMasked] = useState(false);
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [baseUrl, setBaseUrl] = useState('');
+  const [selectedProviderId, setSelectedProviderId] = useState('');
   const [systemPrompt, setSystemPrompt] = useState('');
   const [includeUserProfile, setIncludeUserProfile] = useState(true);
   const [includeCurrentView, setIncludeCurrentView] = useState(true);
   const [includeSelectedEntity, setIncludeSelectedEntity] = useState(true);
-  // vLLM multi-session
-  const [vllmMultiEnabled, setVllmMultiEnabled] = useState(false);
-  const [vllmMaxConcurrent, setVllmMaxConcurrent] = useState(10);
-  const [vllmRateLimit, setVllmRateLimit] = useState(20);
-  const [vllmQueueSize, setVllmQueueSize] = useState(5);
-  const [vllmTimeout, setVllmTimeout] = useState(120000);
 
   // MCP test state
   const [mcpServerUrl, setMcpServerUrl] = useState('');
@@ -89,6 +101,8 @@ export default function InfuseAdminPage() {
   const [mcpStatusColor, setMcpStatusColor] = useState('text-semantic-text-faint');
 
   const [configLoaded, setConfigLoaded] = useState(false);
+  const [testingId, setTestingId] = useState<string | null>(null);
+  const [testingAiProvider, setTestingAiProvider] = useState(false);
 
   // ===== Queries =====
 
@@ -103,39 +117,48 @@ export default function InfuseAdminPage() {
     refetchInterval: 15000,
   });
 
+  const { data: aiProvidersResponse } = useQuery({
+    queryKey: ['admin', 'providers', { category: 'AI' }],
+    queryFn: () => getProviders({ category: 'AI' }),
+    enabled: activeTab === 'config',
+  });
+
+  const { data: servicesData, isLoading: servicesLoading } = useQuery({
+    queryKey: ['admin', 'providers', { category: 'INTERNAL' }],
+    queryFn: () => getProviders({ category: 'INTERNAL' }),
+    enabled: activeTab === 'services',
+  });
+
+  const aiProviders: Provider[] = aiProvidersResponse?.data || [];
+
+  // Derive selected provider and its config
+  const selectedProvider = aiProviders.find(p => p.ProviderId === selectedProviderId) || null;
+  const providerConfig = selectedProvider?.Configuration as Record<string, unknown> | null;
+
   useEffect(() => {
     if (!configData?.config) return;
     const config = configData.config as InfuseConfig;
     setEnabled(config.enabled || false);
-    setProvider(config.aiProvider || 'anthropic');
     setSystemPrompt(config.systemPrompt || '');
     setIncludeUserProfile(config.context?.includeUserProfile !== false);
     setIncludeCurrentView(config.context?.includeCurrentView !== false);
     setIncludeSelectedEntity(config.context?.includeSelectedEntity !== false);
 
-    const p = config.aiProvider || 'anthropic';
-    const providerConfig = (config as Record<string, any>)[p] || {};
-    if (providerConfig.apiKey) {
-      setApiKey('\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022' + providerConfig.apiKey.slice(-4));
-      setApiKeyMasked(true);
-    } else {
-      setApiKey('');
-      setApiKeyMasked(false);
+    // Restore selected provider: use providerId if saved, otherwise auto-match by aiProvider string
+    if (config.providerId) {
+      setSelectedProviderId(config.providerId);
+    } else if (config.aiProvider && aiProviders.length > 0) {
+      const reverseMap: Record<string, string> = {};
+      for (const [typeCode, name] of Object.entries(PROVIDER_TYPE_MAP)) {
+        reverseMap[name] = typeCode;
+      }
+      const typeCode = reverseMap[config.aiProvider];
+      const match = aiProviders.find(p => p.ProviderTypeCode === typeCode);
+      if (match) setSelectedProviderId(match.ProviderId);
     }
-    setBaseUrl(providerConfig.baseUrl || '');
-    setModel(providerConfig.model || '');
-    setCustomModel('');
 
-    if (p === 'vllm' && providerConfig.multiSession) {
-      const ms = providerConfig.multiSession;
-      setVllmMultiEnabled(ms.enabled !== false);
-      setVllmMaxConcurrent(ms.maxConcurrent || 10);
-      setVllmRateLimit(ms.rateLimitPerUser || 20);
-      setVllmQueueSize(ms.userQueueSize || 5);
-      setVllmTimeout(ms.requestTimeout || 120000);
-    }
     setConfigLoaded(true);
-  }, [configData]);
+  }, [configData, aiProviders]);
 
   // ===== Mutations =====
 
@@ -146,18 +169,6 @@ export default function InfuseAdminPage() {
       toast.success('Configuration saved');
     },
     onError: (err: Error) => toast.error(err.message || 'Failed to save configuration'),
-  });
-
-  const testMutation = useMutation({
-    mutationFn: testInfuseConnection,
-    onSuccess: (data) => {
-      if (data.success) {
-        toast.success(`Connection successful! Response time: ${data.latency}ms`);
-      } else {
-        toast.error('Connection failed: ' + (data.message || data.error || 'Unknown error'));
-      }
-    },
-    onError: (err: Error) => toast.error('Connection test failed: ' + err.message),
   });
 
   const mcpTestMutation = useMutation({
@@ -180,46 +191,38 @@ export default function InfuseAdminPage() {
   // ===== Handlers =====
 
   function handleSave() {
-    const effectiveModel = model === 'custom' ? customModel : model;
-    const providerConfig: Record<string, unknown> = { model: effectiveModel };
-
-    if (provider !== 'ollama' && provider !== 'lmstudio') {
-      const key = apiKeyMasked ? null : apiKey;
-      if (key) providerConfig.apiKey = key;
+    if (!selectedProviderId) {
+      toast.error('Select an AI provider first');
+      return;
     }
-
-    if (['ollama', 'openai', 'vllm', 'lmstudio'].includes(provider) && baseUrl) {
-      providerConfig.baseUrl = baseUrl;
-    }
-
-    if (provider === 'vllm') {
-      providerConfig.multiSession = {
-        enabled: vllmMultiEnabled,
-        maxConcurrent: vllmMaxConcurrent,
-        rateLimitPerUser: vllmRateLimit,
-        userQueueSize: vllmQueueSize,
-        requestTimeout: vllmTimeout,
-      };
-    }
-
     const config: Record<string, unknown> = {
+      providerId: selectedProviderId,
       enabled,
-      aiProvider: provider,
       context: { includeUserProfile, includeCurrentView, includeSelectedEntity },
       systemPrompt,
-      [provider]: providerConfig,
     };
-
     saveMutation.mutate(config);
   }
 
-  function handleTest() {
-    const effectiveModel = model === 'custom' ? customModel : model;
-    const key = apiKeyMasked ? null : apiKey;
-    const payload: any = { provider, model: effectiveModel };
-    if (provider !== 'ollama' && provider !== 'lmstudio' && key) payload.apiKey = key;
-    if (['ollama', 'openai', 'vllm', 'lmstudio'].includes(provider) && baseUrl) payload.baseUrl = baseUrl;
-    testMutation.mutate(payload);
+  async function handleTestAiProvider() {
+    if (!selectedProviderId) {
+      toast.error('Select an AI provider first');
+      return;
+    }
+    setTestingAiProvider(true);
+    try {
+      const result = await testProvider(selectedProviderId);
+      if (result.ok) {
+        toast.success(result.message || 'Connection successful');
+      } else {
+        toast.error(result.message || 'Connection failed');
+      }
+      queryClient.invalidateQueries({ queryKey: ['admin', 'providers', { category: 'AI' }] });
+    } catch {
+      toast.error('Connection test failed');
+    } finally {
+      setTestingAiProvider(false);
+    }
   }
 
   function handleMcpTest() {
@@ -233,15 +236,24 @@ export default function InfuseAdminPage() {
     });
   }
 
-  function handleApiKeyChange(value: string) {
-    setApiKey(value);
-    setApiKeyMasked(false);
+  async function handleTestProvider(provider: Provider) {
+    setTestingId(provider.ProviderId);
+    try {
+      const result = await testProvider(provider.ProviderId);
+      if (result.ok) {
+        toast.success(result.message || 'Connection successful');
+      } else {
+        toast.error(result.message || 'Connection failed');
+      }
+      queryClient.invalidateQueries({ queryKey: ['admin', 'providers', { category: 'INTERNAL' }] });
+    } catch {
+      toast.error('Connection test failed');
+    } finally {
+      setTestingId(null);
+    }
   }
 
-  const showBaseUrl = ['ollama', 'openai', 'vllm', 'lmstudio'].includes(provider);
-  const showApiKeyField = provider !== 'ollama' && provider !== 'lmstudio';
-  const providerModels = MODELS[provider] || [];
-  const showCustomModel = model === 'custom';
+  const serviceProviders: Provider[] = servicesData?.data || [];
 
   // ===== Render =====
 
@@ -289,154 +301,116 @@ export default function InfuseAdminPage() {
       {/* Tab: Configuration */}
       {activeTab === 'config' && (
         <div className="space-y-6">
-          {/* Enable Toggle + Provider */}
-          <Card title="AI Provider">
-            <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={enabled}
-                    onChange={(e) => setEnabled(e.target.checked)}
-                    className="rounded border-border bg-surface-subtle text-primary focus:ring-interactive-focus-ring"
-                  />
-                  <span className="text-sm text-semantic-text-secondary">{enabled ? 'Enabled' : 'Disabled'}</span>
-                </label>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <FormField label="Provider">
-                  <select
-                    value={provider}
-                    onChange={(e) => {
-                      setProvider(e.target.value);
-                      setModel('');
-                      setCustomModel('');
-                    }}
-                    className="form-input"
-                    title="AI Provider"
-                  >
-                    {PROVIDERS.map((p) => (
-                      <option key={p.value} value={p.value}>{p.label}</option>
-                    ))}
-                  </select>
-                </FormField>
-                <FormField label="Model">
-                  <select
-                    value={model}
-                    onChange={(e) => setModel(e.target.value)}
-                    className="form-input"
-                    title="Model"
-                  >
-                    <option value="">-- Select Model --</option>
-                    {providerModels.map((m) => (
-                      <option key={m.value} value={m.value}>{m.label}</option>
-                    ))}
-                  </select>
-                </FormField>
-              </div>
-
-              {showCustomModel && (
-                <FormField label="Custom Model Name">
-                  <input
-                    type="text"
-                    value={customModel}
-                    onChange={(e) => setCustomModel(e.target.value)}
-                    className="form-input"
-                    placeholder="e.g., my-custom-model:latest"
-                  />
-                </FormField>
-              )}
-
-              {showApiKeyField && (
-                <FormField label="API Key">
-                  <div className="relative">
-                    <input
-                      type={showApiKey ? 'text' : 'password'}
-                      value={apiKey}
-                      onChange={(e) => handleApiKeyChange(e.target.value)}
-                      className="form-input pr-10"
-                      placeholder="Enter API key"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowApiKey(!showApiKey)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-semantic-text-faint hover:text-semantic-text-secondary"
-                    >
-                      {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </FormField>
-              )}
-
-              {showBaseUrl && (
-                <FormField label="Base URL">
-                  <input
-                    type="text"
-                    value={baseUrl}
-                    onChange={(e) => setBaseUrl(e.target.value)}
-                    className="form-input"
-                    placeholder={
-                      provider === 'ollama' ? 'http://localhost:11434' :
-                      provider === 'lmstudio' ? 'http://localhost:1234' :
-                      provider === 'vllm' ? 'http://localhost:8000' :
-                      'https://api.openai.com (or custom endpoint)'
-                    }
-                  />
-                </FormField>
-              )}
-
-              {/* vLLM Multi-Session */}
-              {provider === 'vllm' && (
-                <div className="border-t border-border pt-4 mt-4">
-                  <h4 className="text-xs font-medium text-semantic-text-subtle mb-3">Multi-Session Settings</h4>
-                  <div className="space-y-3">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={vllmMultiEnabled}
-                        onChange={(e) => setVllmMultiEnabled(e.target.checked)}
-                        className="rounded border-border bg-surface-subtle text-primary focus:ring-interactive-focus-ring"
-                      />
-                      <span className="text-sm text-semantic-text-secondary">Enable multi-session</span>
-                    </label>
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField label="Max Concurrent">
-                        <input type="number" value={vllmMaxConcurrent} onChange={(e) => setVllmMaxConcurrent(parseInt(e.target.value) || 10)} className="form-input" />
-                      </FormField>
-                      <FormField label="Rate Limit/User">
-                        <input type="number" value={vllmRateLimit} onChange={(e) => setVllmRateLimit(parseInt(e.target.value) || 20)} className="form-input" />
-                      </FormField>
-                      <FormField label="User Queue Size">
-                        <input type="number" value={vllmQueueSize} onChange={(e) => setVllmQueueSize(parseInt(e.target.value) || 5)} className="form-input" />
-                      </FormField>
-                      <FormField label="Request Timeout (ms)">
-                        <input type="number" value={vllmTimeout} onChange={(e) => setVllmTimeout(parseInt(e.target.value) || 120000)} className="form-input" />
-                      </FormField>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center gap-3 pt-2">
-                <Button
-                  icon={<Save className="w-4 h-4" />}
-                  onClick={handleSave}
-                  loading={saveMutation.isPending}
-                >
-                  Save Configuration
-                </Button>
-                <Button
-                  variant="secondary"
-                  icon={<Zap className="w-4 h-4" />}
-                  onClick={handleTest}
-                  loading={testMutation.isPending}
-                >
-                  Test Connection
-                </Button>
-              </div>
+          {/* AI Provider — provider selection pattern (matches currencies-page) */}
+          <div className="rounded-lg border border-border bg-surface-raised p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={enabled}
+                  onChange={(e) => setEnabled(e.target.checked)}
+                  className="rounded border-border bg-surface-subtle text-primary focus:ring-interactive-focus-ring"
+                />
+                <span className="text-sm text-semantic-text-secondary">{enabled ? 'Enabled' : 'Disabled'}</span>
+              </label>
+              <Link
+                to="/providers"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-primary hover:text-primary-600 border border-primary/30 hover:border-primary rounded-lg transition-colors"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Manage Providers
+              </Link>
             </div>
-          </Card>
+
+            <FormField label="AI Provider">
+              <select
+                value={selectedProviderId}
+                onChange={(e) => setSelectedProviderId(e.target.value)}
+                className="form-input"
+                title="Select AI provider"
+              >
+                <option value="">-- Select a provider --</option>
+                {aiProviders.map((p) => (
+                  <option key={p.ProviderId} value={p.ProviderId}>{p.Name}</option>
+                ))}
+              </select>
+            </FormField>
+
+            {/* Read-only config fields from selected provider */}
+            <div className="grid grid-cols-2 gap-4">
+              <FormField label="Provider Type">
+                <input
+                  type="text"
+                  value={selectedProvider?.TypeDisplayName || '-'}
+                  className="form-input bg-surface-subtle cursor-not-allowed"
+                  readOnly
+                  tabIndex={-1}
+                />
+              </FormField>
+              <FormField label="Model">
+                <input
+                  type="text"
+                  value={(providerConfig?.model as string) || '-'}
+                  className="form-input bg-surface-subtle cursor-not-allowed"
+                  readOnly
+                  tabIndex={-1}
+                />
+              </FormField>
+            </div>
+
+            <FormField label="Base URL">
+              <input
+                type="text"
+                value={(providerConfig?.baseUrl as string) || '-'}
+                className="form-input bg-surface-subtle cursor-not-allowed"
+                readOnly
+                tabIndex={-1}
+              />
+            </FormField>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField label="API Key">
+                <input
+                  type="text"
+                  value={selectedProvider ? (selectedProvider.Credentials ? 'Configured' : 'Not set') : '-'}
+                  className="form-input bg-surface-subtle cursor-not-allowed"
+                  readOnly
+                  tabIndex={-1}
+                />
+              </FormField>
+              <FormField label="Health Status">
+                <div className="flex items-center h-[38px]">
+                  {selectedProvider?.LastTestStatus ? (
+                    <StatusBadge
+                      status={selectedProvider.LastTestStatus === 'ok' ? 'success' : selectedProvider.LastTestStatus === 'warning' ? 'warning' : 'danger'}
+                      label={selectedProvider.LastTestStatus === 'ok' ? 'OK' : selectedProvider.LastTestStatus === 'warning' ? 'Warning' : 'Failed'}
+                      size="sm"
+                    />
+                  ) : (
+                    <span className="text-sm text-semantic-text-faint">Not tested</span>
+                  )}
+                </div>
+              </FormField>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <Button
+                icon={<Save className="w-4 h-4" />}
+                onClick={handleSave}
+                loading={saveMutation.isPending}
+              >
+                Save Configuration
+              </Button>
+              <Button
+                variant="secondary"
+                icon={<Zap className="w-4 h-4" />}
+                onClick={handleTestAiProvider}
+                loading={testingAiProvider}
+              >
+                Test Connection
+              </Button>
+            </div>
+          </div>
 
           {/* Context Options */}
           <Card title="Context Settings">
@@ -481,6 +455,59 @@ export default function InfuseAdminPage() {
               placeholder="Enter system prompt for the AI model..."
             />
           </Card>
+        </div>
+      )}
+
+      {/* Tab: Services */}
+      {activeTab === 'services' && (
+        <div className="space-y-6">
+          <TableCard
+            title="Internal Services"
+            subtitle={`${serviceProviders.length} service${serviceProviders.length !== 1 ? 's' : ''} configured`}
+            actions={
+              <Link to="/providers" className="flex items-center gap-1 text-xs text-primary hover:text-primary-400 transition-colors">
+                Manage Providers <ExternalLink className="w-3 h-3" />
+              </Link>
+            }
+          >
+            {servicesLoading ? (
+              <div className="flex justify-center py-8">
+                <LoadingSpinner size="md" />
+              </div>
+            ) : (
+              <DataTable
+                data={serviceProviders}
+                columns={[
+                  ...serviceColumns,
+                  {
+                    key: 'ProviderId', label: 'Actions', width: 80, sortable: false,
+                    render: (_val, row) => (
+                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => handleTestProvider(row)}
+                          disabled={testingId === row.ProviderId}
+                          className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors disabled:opacity-50"
+                          title="Test Connection"
+                        >
+                          {testingId === row.ProviderId ? (
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                          ) : row.LastTestStatus === 'ok' ? (
+                            <Wifi className="w-4 h-4" />
+                          ) : (
+                            <WifiOff className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    ),
+                  },
+                ]}
+                keyField="ProviderId"
+                emptyMessage="No internal services configured"
+                compact
+              />
+            )}
+          </TableCard>
         </div>
       )}
 

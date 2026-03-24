@@ -4,6 +4,7 @@ import {
   Activity,
   FileText,
   Cog,
+  FileKey,
   Server,
   Download,
   Trash2,
@@ -21,6 +22,7 @@ import {
   getDevTasks,
   executeDevTask,
 } from '@/services/admin-service';
+import EnvPage from '@/pages/services/env-page';
 
 // ===== Constants =====
 
@@ -64,6 +66,7 @@ const tabs: TabItem[] = [
   { id: 'health', label: 'Health', icon: <Activity className="w-4 h-4" /> },
   { id: 'logs', label: 'Logs', icon: <FileText className="w-4 h-4" /> },
   { id: 'tasks', label: 'Tasks', icon: <Cog className="w-4 h-4" /> },
+  { id: 'env', label: 'Environment', icon: <FileKey className="w-4 h-4" /> },
 ];
 
 // ===== Helpers =====
@@ -667,6 +670,9 @@ export default function ServicesPage() {
           )}
         </div>
       )}
+
+      {/* Tab: Environment */}
+      {activeTab === 'env' && <EnvPage />}
     </div>
   );
 }

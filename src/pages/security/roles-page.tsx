@@ -34,6 +34,7 @@ const AVAILABLE_TABS: Array<{ id: string; name: string; category: string }> = [
   { id: 'config', name: 'Config', category: 'Bridge' },
   { id: 'licensing', name: 'Licensing', category: 'Bridge' },
   { id: 'patches', name: 'Updates', category: 'Bridge' },
+  { id: 'providers', name: 'Providers', category: 'Bridge' },
   { id: 'labelit', name: 'LabelIT', category: 'Applications' },
   { id: 'stackit', name: 'StackIT', category: 'Applications' },
   { id: 'workit', name: 'InfuseIT - Work', category: 'Applications' },
@@ -42,6 +43,7 @@ const AVAILABLE_TABS: Array<{ id: string; name: string; category: string }> = [
   { id: 'floorit', name: 'FloorIT', category: 'Applications' },
   { id: 'infuseit', name: 'InfuseIT - MCP', category: 'Applications' },
   { id: 'shopit', name: 'ShopIT', category: 'Applications' },
+  { id: 'pulpit', name: 'PulpIT', category: 'Applications' },
 ];
 
 const ENTITY_PERM_ENTITIES: Array<{ id: string; label: string }> = [
@@ -56,6 +58,7 @@ const ENTITY_PERM_ENTITIES: Array<{ id: string; label: string }> = [
   { id: 'wip_job', label: 'WIP Job' },
   { id: 'mrp', label: 'MRP' },
   { id: 'gl_history', label: 'GL History' },
+  { id: 'cash_book', label: 'Cash Book' },
   { id: 'contact', label: 'Contact' },
   { id: 'lot', label: 'Lot' },
   { id: 'serial', label: 'Serial' },
@@ -185,7 +188,10 @@ export default function RolesPage() {
       editModal.close();
       toast.success('Role created successfully');
     },
-    onError: (err: Error) => toast.error(err.message || 'Failed to create role'),
+    onError: (err: any) => {
+      const message = err.response?.data?.error || err.message || 'Failed to create role';
+      toast.error(message);
+    },
   });
 
   const updateMutation = useMutation({
@@ -196,7 +202,10 @@ export default function RolesPage() {
       editModal.close();
       toast.success('Role updated successfully');
     },
-    onError: (err: Error) => toast.error(err.message || 'Failed to update role'),
+    onError: (err: any) => {
+      const message = err.response?.data?.error || err.message || 'Failed to update role';
+      toast.error(message);
+    },
   });
 
   const deleteMutation = useMutation({
@@ -232,6 +241,10 @@ export default function RolesPage() {
   function handleSave() {
     if (!form.id.trim()) {
       toast.error('Role ID is required');
+      return;
+    }
+    if (!isEditing && !/^[a-z][a-z0-9_-]{2,19}$/.test(form.id)) {
+      toast.error('Role ID must be 3-20 characters, start with a lowercase letter, and contain only lowercase letters, numbers, underscores, and hyphens');
       return;
     }
     if (!form.name.trim()) {
@@ -583,11 +596,17 @@ interface PermissionMatrixProps {
 }
 
 function PermissionMatrix({ permissions, onChange }: PermissionMatrixProps) {
-  const [wildcard, setWildcard] = useState(false);
+  // Derive wildcard from actual permissions data — true when all entities have all actions
+  const wildcard = useMemo(() => {
+    if (Object.keys(permissions).length === 0) return false;
+    return ENTITY_PERM_ENTITIES.every(entity => {
+      const perms = permissions[entity.id];
+      return perms && ENTITY_PERM_ACTIONS.every(action => perms.includes(action));
+    });
+  }, [permissions]);
 
   const toggleWildcard = useCallback(
     (checked: boolean) => {
-      setWildcard(checked);
       if (checked) {
         // Select all permissions
         const allPerms: Record<string, string[]> = {};

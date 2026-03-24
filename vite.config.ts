@@ -37,7 +37,7 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
         },
         '/work': {
-          target: env.VITE_WORK_URL || 'http://localhost:3900',
+          target: env.VITE_WORK_URL || 'http://localhost:3990',
           changeOrigin: true,
           rewrite: (path: string) => path.replace(/^\/work/, ''),
         },

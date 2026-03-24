@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Workflow, Play, Edit, Trash2, Plus, Key, RefreshCw, RotateCcw, Ban, Eye } from 'lucide-react';
+import { Workflow, Play, Edit, Trash2, Plus, Key, RefreshCw, RotateCcw, Ban, Eye, Database, ExternalLink, Wifi, WifiOff, Star } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Link } from 'react-router-dom';
 import {
   DataTable,
   Button,
@@ -12,10 +13,12 @@ import {
   LoadingSpinner,
   PageHeader,
   TableCard,
+  TableFilterDropdown,
+  TableColumnPicker,
 } from '@/components/shared';
-import type { TabItem, ColumnDef } from '@/components/shared';
+import type { TabItem, ColumnDef, TableFilterField, TableColumnPickerColumn } from '@/components/shared';
 import { useModal } from '@shared/hooks';
-import type { WorkWorkflow, WorkExecution, WorkEventMapping, WorkApiKey } from '@/types';
+import type { WorkWorkflow, WorkExecution, WorkEventMapping, WorkApiKey, Provider } from '@/types';
 import {
   getWorkHealth,
   getWorkWorkflows,
@@ -36,6 +39,9 @@ import {
   deleteWorkApiKey as deleteWorkApiKeyApi,
   rotateWorkApiKey,
   revokeWorkApiKey,
+  getProviders,
+  getProvidersByApp,
+  testProvider,
 } from '@/services/admin-service';
 
 // ===== Constants =====
@@ -44,7 +50,7 @@ const tabs: TabItem[] = [
   { id: 'status', label: 'Dashboard', icon: <Workflow className="w-4 h-4" /> },
   { id: 'workflows', label: 'Workflows', icon: <Play className="w-4 h-4" /> },
   { id: 'mappings', label: 'Event Mappings', icon: <Workflow className="w-4 h-4" /> },
-  { id: 'apikeys', label: 'API Keys', icon: <Key className="w-4 h-4" /> },
+  { id: 'automation', label: 'Provider', icon: <Database className="w-4 h-4" /> },
 ];
 
 // ===== Form types =====
@@ -57,11 +63,12 @@ interface WorkflowForm {
   timeoutMs: number;
   webhookUrl: string;
   isActive: boolean;
+  providerId: string;
 }
 
 const INITIAL_WF_FORM: WorkflowForm = {
   name: '', n8nWorkflowId: '', description: '', triggerType: 'webhook',
-  timeoutMs: 30000, webhookUrl: '', isActive: true,
+  timeoutMs: 30000, webhookUrl: '', isActive: true, providerId: '',
 };
 
 interface MappingForm {
@@ -110,6 +117,11 @@ export default function WorkAdminPage() {
   // Execution detail modal
   const execDetailModal = useModal<WorkExecution>();
   const [execDetail, setExecDetail] = useState<WorkExecution | null>(null);
+
+  // Execution filters & column visibility
+  const [execSearch, setExecSearch] = useState('');
+  const [execFilters, setExecFilters] = useState<Record<string, string>>({});
+  const [execColumnVisibility, setExecColumnVisibility] = useState<Record<string, boolean>>({});
 
   // Mapping modal
   const mappingModal = useModal<WorkEventMapping>();
@@ -171,8 +183,86 @@ export default function WorkAdminPage() {
   const mappings: WorkEventMapping[] = mappingsData?.mappings || [];
   const apiKeys: WorkApiKey[] = apiKeysData?.apiKeys || [];
 
+  // ---- Execution filter handlers ----
+
+  const handleExecFilterChange = (key: string, value: string) => {
+    setExecFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleClearAllExecFilters = () => {
+    setExecFilters({});
+  };
+
+  const toggleExecColumnVisibility = (key: string) => {
+    setExecColumnVisibility((prev) => ({ ...prev, [key]: prev[key] === false ? true : false }));
+  };
+
+  const execFilterFields: TableFilterField[] = useMemo(() => [
+    { key: 'WorkflowName', label: 'Workflow', type: 'text' },
+    { key: 'EventType', label: 'Event', type: 'text' },
+    { key: 'SourceApp', label: 'Source', type: 'text' },
+    {
+      key: 'Status', label: 'Status', type: 'select',
+      options: [
+        { value: 'success', label: 'Success' },
+        { value: 'failed', label: 'Failed' },
+        { value: 'timeout', label: 'Timeout' },
+        { value: 'pending', label: 'Pending' },
+        { value: 'running', label: 'Running' },
+        { value: 'cancelled', label: 'Cancelled' },
+      ],
+    },
+  ], []);
+
+  const execPickerColumns: TableColumnPickerColumn[] = useMemo(() => [
+    { key: 'ExecutionId', label: 'ID' },
+    { key: 'WorkflowName', label: 'Workflow' },
+    { key: 'EventType', label: 'Event' },
+    { key: 'SourceApp', label: 'Source' },
+    { key: 'Status', label: 'Status' },
+    { key: 'StartedAt', label: 'Started' },
+    { key: 'DurationMs', label: 'Duration' },
+  ], []);
+
+  const filteredExecData = useMemo(() => {
+    let result = executions;
+    if (execSearch) {
+      const s = execSearch.toLowerCase();
+      result = result.filter(
+        (e) =>
+          String(e.ExecutionId).includes(s) ||
+          (e.WorkflowName && e.WorkflowName.toLowerCase().includes(s)) ||
+          (e.EventType && e.EventType.toLowerCase().includes(s)) ||
+          (e.SourceApp && e.SourceApp.toLowerCase().includes(s)) ||
+          (e.Status && e.Status.toLowerCase().includes(s))
+      );
+    }
+    const activeFilters = Object.entries(execFilters).filter(([, v]) => v);
+    if (activeFilters.length > 0) {
+      result = result.filter((row) =>
+        activeFilters.every(([key, value]) => {
+          const rowVal = (row as any)[key];
+          if (rowVal == null) return false;
+          const field = execFilterFields.find((f) => f.key === key);
+          if (field?.type === 'select') return String(rowVal) === value;
+          return String(rowVal).toLowerCase().includes(value.toLowerCase());
+        })
+      );
+    }
+    return result;
+  }, [executions, execSearch, execFilters, execFilterFields]);
+
+  const { data: automationProvidersData, isLoading: automationProvidersLoading } = useQuery({
+    queryKey: ['admin', 'providers', { app: 'INFUSE' }],
+    queryFn: () => getProvidersByApp('INFUSE'),
+    enabled: activeTab === 'automation' || activeTab === 'workflows',
+  });
+
+  const automationProviders: Provider[] = automationProvidersData?.data || [];
+
   const serviceConnected = !!healthData;
   const n8nConnected = healthData?.n8n?.status === 'connected';
+  const [testingId, setTestingId] = useState<string | null>(null);
   const activeWfCount = workflows.filter((w) => w.IsActive).length;
 
   // ===== Mutations =====
@@ -265,7 +355,7 @@ export default function WorkAdminPage() {
     setWfForm({
       name: wf.Name, n8nWorkflowId: wf.N8NWorkflowId, description: wf.Description || '',
       triggerType: wf.TriggerType || 'webhook', timeoutMs: wf.TimeoutMs || 30000,
-      webhookUrl: wf.WebhookUrl || '', isActive: wf.IsActive,
+      webhookUrl: wf.WebhookUrl || '', isActive: wf.IsActive, providerId: wf.ProviderId || '',
     });
     setIsEditingWf(true);
     setEditingWfId(wf.WorkflowId);
@@ -280,7 +370,7 @@ export default function WorkAdminPage() {
       payload: {
         name: wfForm.name, n8nWorkflowId: wfForm.n8nWorkflowId, description: wfForm.description,
         triggerType: wfForm.triggerType, timeoutMs: wfForm.timeoutMs,
-        webhookUrl: wfForm.webhookUrl, isActive: wfForm.isActive,
+        webhookUrl: wfForm.webhookUrl, isActive: wfForm.isActive, providerId: wfForm.providerId || null,
       },
     });
   }
@@ -341,6 +431,23 @@ export default function WorkAdminPage() {
     });
   }
 
+  async function handleTestProvider(provider: Provider) {
+    setTestingId(provider.ProviderId);
+    try {
+      const result = await testProvider(provider.ProviderId);
+      if (result.ok) {
+        toast.success(result.message || 'Connection successful');
+      } else {
+        toast.error(result.message || 'Connection failed');
+      }
+      queryClient.invalidateQueries({ queryKey: ['admin', 'providers'] });
+    } catch {
+      toast.error('Connection test failed');
+    } finally {
+      setTestingId(null);
+    }
+  }
+
   // ===== Column definitions =====
 
   const wfColumns: ColumnDef<WorkWorkflow>[] = [
@@ -355,6 +462,14 @@ export default function WorkAdminPage() {
     },
     { key: 'N8NWorkflowId', label: 'N8N ID', width: 120, sortable: true, render: (val) => <code className="text-primary text-xs">{val}</code> },
     { key: 'TriggerType', label: 'Trigger', width: 100, sortable: true },
+    {
+      key: 'ProviderId', label: 'Provider', width: 140,
+      render: (val) => {
+        if (!val) return <span className="text-semantic-text-faint">Manual</span>;
+        const p = automationProviders.find((pr) => pr.ProviderId === val);
+        return <span className="text-semantic-text-secondary">{p?.Name || 'Unknown'}</span>;
+      },
+    },
     { key: 'TimeoutMs', label: 'Timeout', width: 90, render: (val) => <span className="text-semantic-text-faint">{val ? (val / 1000) + 's' : '30s'}</span> },
     {
       key: 'IsActive', label: 'Status', width: 90, sortable: true,
@@ -377,19 +492,19 @@ export default function WorkAdminPage() {
   ];
 
   const execColumns: ColumnDef<WorkExecution>[] = [
-    { key: 'ExecutionId', label: 'ID', width: 70, sortable: true, render: (val) => <code className="text-xs text-semantic-text-faint">{val}</code> },
-    { key: 'WorkflowName', label: 'Workflow', sortable: true, render: (val) => <span className="text-semantic-text-secondary">{val || '-'}</span> },
-    { key: 'EventType', label: 'Event', width: 140, render: (val) => val ? <code className="text-xs">{val}</code> : <span className="text-semantic-text-faint">-</span> },
-    { key: 'SourceApp', label: 'Source', width: 90, render: (val) => <span className="text-semantic-text-faint">{val || '-'}</span> },
+    { key: 'ExecutionId', label: 'ID', width: 70, sortable: true, hidden: execColumnVisibility.ExecutionId === false, render: (val) => <code className="text-xs text-semantic-text-faint">{val}</code> },
+    { key: 'WorkflowName', label: 'Workflow', sortable: true, hidden: execColumnVisibility.WorkflowName === false, render: (val) => <span className="text-semantic-text-secondary">{val || '-'}</span> },
+    { key: 'EventType', label: 'Event', width: 140, hidden: execColumnVisibility.EventType === false, render: (val) => val ? <code className="text-xs">{val}</code> : <span className="text-semantic-text-faint">-</span> },
+    { key: 'SourceApp', label: 'Source', width: 90, hidden: execColumnVisibility.SourceApp === false, render: (val) => <span className="text-semantic-text-faint">{val || '-'}</span> },
     {
-      key: 'Status', label: 'Status', width: 90, sortable: true,
+      key: 'Status', label: 'Status', width: 90, sortable: true, hidden: execColumnVisibility.Status === false,
       render: (val) => {
         const map: Record<string, 'success' | 'danger' | 'warning' | 'info' | 'neutral'> = { success: 'success', failed: 'danger', timeout: 'danger', pending: 'warning', running: 'info', cancelled: 'neutral' };
         return <StatusBadge status={map[val] || 'neutral'} label={val} size="sm" />;
       },
     },
-    { key: 'StartedAt', label: 'Started', width: 160, render: (val) => <span className="text-xs text-semantic-text-faint">{val ? new Date(val).toLocaleString() : '-'}</span> },
-    { key: 'DurationMs', label: 'Duration', width: 90, render: (val) => <span className="text-semantic-text-faint">{val ? (val / 1000).toFixed(2) + 's' : '-'}</span> },
+    { key: 'StartedAt', label: 'Started', width: 160, sortable: true, hidden: execColumnVisibility.StartedAt === false, render: (val) => <span className="text-xs text-semantic-text-faint">{val ? new Date(val).toLocaleString() : '-'}</span> },
+    { key: 'DurationMs', label: 'Duration', width: 90, sortable: true, hidden: execColumnVisibility.DurationMs === false, render: (val) => <span className="text-semantic-text-faint">{val ? (val / 1000).toFixed(2) + 's' : '-'}</span> },
     {
       key: 'ExecutionId' as any, label: 'Actions', width: 80, sortable: false,
       render: (_val, row) => (
@@ -452,6 +567,83 @@ export default function WorkAdminPage() {
             </>
           )}
           <button type="button" onClick={() => { if (window.confirm('Delete this API key?')) deleteKeyMutation.mutate(row.ApiKeyId); }} className="p-1.5 text-semantic-text-faint hover:text-danger rounded hover:bg-interactive-hover" title="Delete"><Trash2 className="w-4 h-4" /></button>
+        </div>
+      ),
+    },
+  ];
+
+  const automationProviderColumns: ColumnDef<Provider>[] = [
+    {
+      key: 'Name', label: 'Name', sortable: true, filterable: true,
+      render: (val, row) => (
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-semantic-text-default">{val}</span>
+          {row.IsDefault && <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0" />}
+        </div>
+      ),
+    },
+    {
+      key: 'Category', label: 'Category', width: 100, sortable: true,
+      render: (val) => {
+        const map: Record<string, 'success' | 'info' | 'neutral'> = { AI: 'success', AUTOMATION: 'info' };
+        return <StatusBadge status={map[val as string] || 'neutral'} label={(val as string) || '-'} size="sm" />;
+      },
+    },
+    {
+      key: 'ProviderTypeCode', label: 'Type', width: 160, sortable: true,
+      render: (_val, row) => (
+        <span className="text-semantic-text-faint">{row.TypeDisplayName || row.ProviderTypeCode}</span>
+      ),
+    },
+    {
+      key: 'IsActive', label: 'Status', width: 100,
+      render: (val) => <StatusBadge status={val ? 'success' : 'danger'} label={val ? 'Active' : 'Inactive'} size="sm" />,
+    },
+    {
+      key: 'LastTestStatus', label: 'Health', width: 110,
+      render: (val, row) => {
+        if (!val) return <span className="text-semantic-text-faint text-xs">Not tested</span>;
+        const statusMap: Record<string, 'success' | 'warning' | 'danger'> = { ok: 'success', warning: 'warning', error: 'danger' };
+        return (
+          <span title={row.LastTestError || undefined}>
+            <StatusBadge status={statusMap[val] || 'danger'} label={val === 'ok' ? 'OK' : val === 'warning' ? 'Warning' : 'Failed'} size="sm" />
+          </span>
+        );
+      },
+    },
+    {
+      key: 'Configuration', label: 'Config', width: 180,
+      render: (val) => {
+        if (!val || typeof val !== 'object') return <span className="text-semantic-text-faint">-</span>;
+        const keys = Object.keys(val);
+        if (keys.length === 0) return <span className="text-semantic-text-faint">-</span>;
+        const summary = keys.slice(0, 3).join(', ') + (keys.length > 3 ? ` (+${keys.length - 3})` : '');
+        return <span className="text-xs text-semantic-text-faint" title={JSON.stringify(val, null, 2)}>{summary}</span>;
+      },
+    },
+    {
+      key: 'LastTestedAt', label: 'Last Tested', width: 140,
+      render: (val) => <span className="text-xs text-semantic-text-faint">{val ? new Date(val).toLocaleString() : '-'}</span>,
+    },
+    {
+      key: 'ProviderId', label: 'Actions', width: 80, sortable: false,
+      render: (_val, row) => (
+        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            onClick={() => handleTestProvider(row)}
+            disabled={testingId === row.ProviderId}
+            className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors disabled:opacity-50"
+            title="Test Connection"
+          >
+            {testingId === row.ProviderId ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : row.LastTestStatus === 'ok' ? (
+              <Wifi className="w-4 h-4" />
+            ) : (
+              <WifiOff className="w-4 h-4" />
+            )}
+          </button>
         </div>
       ),
     },
@@ -521,16 +713,35 @@ export default function WorkAdminPage() {
           <TableCard
             title="Recent Executions"
             icon={<Workflow className="w-4 h-4" />}
-            count={executions.length}
+            count={filteredExecData.length}
+            search={{ value: execSearch, onChange: setExecSearch, placeholder: "Search executions..." }}
+            headerActions={
+              <div className="flex items-center gap-1">
+                <TableFilterDropdown
+                  fields={execFilterFields}
+                  values={execFilters}
+                  onChange={handleExecFilterChange}
+                  onClearAll={handleClearAllExecFilters}
+                />
+                <TableColumnPicker
+                  columns={execPickerColumns}
+                  visibility={execColumnVisibility}
+                  onToggle={toggleExecColumnVisibility}
+                />
+              </div>
+            }
           >
             <DataTable<WorkExecution>
               id="admin-work-executions"
               columns={execColumns}
-              data={executions.slice(0, 50)}
+              data={filteredExecData}
               rowKey="ExecutionId"
               emptyMessage="No executions found"
               emptyIcon={Workflow}
               embedded
+              pageSize={25}
+              pageSizeOptions={[10, 25, 50, 100]}
+              showFilters={false}
               showColumnPicker={false}
             />
           </TableCard>
@@ -617,6 +828,37 @@ export default function WorkAdminPage() {
         </TableCard>
       )}
 
+      {/* Tab: Providers */}
+      {activeTab === 'automation' && (
+        <TableCard
+          title="Providers"
+          icon={<Database className="w-4 h-4" />}
+          count={automationProviders.length}
+          headerActions={
+            <Link
+              to="/providers"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-primary hover:text-primary-600 border border-primary/30 hover:border-primary rounded-lg transition-colors"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              Manage Providers
+            </Link>
+          }
+        >
+          {automationProvidersLoading ? <LoadingSpinner size="lg" /> : (
+            <DataTable<Provider>
+              id="admin-work-providers"
+              columns={automationProviderColumns}
+              data={automationProviders}
+              rowKey="ProviderId"
+              emptyMessage="No providers assigned to InfuseIT"
+              emptyIcon={Database}
+              embedded
+              showColumnPicker={false}
+            />
+          )}
+        </TableCard>
+      )}
+
       {/* Workflow Create/Edit Modal */}
       <Modal
         isOpen={workflowModal.isOpen}
@@ -660,6 +902,25 @@ export default function WorkAdminPage() {
               </label>
             </FormField>
           </div>
+          <FormField label="Automation Provider">
+            <select
+              value={wfForm.providerId}
+              onChange={(e) => {
+                const pid = e.target.value;
+                const provider = automationProviders.find((p) => p.ProviderId === pid);
+                const config = provider?.Configuration as Record<string, string> | undefined;
+                const webhookUrl = config ? `${config.baseUrl || ''}${config.webhookPath || ''}` : '';
+                setWfForm({ ...wfForm, providerId: pid, webhookUrl: webhookUrl || wfForm.webhookUrl });
+              }}
+              className="form-input"
+              title="Automation provider"
+            >
+              <option value="">-- None (manual URL) --</option>
+              {automationProviders.map((p) => (
+                <option key={p.ProviderId} value={p.ProviderId}>{p.Name}</option>
+              ))}
+            </select>
+          </FormField>
           <FormField label="Webhook URL">
             <input type="text" value={wfForm.webhookUrl} onChange={(e) => setWfForm({ ...wfForm, webhookUrl: e.target.value })} className="form-input" placeholder="Optional webhook URL" />
           </FormField>

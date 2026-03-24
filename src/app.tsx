@@ -13,8 +13,10 @@ const SecurityPage = lazy(() => import('@/pages/security-page'));
 const ServicesPage = lazy(() => import('@/pages/services-page'));
 const CachePage = lazy(() => import('@/pages/cache-page'));
 const ConfigPage = lazy(() => import('@/pages/config-page'));
+const ErpConfigPage = lazy(() => import('@/pages/erp-config-page'));
 const LicensingPage = lazy(() => import('@/pages/licensing-page'));
 const PatchesPage = lazy(() => import('@/pages/patches-page'));
+const ProvidersPage = lazy(() => import('@/pages/providers-page'));
 
 // Lazy: App admin pages (loaded on demand)
 const ConnectAdminPage = lazy(() => import('@/pages/apps/connect-admin-page'));
@@ -58,8 +60,10 @@ function App() {
           <Route path="/services" element={<ServicesPage />} />
           <Route path="/cache" element={<CachePage />} />
           <Route path="/config" element={<ConfigPage />} />
+          <Route path="/erp-config" element={<ErpConfigPage />} />
           <Route path="/licensing" element={<LicensingPage />} />
           <Route path="/patches" element={<PatchesPage />} />
+          <Route path="/providers" element={<ProvidersPage />} />
           <Route path="/apps/connect" element={<ConnectAdminPage />} />
           <Route path="/apps/stack" element={<StackAdminPage />} />
           <Route path="/apps/flip" element={<FlipAdminPage />} />

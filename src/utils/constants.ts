@@ -5,8 +5,10 @@ export const ADMIN_TABS = {
     { id: 'services', label: 'Services', icon: 'Server' },
     { id: 'cache', label: 'Cache', icon: 'Database' },
     { id: 'config', label: 'Config', icon: 'Settings' },
+    { id: 'erp-config', label: 'ERP Config', icon: 'FileCode' },
     { id: 'licensing', label: 'Licensing', icon: 'Key' },
     { id: 'patches', label: 'Patches', icon: 'Package' },
+    { id: 'providers', label: 'Providers', icon: 'Plug' },
   ],
   APPS: [
     { id: 'connectit', label: 'ConnectIT', icon: 'Users', app: 'connect' },

@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import { FolderTree, DollarSign, List, Warehouse } from 'lucide-react';
+import { FolderTree, DollarSign, List, Warehouse, Settings } from 'lucide-react';
 import { Tabs, PageHeader } from '@/components/shared';
 import type { TabItem } from '@/components/shared';
-import { ProjectTypesPage, CurrenciesPage, OptionSetsPage, WarehousesPage } from '@/pages/config';
+import { ProjectTypesPage, CurrenciesPage, OptionSetsPage, WarehousesPage, SystemSettingsPage } from '@/pages/config';
 
 const CONFIG_TABS: TabItem[] = [
   { id: 'project-types', label: 'Project Types', icon: <FolderTree className="w-4 h-4" /> },
   { id: 'currencies', label: 'Currencies', icon: <DollarSign className="w-4 h-4" /> },
   { id: 'option-sets', label: 'Option Sets', icon: <List className="w-4 h-4" /> },
   { id: 'warehouses', label: 'Warehouses', icon: <Warehouse className="w-4 h-4" /> },
+  { id: 'system-settings', label: 'System Settings', icon: <Settings className="w-4 h-4" /> },
 ];
 
 export default function ConfigPage() {
@@ -27,6 +28,7 @@ export default function ConfigPage() {
       {activeTab === 'currencies' && <CurrenciesPage />}
       {activeTab === 'option-sets' && <OptionSetsPage />}
       {activeTab === 'warehouses' && <WarehousesPage />}
+      {activeTab === 'system-settings' && <SystemSettingsPage />}
     </div>
   );
 }

@@ -104,6 +104,18 @@ export interface SystemHealth {
   apps?: Record<string, AppStatus>;
 }
 
+// ===== System Settings Types =====
+
+export interface SystemSetting {
+  SettingKey: string;
+  SettingValue: string | null;
+  Description: string | null;
+  DataType: 'string' | 'number' | 'boolean' | 'json';
+  IsEncrypted: boolean;
+  UpdatedAt: string | null;
+  UpdatedBy: string | null;
+}
+
 // ===== Cache Types =====
 
 export interface CacheStats {
@@ -952,6 +964,7 @@ export interface ShopMarkitCampaign {
 export interface InfuseConfig {
   enabled: boolean;
   aiProvider: string;
+  providerId?: string;
   systemPrompt?: string;
   context?: {
     includeUserProfile?: boolean;
@@ -1003,6 +1016,7 @@ export interface WorkWorkflow {
   N8NWorkflowId: string;
   TriggerType: string;
   WebhookUrl?: string;
+  ProviderId?: string;
   TimeoutMs: number;
   IsActive: boolean;
   LastExecutedAt?: string;
@@ -1099,6 +1113,7 @@ export interface RetentionPolicy {
   DocumentType?: string;
   RetentionPeriodDays: number;
   Action: string;
+  NotifyRoles?: string;
   NotifyDaysBefore?: number;
   IsActive: boolean;
 }
@@ -1120,6 +1135,25 @@ export interface RetentionLogEntry {
   PerformedAt: string;
 }
 
+export interface ArchivedDocument {
+  DocumentId: string;
+  DocumentName: string;
+  DocumentTitle?: string;
+  DocumentType: string;
+  MimeType: string;
+  FileExtension?: string;
+  FileSizeBytes: number;
+  StorageProvider: string;
+  StorageReference: string;
+  RetentionPolicy?: string;
+  RetentionExpiryDate?: string;
+  CreatedAt: string;
+  CreatedBy: string;
+  UpdatedAt?: string;
+  UpdatedBy?: string;
+  HasArchiveFile: boolean;
+}
+
 export interface ApprovalWorkflow {
   WorkflowId: string;
   WorkflowName: string;
@@ -1128,4 +1162,108 @@ export interface ApprovalWorkflow {
   ApprovalRoles: string[];
   SequentialApproval: boolean;
   AutoPublishOnApproval: boolean;
+}
+
+// ===== ERP Config Types =====
+
+export type ErpConfigFolder = 'query' | 'build' | 'fieldmap' | 'warmer';
+
+export interface ErpConfigFile {
+  filename: string;
+  folder: ErpConfigFolder;
+  size: number;
+  modified: string;
+}
+
+export interface ErpConfigFileContent {
+  filename: string;
+  folder: ErpConfigFolder;
+  content: string;
+}
+
+// ===== Endpoint Types =====
+
+export interface ApiEndpoint {
+  EndpointId: string;
+  Path: string;
+  Method: string;
+  Entity?: string;
+  Action?: string;
+  Description?: string;
+  GroupId?: string;
+  GroupName?: string;
+  IsActive: boolean;
+}
+
+export interface EndpointGroup {
+  GroupId: string;
+  Name: string;
+  Entity?: string;
+  EndpointCount?: number;
+}
+
+// ===== Provider Types =====
+
+export interface ProviderType {
+  TypeCode: string;
+  DisplayName: string;
+  Category: string;
+  Description?: string;
+  ConfigSchema?: string;
+  IsActive: boolean;
+  IsBuiltIn?: boolean;
+}
+
+export interface Provider {
+  ProviderId: string;
+  ProviderTypeCode: string;
+  TypeDisplayName?: string;
+  Category?: string;
+  Name: string;
+  Description?: string;
+  Configuration?: Record<string, unknown> | null;
+  Credentials?: Record<string, unknown> | null;
+  IsDefault: boolean;
+  IsActive: boolean;
+  Scope?: 'internal' | 'external';
+  LastTestStatus?: string | null;
+  LastTestError?: string | null;
+  LastTestedAt?: string | null;
+  LastUsedAt?: string | null;
+  CreatedBy?: string;
+  UpdatedBy?: string;
+  CreatedAt?: string;
+  UpdatedAt?: string;
+  Applications?: string[];
+}
+
+export interface ProviderApiDetails {
+  connectionUrl?: string | null;
+  healthEndpoint?: string | null;
+  webhookPaths?: string[];
+  oauth?: {
+    enabled: boolean;
+    scopes: string[];
+    resourceUri: string | null;
+  } | null;
+  ipWhitelist: string[];
+  lastTestStatus?: string | null;
+  lastTestError?: string | null;
+  lastTestedAt?: string | null;
+  lastUsedAt?: string | null;
+  linkedOAuthClients: number;
+  scope: string;
+}
+
+// ===== About Types =====
+
+export interface AboutInfo {
+  version: string;
+  name: string;
+  description?: string;
+  nodeVersion: string;
+  uptime: number;
+  platform: string;
+  apps: Record<string, { enabled: boolean; label: string }>;
+  endpoints: { total: number; groups: Array<{ Name: string; Entity: string; EndpointCount: number }> };
 }

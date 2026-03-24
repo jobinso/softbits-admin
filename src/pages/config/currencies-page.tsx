@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Coins, Plus, Edit, Trash2, RefreshCw } from 'lucide-react';
+import { Coins, Plus, Edit, Trash2, RefreshCw, ExternalLink } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   DataTable,
@@ -26,9 +27,10 @@ import {
   createExchangeRate,
   updateExchangeRate,
   deleteExchangeRate,
+  getProvidersByType,
 } from '@/services/admin-service';
 import { useModal } from '@shared/hooks';
-import type { Currency, ExchangeRateProvider, ExchangeRate } from '@/types';
+import type { Currency, ExchangeRateProvider, ExchangeRate, Provider } from '@/types';
 
 // ---------------------------------------------------------------------------
 // Form types
@@ -72,13 +74,13 @@ export default function CurrenciesPage() {
 
   // ---- Provider form state ----
   const [providerForm, setProviderForm] = useState<Partial<ExchangeRateProvider>>({});
-  const [providerApiKey, setProviderApiKey] = useState('');
+  const [selectedProviderId, setSelectedProviderId] = useState('');
 
   // ---- Tabs ----
   const tabs: TabItem[] = [
     { id: 'currencies', label: 'Currencies' },
-    { id: 'provider', label: 'Exchange Provider' },
     { id: 'rates', label: 'Exchange Rates' },
+    { id: 'provider', label: 'Provider' },
   ];
 
   // ---- Data fetching ----
@@ -97,6 +99,14 @@ export default function CurrenciesPage() {
   });
 
   const provider = providerResponse?.data;
+
+  const { data: unifiedProvidersResponse } = useQuery({
+    queryKey: ['admin', 'providers', 'EXCHANGE_RATE_API'],
+    queryFn: () => getProvidersByType('EXCHANGE_RATE_API'),
+    enabled: activeTab === 'provider',
+  });
+
+  const unifiedProviders: Provider[] = unifiedProvidersResponse?.data ?? [];
 
   const { data: ratesResponse, isLoading: ratesLoading } = useQuery({
     queryKey: ['admin', 'exchange-rates', rateDate],
@@ -232,11 +242,14 @@ export default function CurrenciesPage() {
   }
 
   function handleSaveProvider() {
-    const data: Partial<ExchangeRateProvider> = {
-      ...providerForm,
-    };
-    if (providerApiKey) data.ApiKey = providerApiKey;
-    saveProviderMutation.mutate(data);
+    if (!selectedProviderId) {
+      toast.error('Please select a provider');
+      return;
+    }
+    saveProviderMutation.mutate({
+      providerId: selectedProviderId,
+      isEnabled: providerForm.IsEnabled,
+    } as Partial<ExchangeRateProvider>);
   }
 
   function openCreateRate() {
@@ -265,16 +278,21 @@ export default function CurrenciesPage() {
   }
 
   // ---- Initialize provider form when data loads ----
-  if (provider && !providerForm.Name && !providerForm.ApiUrl) {
+  if (provider && !providerForm.Name) {
     setProviderForm({
       Name: provider.Name || '',
-      ApiUrl: provider.ApiUrl || '',
-      BaseCurrency: provider.BaseCurrency || 'AUD',
-      FetchSchedule: provider.FetchSchedule || 'daily',
-      FetchTime: provider.FetchTime || '05:00',
       IsEnabled: provider.IsEnabled !== false,
     });
+    // Match legacy provider to unified provider by Name
+    if (!selectedProviderId && unifiedProviders.length > 0) {
+      const match = unifiedProviders.find(p => p.Name === provider.Name);
+      if (match) setSelectedProviderId(match.ProviderId);
+    }
   }
+
+  // ---- Derive read-only config from selected unified provider ----
+  const selectedProvider = unifiedProviders.find(p => p.ProviderId === selectedProviderId) || null;
+  const providerConfig = selectedProvider?.Configuration as Record<string, string> | null;
 
   // ---- Column definitions ----
 
@@ -425,72 +443,69 @@ export default function CurrenciesPage() {
         <div className="space-y-4">
           <form id="provider-config-form" onSubmit={(e) => { e.preventDefault(); handleSaveProvider(); }}>
           <div className="rounded-lg border border-border bg-surface-raised p-6 space-y-4">
-            <h2 className="text-sm font-medium text-semantic-text-secondary">Exchange Rate Provider</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-medium text-semantic-text-secondary">Exchange Rate Provider</h2>
+              <Link
+                to="/providers"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-primary hover:text-primary-600 border border-primary/30 hover:border-primary rounded-lg transition-colors"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Manage Providers
+              </Link>
+            </div>
             <div className="grid grid-cols-2 gap-4">
-              <FormField label="Provider Name">
-                <input
-                  type="text"
-                  value={providerForm.Name || ''}
-                  onChange={(e) => setProviderForm({ ...providerForm, Name: e.target.value })}
-                  className="form-input"
-                  placeholder="e.g. Exchange Rates API"
-                />
-              </FormField>
-              <FormField label="Base Currency">
+              <FormField label="Provider">
                 <select
-                  value={providerForm.BaseCurrency || 'AUD'}
-                  onChange={(e) => setProviderForm({ ...providerForm, BaseCurrency: e.target.value })}
+                  value={selectedProviderId}
+                  onChange={(e) => setSelectedProviderId(e.target.value)}
                   className="form-input"
-                  title="Base currency"
+                  title="Select exchange rate provider"
                 >
-                  {currencies.filter((c) => c.IsActive).map((c) => (
-                    <option key={c.Code} value={c.Code}>{c.Code} -- {c.Name}</option>
-                  ))}
-                  {currencies.length === 0 && ['AUD', 'USD', 'EUR', 'GBP', 'ZAR'].map((code) => (
-                    <option key={code} value={code}>{code}</option>
+                  <option value="">-- Select a provider --</option>
+                  {unifiedProviders.map((p) => (
+                    <option key={p.ProviderId} value={p.ProviderId}>{p.Name}</option>
                   ))}
                 </select>
+              </FormField>
+              <FormField label="Base Currency">
+                <input
+                  type="text"
+                  value={providerConfig?.baseCurrency || '-'}
+                  className="form-input bg-surface-subtle cursor-not-allowed"
+                  readOnly
+                  tabIndex={-1}
+                />
               </FormField>
             </div>
             <FormField label="API URL">
               <input
                 type="text"
-                value={providerForm.ApiUrl || ''}
-                onChange={(e) => setProviderForm({ ...providerForm, ApiUrl: e.target.value })}
-                className="form-input"
-                placeholder="https://api.exchangeratesapi.io/..."
-              />
-            </FormField>
-            <FormField label="API Key">
-              <input
-                type="password"
-                value={providerApiKey}
-                onChange={(e) => setProviderApiKey(e.target.value)}
-                className="form-input"
-                placeholder={provider?.ApiKey ? 'Leave blank to keep existing key' : 'Enter API key (optional)'}
+                value={providerConfig?.apiUrl || '-'}
+                className="form-input bg-surface-subtle cursor-not-allowed"
+                readOnly
+                tabIndex={-1}
               />
             </FormField>
             <div className="grid grid-cols-2 gap-4">
               <FormField label="Fetch Schedule">
-                <select
-                  value={providerForm.FetchSchedule || 'daily'}
-                  onChange={(e) => setProviderForm({ ...providerForm, FetchSchedule: e.target.value })}
-                  className="form-input"
-                  title="Fetch schedule"
-                >
-                  <option value="manual">Manual only</option>
-                  <option value="daily">Daily</option>
-                  <option value="hourly">Hourly</option>
-                </select>
+                <input
+                  type="text"
+                  value={providerConfig?.fetchSchedule === 'manual' ? 'Manual only' :
+                         providerConfig?.fetchSchedule === 'hourly' ? 'Hourly' :
+                         providerConfig?.fetchSchedule === 'daily' ? 'Daily' : '-'}
+                  className="form-input bg-surface-subtle cursor-not-allowed"
+                  readOnly
+                  tabIndex={-1}
+                />
               </FormField>
-              {providerForm.FetchSchedule !== 'manual' && (
+              {providerConfig?.fetchSchedule !== 'manual' && (
                 <FormField label="Fetch Time">
                   <input
-                    type="time"
-                    value={providerForm.FetchTime || '05:00'}
-                    onChange={(e) => setProviderForm({ ...providerForm, FetchTime: e.target.value })}
-                    className="form-input"
-                    title="Fetch time"
+                    type="text"
+                    value={providerConfig?.fetchTime || '-'}
+                    className="form-input bg-surface-subtle cursor-not-allowed"
+                    readOnly
+                    tabIndex={-1}
                   />
                 </FormField>
               )}

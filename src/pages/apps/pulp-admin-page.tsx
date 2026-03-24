@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { FileText, Database, Shield, CheckCircle, Clock, Plus, Trash2, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { FileText, Database, Archive, Shield, CheckCircle, Clock, Plus, Edit3, Trash2, RefreshCw, AlertTriangle, ExternalLink, Star, Wifi, WifiOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   DataTable,
@@ -15,16 +16,16 @@ import {
 } from '@/components/shared';
 import type { TabItem, ColumnDef } from '@/components/shared';
 import { useModal } from '@shared/hooks';
-import type { StorageProvider, StagedDocument, RetentionPolicy, ExpiringDocument, RetentionLogEntry, ApprovalWorkflow } from '@/types';
+import type { StagedDocument, RetentionPolicy, ExpiringDocument, RetentionLogEntry, ApprovalWorkflow, Provider, ArchivedDocument } from '@/types';
 import {
   getHealth,
   getDocumentStats,
-  getStorageProviders,
   getStagedDocuments,
   approveStagedDocument,
   rejectStagedDocument,
   getRetentionPolicies,
   createRetentionPolicy,
+  updateRetentionPolicy,
   deleteRetentionPolicy,
   getExpiringDocuments,
   extendDocumentRetention,
@@ -34,16 +35,20 @@ import {
   getApprovalWorkflows,
   createApprovalWorkflow,
   deleteApprovalWorkflow,
+  getProviders,
+  getProvidersByApp,
+  testProvider,
+  getArchivedDocuments,
 } from '@/services/admin-service';
 
 // ===== Constants =====
 
 const tabs: TabItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: <FileText className="w-4 h-4" /> },
-  { id: 'providers', label: 'Storage', icon: <Database className="w-4 h-4" /> },
   { id: 'staged', label: 'Staged Queue', icon: <Clock className="w-4 h-4" /> },
-  { id: 'retention', label: 'Retention', icon: <Shield className="w-4 h-4" /> },
+  { id: 'archive', label: 'Archive', icon: <Archive className="w-4 h-4" /> },
   { id: 'workflows', label: 'Approvals', icon: <CheckCircle className="w-4 h-4" /> },
+  { id: 'providers', label: 'Provider', icon: <Database className="w-4 h-4" /> },
 ];
 
 const STAGED_STATUSES_ACTIONABLE = ['CAPTURED', 'CLASSIFYING', 'STAGED', 'REVIEWING'];
@@ -55,12 +60,30 @@ interface PolicyForm {
   documentType: string;
   retentionPeriodDays: number;
   action: string;
+  notifyRoles: string;
   notifyDaysBefore: number;
 }
 
 const INITIAL_POLICY_FORM: PolicyForm = {
-  policyName: '', documentType: '', retentionPeriodDays: 0, action: 'ARCHIVE', notifyDaysBefore: 30,
+  policyName: '', documentType: '', retentionPeriodDays: 0, action: 'ARCHIVE', notifyRoles: '', notifyDaysBefore: 30,
 };
+
+const DOCUMENT_TYPE_OPTIONS = [
+  { value: '', label: 'All Types (default)' },
+  { value: 'DRAWING', label: 'Drawing' },
+  { value: 'COA', label: 'COA' },
+  { value: 'INVOICE', label: 'Invoice' },
+  { value: 'CUSTOMER_PO', label: 'Customer PO' },
+  { value: 'PURCHASE_ORDER', label: 'Purchase Order' },
+  { value: 'PACKING_LIST', label: 'Packing List' },
+  { value: 'BOL', label: 'BOL' },
+  { value: 'MSDS', label: 'MSDS' },
+  { value: 'SPEC_SHEET', label: 'Spec Sheet' },
+  { value: 'QUALITY_REPORT', label: 'Quality Report' },
+  { value: 'PHOTO', label: 'Photo' },
+  { value: 'CONTRACT', label: 'Contract' },
+  { value: 'OTHER', label: 'Other' },
+];
 
 interface WorkflowForm {
   workflowName: string;
@@ -82,12 +105,16 @@ export default function PulpAdminPage() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  // Retention sub-tab
-  const [retentionSubTab, setRetentionSubTab] = useState('policies');
+  // Archive sub-tab
+  const [archiveSubTab, setArchiveSubTab] = useState('documents');
 
   // Policy modal
   const policyModal = useModal();
   const [policyForm, setPolicyForm] = useState<PolicyForm>(INITIAL_POLICY_FORM);
+  const [editingPolicyId, setEditingPolicyId] = useState<string | null>(null);
+
+  // Storage providers test state
+  const [testingId, setTestingId] = useState<string | null>(null);
 
   // Workflow modal
   const workflowModal = useModal();
@@ -107,9 +134,9 @@ export default function PulpAdminPage() {
   });
   const isServiceConnected = !!healthData && healthData?.apps?.pulp?.enabled !== false;
 
-  const { data: providers, isLoading: providersLoading } = useQuery({
-    queryKey: ['admin', 'pulp', 'providers'],
-    queryFn: getStorageProviders,
+  const { data: providersData, isLoading: providersLoading } = useQuery({
+    queryKey: ['admin', 'providers', { app: 'PULP' }],
+    queryFn: () => getProvidersByApp('PULP'),
     enabled: activeTab === 'providers',
   });
 
@@ -122,19 +149,19 @@ export default function PulpAdminPage() {
   const { data: policies, isLoading: policiesLoading } = useQuery({
     queryKey: ['admin', 'pulp', 'retention-policies'],
     queryFn: getRetentionPolicies,
-    enabled: activeTab === 'retention' && retentionSubTab === 'policies',
+    enabled: activeTab === 'archive' && archiveSubTab === 'policies',
   });
 
   const { data: expiringDocs, isLoading: expiringLoading } = useQuery({
     queryKey: ['admin', 'pulp', 'expiring'],
     queryFn: () => getExpiringDocuments(30),
-    enabled: activeTab === 'retention' && retentionSubTab === 'expiring',
+    enabled: activeTab === 'archive' && archiveSubTab === 'expiring',
   });
 
   const { data: retentionLogs, isLoading: logsLoading } = useQuery({
     queryKey: ['admin', 'pulp', 'retention-log'],
     queryFn: () => getRetentionLog(50),
-    enabled: activeTab === 'retention' && retentionSubTab === 'log',
+    enabled: activeTab === 'archive' && archiveSubTab === 'log',
   });
 
   const { data: approvalWorkflows, isLoading: workflowsLoading } = useQuery({
@@ -143,12 +170,19 @@ export default function PulpAdminPage() {
     enabled: activeTab === 'workflows',
   });
 
-  const providersList: StorageProvider[] = Array.isArray(providers) ? providers : [];
+  const { data: archivedDocs, isLoading: archivedLoading } = useQuery({
+    queryKey: ['admin', 'pulp', 'archived-documents'],
+    queryFn: () => getArchivedDocuments({ limit: 50 }),
+    enabled: activeTab === 'archive' && archiveSubTab === 'documents',
+  });
+
+  const providersList: Provider[] = providersData?.data || [];
   const stagedList: StagedDocument[] = Array.isArray(stagedDocs) ? stagedDocs : [];
   const policiesList: RetentionPolicy[] = Array.isArray(policies) ? policies : [];
   const expiringList: ExpiringDocument[] = Array.isArray(expiringDocs) ? expiringDocs : [];
   const logsList: RetentionLogEntry[] = Array.isArray(retentionLogs) ? retentionLogs : [];
   const workflowsList: ApprovalWorkflow[] = Array.isArray(approvalWorkflows) ? approvalWorkflows : [];
+  const archivedList: ArchivedDocument[] = Array.isArray(archivedDocs) ? archivedDocs : (archivedDocs as { data?: ArchivedDocument[] })?.data || [];
 
   const invalidatePulp = () => queryClient.invalidateQueries({ queryKey: ['admin', 'pulp'] });
 
@@ -167,9 +201,16 @@ export default function PulpAdminPage() {
   });
 
   const createPolicyMutation = useMutation({
-    mutationFn: (data: { policyName: string; documentType?: string | null; retentionPeriodDays: number; action: string; notifyDaysBefore: number }) =>
+    mutationFn: (data: { policyName: string; documentType?: string | null; retentionPeriodDays: number; action: string; notifyRoles?: string | null; notifyDaysBefore: number }) =>
       createRetentionPolicy(data),
-    onSuccess: () => { invalidatePulp(); policyModal.close(); toast.success('Policy created'); },
+    onSuccess: () => { invalidatePulp(); policyModal.close(); setEditingPolicyId(null); toast.success('Policy created'); },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const updatePolicyMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<{ policyName: string; documentType: string | null; retentionPeriodDays: number; action: string; notifyRoles: string | null; notifyDaysBefore: number }> }) =>
+      updateRetentionPolicy(id, data),
+    onSuccess: () => { invalidatePulp(); policyModal.close(); setEditingPolicyId(null); toast.success('Policy updated'); },
     onError: (err: Error) => toast.error(err.message),
   });
 
@@ -216,6 +257,23 @@ export default function PulpAdminPage() {
 
   // ===== Handlers =====
 
+  async function handleTestProvider(provider: Provider) {
+    setTestingId(provider.ProviderId);
+    try {
+      const result = await testProvider(provider.ProviderId);
+      if (result.ok) {
+        toast.success(result.message || 'Connection successful');
+      } else {
+        toast.error(result.message || 'Connection failed');
+      }
+      queryClient.invalidateQueries({ queryKey: ['admin', 'providers'] });
+    } catch {
+      toast.error('Connection test failed');
+    } finally {
+      setTestingId(null);
+    }
+  }
+
   function handleApprove(doc: StagedDocument) {
     approveMutation.mutate(doc.StagedDocumentId);
   }
@@ -227,19 +285,39 @@ export default function PulpAdminPage() {
   }
 
   function openCreatePolicy() {
+    setEditingPolicyId(null);
     setPolicyForm(INITIAL_POLICY_FORM);
+    policyModal.open();
+  }
+
+  function openEditPolicy(policy: RetentionPolicy) {
+    setEditingPolicyId(policy.PolicyId);
+    setPolicyForm({
+      policyName: policy.PolicyName,
+      documentType: policy.DocumentType || '',
+      retentionPeriodDays: policy.RetentionPeriodDays,
+      action: policy.Action,
+      notifyRoles: policy.NotifyRoles || '',
+      notifyDaysBefore: policy.NotifyDaysBefore ?? 30,
+    });
     policyModal.open();
   }
 
   function handleSavePolicy() {
     if (!policyForm.policyName.trim()) { toast.error('Policy name is required'); return; }
-    createPolicyMutation.mutate({
+    const payload = {
       policyName: policyForm.policyName,
       documentType: policyForm.documentType || null,
       retentionPeriodDays: policyForm.retentionPeriodDays,
       action: policyForm.action,
+      notifyRoles: policyForm.notifyRoles.trim() || null,
       notifyDaysBefore: policyForm.notifyDaysBefore,
-    });
+    };
+    if (editingPolicyId) {
+      updatePolicyMutation.mutate({ id: editingPolicyId, data: payload });
+    } else {
+      createPolicyMutation.mutate(payload);
+    }
   }
 
   function handleExtend(doc: ExpiringDocument) {
@@ -280,12 +358,81 @@ export default function PulpAdminPage() {
 
   // ===== Column definitions =====
 
-  const providerColumns: ColumnDef<StorageProvider>[] = [
-    { key: 'ProviderName', label: 'Provider', sortable: true, render: (val) => <span className="font-medium text-semantic-text-default">{val}</span> },
-    { key: 'DisplayName', label: 'Name', sortable: true, render: (val) => <span className="text-semantic-text-secondary">{val}</span> },
-    { key: 'IsDefault', label: 'Default', width: 80, render: (val) => val ? <span className="text-primary">Yes</span> : <span className="text-semantic-text-faint">No</span> },
-    { key: 'IsActive', label: 'Active', width: 80, render: (val) => <StatusBadge status={val ? 'success' : 'danger'} label={val ? 'Active' : 'Inactive'} size="sm" /> },
-    { key: 'MaxFileSizeBytes', label: 'Max Size', width: 120, render: (val) => <span className="text-semantic-text-faint">{val ? formatStorageSize(val / 1048576) : 'No limit'}</span> },
+  const providerColumns: ColumnDef<Provider>[] = [
+    {
+      key: 'Name', label: 'Name', sortable: true, filterable: true,
+      render: (val, row) => (
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-semantic-text-default">{val}</span>
+          {row.IsDefault && <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0" />}
+        </div>
+      ),
+    },
+    {
+      key: 'Category', label: 'Category', width: 100, sortable: true,
+      render: (val) => {
+        const map: Record<string, 'success' | 'info' | 'neutral'> = { AI: 'success', STORAGE: 'info' };
+        return <StatusBadge status={map[val as string] || 'neutral'} label={(val as string) || '-'} size="sm" />;
+      },
+    },
+    {
+      key: 'ProviderTypeCode', label: 'Type', width: 160, sortable: true,
+      render: (_val, row) => (
+        <span className="text-semantic-text-faint">{row.TypeDisplayName || row.ProviderTypeCode}</span>
+      ),
+    },
+    {
+      key: 'IsActive', label: 'Status', width: 100,
+      render: (val) => <StatusBadge status={val ? 'success' : 'danger'} label={val ? 'Active' : 'Inactive'} size="sm" />,
+    },
+    {
+      key: 'LastTestStatus', label: 'Health', width: 110,
+      render: (val, row) => {
+        if (!val) return <span className="text-semantic-text-faint text-xs">Not tested</span>;
+        const statusMap: Record<string, 'success' | 'warning' | 'danger'> = { ok: 'success', warning: 'warning', error: 'danger' };
+        return (
+          <span title={row.LastTestError || undefined}>
+            <StatusBadge status={statusMap[val] || 'danger'} label={val === 'ok' ? 'OK' : val === 'warning' ? 'Warning' : 'Failed'} size="sm" />
+          </span>
+        );
+      },
+    },
+    {
+      key: 'Configuration', label: 'Config', width: 180,
+      render: (val) => {
+        if (!val || typeof val !== 'object') return <span className="text-semantic-text-faint">-</span>;
+        const keys = Object.keys(val);
+        if (keys.length === 0) return <span className="text-semantic-text-faint">-</span>;
+        const summary = keys.slice(0, 3).join(', ') + (keys.length > 3 ? ` (+${keys.length - 3})` : '');
+        return <span className="text-xs text-semantic-text-faint" title={JSON.stringify(val, null, 2)}>{summary}</span>;
+      },
+    },
+    {
+      key: 'LastTestedAt', label: 'Last Tested', width: 140,
+      render: (val) => <span className="text-xs text-semantic-text-faint">{val ? new Date(val).toLocaleString() : '-'}</span>,
+    },
+    {
+      key: 'ProviderId', label: 'Actions', width: 80, sortable: false,
+      render: (_val, row) => (
+        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            onClick={() => handleTestProvider(row)}
+            disabled={testingId === row.ProviderId}
+            className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors disabled:opacity-50"
+            title="Test Connection"
+          >
+            {testingId === row.ProviderId ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : row.LastTestStatus === 'ok' ? (
+              <Wifi className="w-4 h-4" />
+            ) : (
+              <WifiOff className="w-4 h-4" />
+            )}
+          </button>
+        </div>
+      ),
+    },
   ];
 
   const stagedColumns: ColumnDef<StagedDocument>[] = [
@@ -318,6 +465,16 @@ export default function PulpAdminPage() {
     },
   ];
 
+  const archivedColumns: ColumnDef<ArchivedDocument>[] = [
+    { key: 'DocumentName', label: 'Document', sortable: true, filterable: true, render: (val) => <span className="font-medium text-semantic-text-default">{val}</span> },
+    { key: 'DocumentType', label: 'Type', width: 120, filterable: true, render: (val) => <span className="text-semantic-text-faint">{val}</span> },
+    { key: 'RetentionPolicy', label: 'Policy', width: 160, render: (val) => <span className="text-semantic-text-faint">{val || '-'}</span> },
+    { key: 'UpdatedAt', label: 'Archived', width: 120, sortable: true, render: (val) => <span className="text-semantic-text-faint">{val ? new Date(val).toLocaleDateString() : '-'}</span> },
+    { key: 'CreatedBy', label: 'Created By', width: 120, render: (val) => <span className="text-semantic-text-faint">{val}</span> },
+    { key: 'FileSizeBytes', label: 'Size', width: 100, render: (val) => <span className="text-semantic-text-faint tabular-nums">{val ? formatStorageSize(val / (1024 * 1024)) : '-'}</span> },
+    { key: 'HasArchiveFile', label: 'File', width: 60, render: (val) => <StatusBadge status={val ? 'success' : 'neutral'} label={val ? 'Yes' : 'No'} size="sm" /> },
+  ];
+
   const policyColumns: ColumnDef<RetentionPolicy>[] = [
     { key: 'PolicyName', label: 'Name', sortable: true, filterable: true, render: (val) => <span className="font-medium text-semantic-text-default">{val}</span> },
     { key: 'DocumentType', label: 'Doc Type', width: 120, render: (val) => val ? <span className="text-semantic-text-secondary">{val}</span> : <span className="text-semantic-text-faint">Default</span> },
@@ -332,9 +489,10 @@ export default function PulpAdminPage() {
     { key: 'NotifyDaysBefore', label: 'Notify Days', width: 100, render: (val) => <span className="text-semantic-text-faint">{val || '-'}</span> },
     { key: 'IsActive', label: 'Active', width: 80, render: (val) => <StatusBadge status={val ? 'success' : 'danger'} label={val ? 'Yes' : 'No'} size="sm" /> },
     {
-      key: 'PolicyId', label: 'Actions', width: 80, sortable: false,
+      key: 'PolicyId', label: 'Actions', width: 100, sortable: false,
       render: (_val, row) => (
-        <div onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          <button type="button" onClick={() => openEditPolicy(row)} className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover" title="Edit"><Edit3 className="w-4 h-4" /></button>
           <button type="button" onClick={() => { if (window.confirm('Delete this policy?')) deletePolicyMutation.mutate(row.PolicyId); }} className="p-1.5 text-semantic-text-faint hover:text-danger rounded hover:bg-interactive-hover" title="Delete"><Trash2 className="w-4 h-4" /></button>
         </div>
       ),
@@ -469,20 +627,29 @@ export default function PulpAdminPage() {
         </div>
       )}
 
-      {/* Tab: Storage Providers */}
+      {/* Tab: Providers */}
       {activeTab === 'providers' && (
         <TableCard
-          title="Storage Providers"
+          title="Providers"
           icon={<Database className="w-4 h-4" />}
           count={providersList.length}
+          headerActions={
+            <Link
+              to="/providers"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-primary hover:text-primary-600 border border-primary/30 hover:border-primary rounded-lg transition-colors"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              Manage Providers
+            </Link>
+          }
         >
           {providersLoading ? <LoadingSpinner size="lg" /> : (
-            <DataTable<StorageProvider>
+            <DataTable<Provider>
               id="admin-pulp-providers"
               columns={providerColumns}
               data={providersList}
-              rowKey="ProviderName"
-              emptyMessage="No storage providers configured"
+              rowKey="ProviderId"
+              emptyMessage="No providers assigned to PulpIT"
               emptyIcon={Database}
               embedded
               showColumnPicker={false}
@@ -514,23 +681,23 @@ export default function PulpAdminPage() {
         </TableCard>
       )}
 
-      {/* Tab: Retention */}
-      {activeTab === 'retention' && (
+      {/* Tab: Archive */}
+      {activeTab === 'archive' && (
         <div className="space-y-4">
           {/* Sub-tabs */}
           <div className="flex items-center gap-2">
-            {['policies', 'expiring', 'log'].map((sub) => (
+            {['documents', 'policies', 'expiring', 'log'].map((sub) => (
               <button
                 key={sub}
                 type="button"
-                onClick={() => setRetentionSubTab(sub)}
+                onClick={() => setArchiveSubTab(sub)}
                 className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
-                  retentionSubTab === sub
+                  archiveSubTab === sub
                     ? 'border-primary bg-primary/10 text-primary'
                     : 'border-border text-semantic-text-faint hover:text-semantic-text-secondary hover:border-border'
                 }`}
               >
-                {sub === 'policies' ? 'Policies' : sub === 'expiring' ? 'Expiring Soon' : 'Enforcement Log'}
+                {sub === 'documents' ? 'Documents' : sub === 'policies' ? 'Policies' : sub === 'expiring' ? 'Expiring Soon' : 'Enforcement Log'}
               </button>
             ))}
             <div className="flex-1" />
@@ -545,7 +712,29 @@ export default function PulpAdminPage() {
             </Button>
           </div>
 
-          {retentionSubTab === 'policies' && (
+          {archiveSubTab === 'documents' && (
+            <TableCard
+              title="Archived Documents"
+              icon={<Archive className="w-4 h-4" />}
+              count={archivedList.length}
+            >
+              {archivedLoading ? <LoadingSpinner size="lg" /> : (
+                <DataTable<ArchivedDocument>
+                  id="admin-pulp-archived"
+                  columns={archivedColumns}
+                  data={archivedList}
+                  rowKey="DocumentId"
+                  emptyMessage="No archived documents"
+                  emptyIcon={Archive}
+                  showFilters
+                  embedded
+                  showColumnPicker={false}
+                />
+              )}
+            </TableCard>
+          )}
+
+          {archiveSubTab === 'policies' && (
             <TableCard
               title="Retention Policies"
               icon={<Shield className="w-4 h-4" />}
@@ -570,7 +759,7 @@ export default function PulpAdminPage() {
             </TableCard>
           )}
 
-          {retentionSubTab === 'expiring' && (
+          {archiveSubTab === 'expiring' && (
             <TableCard
               title="Expiring Documents"
               icon={<Clock className="w-4 h-4" />}
@@ -591,7 +780,7 @@ export default function PulpAdminPage() {
             </TableCard>
           )}
 
-          {retentionSubTab === 'log' && (
+          {archiveSubTab === 'log' && (
             <TableCard
               title="Enforcement Log"
               icon={<FileText className="w-4 h-4" />}
@@ -640,16 +829,18 @@ export default function PulpAdminPage() {
         </TableCard>
       )}
 
-      {/* Create Policy Modal */}
+      {/* Create / Edit Policy Modal */}
       <Modal
         isOpen={policyModal.isOpen}
-        onClose={policyModal.close}
-        title="New Retention Policy"
+        onClose={() => { policyModal.close(); setEditingPolicyId(null); }}
+        title={editingPolicyId ? 'Edit Retention Policy' : 'New Retention Policy'}
         size="lg"
         footer={
           <>
-            <Button variant="secondary" onClick={policyModal.close}>Cancel</Button>
-            <Button onClick={handleSavePolicy} loading={createPolicyMutation.isPending}>Create</Button>
+            <Button variant="secondary" onClick={() => { policyModal.close(); setEditingPolicyId(null); }}>Cancel</Button>
+            <Button onClick={handleSavePolicy} loading={editingPolicyId ? updatePolicyMutation.isPending : createPolicyMutation.isPending}>
+              {editingPolicyId ? 'Update' : 'Create'}
+            </Button>
           </>
         }
       >
@@ -659,19 +850,29 @@ export default function PulpAdminPage() {
               <input type="text" value={policyForm.policyName} onChange={(e) => setPolicyForm({ ...policyForm, policyName: e.target.value })} className="form-input" placeholder="e.g., Financial - 7 Year" />
             </FormField>
             <FormField label="Document Type">
-              <input type="text" value={policyForm.documentType} onChange={(e) => setPolicyForm({ ...policyForm, documentType: e.target.value })} className="form-input" placeholder="e.g., INVOICE (blank = default)" />
+              <select value={policyForm.documentType} onChange={(e) => setPolicyForm({ ...policyForm, documentType: e.target.value })} className="form-input" title="Document type">
+                {DOCUMENT_TYPE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
             </FormField>
             <FormField label="Retention (days)">
               <input type="number" min="0" value={policyForm.retentionPeriodDays} onChange={(e) => setPolicyForm({ ...policyForm, retentionPeriodDays: parseInt(e.target.value) || 0 })} className="form-input" placeholder="0 = permanent" />
+              {policyForm.retentionPeriodDays > 0 && (
+                <p className="text-xs text-semantic-text-faint mt-1">= {formatRetentionDays(policyForm.retentionPeriodDays)}</p>
+              )}
             </FormField>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <FormField label="Action">
+          <div className="grid grid-cols-3 gap-4">
+            <FormField label="Action on Expiry">
               <select value={policyForm.action} onChange={(e) => setPolicyForm({ ...policyForm, action: e.target.value })} className="form-input" title="Action">
                 <option value="ARCHIVE">ARCHIVE</option>
                 <option value="DELETE">DELETE</option>
                 <option value="NOTIFY">NOTIFY</option>
               </select>
+            </FormField>
+            <FormField label="Notify Roles">
+              <input type="text" value={policyForm.notifyRoles} onChange={(e) => setPolicyForm({ ...policyForm, notifyRoles: e.target.value })} className="form-input" placeholder="e.g., ADMIN, QUALITY" />
             </FormField>
             <FormField label="Notify Days Before">
               <input type="number" min="0" value={policyForm.notifyDaysBefore} onChange={(e) => setPolicyForm({ ...policyForm, notifyDaysBefore: parseInt(e.target.value) || 30 })} className="form-input" />
