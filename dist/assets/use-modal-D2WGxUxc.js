@@ -1,1 +1,0 @@
-import{r as e}from"./react-vendor-DS87GQF5.js";function a(){const[a,l]=e.useState(!1),[t,n]=e.useState(null);return{isOpen:a,data:t,open:e.useCallback(e=>{n(e??null),l(!0)},[]),close:e.useCallback(()=>{l(!1),n(null)},[])}}export{a as u};

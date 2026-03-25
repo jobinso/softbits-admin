@@ -121,6 +121,11 @@ const PROVIDER_EXAMPLES: Record<string, { config: string; credentials: string; h
     credentials: '{}',
     hint: 'Application AI integration service. Internal Docker service.',
   },
+  INTERNAL_INFUSE_HTTP: {
+    config: '{\n  "serviceHost": "infuse-http",\n  "servicePort": 3980,\n  "healthEndpoint": "/health"\n}',
+    credentials: '{}',
+    hint: 'REST API proxy for N8N workflows. Unauthenticated internal Docker service.',
+  },
   INTERNAL_INFUSE_WORK: {
     config: '{\n  "serviceHost": "infuse-work",\n  "servicePort": 3990,\n  "healthEndpoint": "/health",\n  "oauth": {\n    "enabled": false\n  },\n  "ipWhitelist": []\n}',
     credentials: '{}',

@@ -24,7 +24,7 @@ RUN npm install
 # Copy client source
 COPY softbits-admin/src/ ./src/
 COPY softbits-admin/public/ ./public/
-COPY softbits-admin/index.html softbits-admin/vite.config.ts softbits-admin/tsconfig.json softbits-admin/tsconfig.node.json softbits-admin/tailwind.config.js softbits-admin/postcss.config.js ./
+COPY softbits-admin/index.html softbits-admin/vite.config.ts softbits-admin/tsconfig.json softbits-admin/tsconfig.node.json softbits-admin/tailwind.config.js softbits-admin/postcss.config.js softbits-admin/VERSION ./
 
 # Build the React application
 RUN npm run build

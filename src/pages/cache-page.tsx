@@ -547,54 +547,51 @@ export default function CachePage() {
 
           {/* Warmer Configuration */}
           {warmerState !== 'disabled' && warmerData?.config && (
-            <Card title="Warmer Configuration">
-              <div className="space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-semantic-text-secondary mb-1">Interval (ms)</label>
-                    <input
-                      id="warmerInterval"
-                      type="number"
-                      defaultValue={warmerData.config.intervalMs}
-                      min={10000}
-                      className="w-full px-3 py-2 bg-surface-overlay border border-border rounded-lg text-sm text-semantic-text-default focus:outline-none focus:ring-2 focus:ring-interactive-focus-ring"
-                    />
-                    <p className="text-xs text-semantic-text-faint mt-1">{formatDuration(warmerData.config.intervalMs)}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-semantic-text-secondary mb-1">Stagger Delay (ms)</label>
-                    <input
-                      id="warmerStagger"
-                      type="number"
-                      defaultValue={warmerData.config.staggerDelayMs}
-                      min={1000}
-                      className="w-full px-3 py-2 bg-surface-overlay border border-border rounded-lg text-sm text-semantic-text-default focus:outline-none focus:ring-2 focus:ring-interactive-focus-ring"
-                    />
-                    <p className="text-xs text-semantic-text-faint mt-1">{formatDuration(warmerData.config.staggerDelayMs)}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-semantic-text-secondary mb-1">Refresh Threshold</label>
-                    <input
-                      id="warmerThreshold"
-                      type="number"
-                      defaultValue={warmerData.config.refreshThreshold}
-                      min={0}
-                      max={1}
-                      step={0.05}
-                      className="w-full px-3 py-2 bg-surface-overlay border border-border rounded-lg text-sm text-semantic-text-default focus:outline-none focus:ring-2 focus:ring-interactive-focus-ring"
-                    />
-                    <p className="text-xs text-semantic-text-faint mt-1">Refresh when {Math.round((warmerData.config.refreshThreshold) * 100)}% of TTL remains</p>
-                  </div>
+            <Card title="Warmer Configuration" headerAction={
+              <Button
+                size="sm"
+                icon={<Save className="w-3.5 h-3.5" />}
+                onClick={handleSaveWarmerConfig}
+                loading={saveWarmerConfigMutation.isPending}
+              >
+                Save Config
+              </Button>
+            }>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-semantic-text-secondary mb-1">Interval (ms)</label>
+                  <input
+                    id="warmerInterval"
+                    type="number"
+                    defaultValue={warmerData.config.intervalMs}
+                    min={10000}
+                    className="w-full px-3 py-2 bg-surface-overlay border border-border rounded-lg text-sm text-semantic-text-default focus:outline-none focus:ring-2 focus:ring-interactive-focus-ring"
+                  />
+                  <p className="text-xs text-semantic-text-faint mt-1">{formatDuration(warmerData.config.intervalMs)}</p>
                 </div>
-                <div className="flex justify-end">
-                  <Button
-                    size="sm"
-                    icon={<Save className="w-3.5 h-3.5" />}
-                    onClick={handleSaveWarmerConfig}
-                    loading={saveWarmerConfigMutation.isPending}
-                  >
-                    Save Config
-                  </Button>
+                <div>
+                  <label className="block text-sm font-medium text-semantic-text-secondary mb-1">Stagger Delay (ms)</label>
+                  <input
+                    id="warmerStagger"
+                    type="number"
+                    defaultValue={warmerData.config.staggerDelayMs}
+                    min={1000}
+                    className="w-full px-3 py-2 bg-surface-overlay border border-border rounded-lg text-sm text-semantic-text-default focus:outline-none focus:ring-2 focus:ring-interactive-focus-ring"
+                  />
+                  <p className="text-xs text-semantic-text-faint mt-1">{formatDuration(warmerData.config.staggerDelayMs)}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-semantic-text-secondary mb-1">Refresh Threshold</label>
+                  <input
+                    id="warmerThreshold"
+                    type="number"
+                    defaultValue={warmerData.config.refreshThreshold}
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    className="w-full px-3 py-2 bg-surface-overlay border border-border rounded-lg text-sm text-semantic-text-default focus:outline-none focus:ring-2 focus:ring-interactive-focus-ring"
+                  />
+                  <p className="text-xs text-semantic-text-faint mt-1">Refresh when {Math.round((warmerData.config.refreshThreshold) * 100)}% of TTL remains</p>
                 </div>
               </div>
             </Card>

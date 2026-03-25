@@ -1,4 +1,5 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Edit, Trash2, Plug, Star, Zap, Wifi, WifiOff, CheckCircle, XCircle, AlertTriangle, Server, Globe } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -26,12 +27,13 @@ import { useModal } from '@shared/hooks';
 import type { Provider, ProviderType } from '@/types';
 import ProviderEditModal from './components/provider-edit-modal';
 import type { ProviderForm } from './components/provider-edit-modal';
+import InternalServicesPanel from './components/internal-services-panel';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const CATEGORIES = ['EMAIL', 'LABEL', 'STORAGE', 'EXCHANGE_RATE', 'AI', 'AUTOMATION', 'OAUTH'] as const;
+const CATEGORIES = ['EMAIL', 'LABEL', 'STORAGE', 'EXCHANGE_RATE', 'AI', 'AUTOMATION', 'OAUTH', 'INTERNAL'] as const;
 type Category = typeof CATEGORIES[number];
 
 const CATEGORY_LABELS: Record<Category, string> = {
@@ -42,6 +44,7 @@ const CATEGORY_LABELS: Record<Category, string> = {
   AI: 'AI',
   AUTOMATION: 'Automation',
   OAUTH: 'OAuth',
+  INTERNAL: 'Internal',
 };
 
 const APP_CODES = ['BRIDGE', 'CONNECT', 'STACK', 'FLOOR', 'FLIP', 'ADMIN', 'PULP', 'INFUSE', 'SHOP', 'LIC'] as const;
@@ -68,7 +71,16 @@ const INITIAL_FORM: ProviderForm = {
 
 export default function ProvidersPage() {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<string>(CATEGORIES[0]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = CATEGORIES.includes(searchParams.get('tab')?.toUpperCase() as Category)
+    ? searchParams.get('tab')!.toUpperCase()
+    : CATEGORIES[0];
+  const [activeTab, setActiveTab] = useState<string>(initialTab);
+
+  const handleTabChange = useCallback((tab: string) => {
+    setActiveTab(tab);
+    setSearchParams({ tab }, { replace: true });
+  }, [setSearchParams]);
 
   // Modals
   const providerModal = useModal<Provider>();
@@ -116,6 +128,9 @@ export default function ProvidersPage() {
 
   const appConflicts = useMemo(() => {
     if (!form.providerTypeCode) return {} as Record<string, string>;
+    // EMAIL category allows multiple providers per application
+    const selectedType = typeMap[form.providerTypeCode];
+    if (selectedType?.Category === 'EMAIL') return {} as Record<string, string>;
     const map: Record<string, string> = {};
     for (const p of allProviders) {
       if (p.ProviderTypeCode === form.providerTypeCode && p.IsActive && p.ProviderId !== editingId) {
@@ -125,7 +140,7 @@ export default function ProvidersPage() {
       }
     }
     return map;
-  }, [allProviders, form.providerTypeCode, editingId]);
+  }, [allProviders, form.providerTypeCode, editingId, typeMap]);
 
   // ---- Mutations ----
 
@@ -305,9 +320,13 @@ export default function ProvidersPage() {
         }
       />
 
-      <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
+      <Tabs tabs={tabs} activeTab={activeTab} onChange={handleTabChange} />
 
-      {/* Provider cards */}
+      {/* Internal tab — dedicated read-only panel */}
+      {activeTab === 'INTERNAL' && <InternalServicesPanel />}
+
+      {/* Provider cards (all tabs except Internal) */}
+      {activeTab !== 'INTERNAL' && (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-medium text-semantic-text-subtle">
@@ -470,6 +489,7 @@ export default function ProvidersPage() {
           </div>
         )}
       </div>
+      )}
 
       {/* Create/Edit Modal (extracted component with General + API tabs) */}
       <ProviderEditModal

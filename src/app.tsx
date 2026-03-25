@@ -7,6 +7,7 @@ import { LoadingSpinner } from '@/components/shared';
 // Eager: login + dashboard (always needed)
 import LoginPage from '@/pages/login-page';
 import DashboardPage from '@/pages/dashboard-page';
+import OAuthCallbackPage from '@/pages/oauth-callback-page';
 
 // Lazy: Bridge pages (loaded on demand)
 const SecurityPage = lazy(() => import('@/pages/security-page'));
@@ -41,6 +42,15 @@ function App() {
   // Wait for Zustand persist to rehydrate before rendering routes.
   // This prevents queries from firing before auth state is known.
   if (!hydrated) return null;
+
+  // OAuth callback — must render in popup regardless of auth state
+  if (window.location.pathname === '/oauth/callback') {
+    return (
+      <Routes>
+        <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
+      </Routes>
+    );
+  }
 
   if (!isAuthenticated) {
     return (

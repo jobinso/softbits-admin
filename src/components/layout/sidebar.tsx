@@ -34,6 +34,7 @@ import clsx from 'clsx';
 import { useSidebar } from '@/hooks/use-sidebar';
 import { useAuth } from '@/hooks/use-auth';
 import { ADMIN_TABS } from '@/utils/constants';
+import { getHealth } from '@/services/admin-service';
 import type { AppStatus } from '@/types';
 
 const iconMap: Record<string, LucideIcon> = {
@@ -127,8 +128,8 @@ export default function Sidebar() {
   useEffect(() => {
     const fetchHealth = async () => {
       try {
-        const res = await fetch('/health');
-        const data = await res.json();
+        const res = await getHealth();
+        const data = res.data ?? res;
         setBridgeOnline(true);
         if (data.version) setBridgeVersion(data.version);
         if (data.apps) {
@@ -391,6 +392,7 @@ export default function Sidebar() {
             />
           </div>
         )}
+        <p className="text-[10px] text-semantic-text-faint text-center pb-2">v{__APP_VERSION__}</p>
       </div>
     </aside>
   );

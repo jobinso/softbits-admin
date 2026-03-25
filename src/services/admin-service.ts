@@ -1,7 +1,7 @@
 import { api, getAuthToken, setAuthToken } from './api';
 import axios from 'axios';
 import { STORAGE_KEYS } from '../utils/constants';
-import type { ApiResponse, User, AdminRole, Device, SystemHealth, SystemSetting, ProjectType, ProjectTypeStatus, ProjectTypeField, Currency, ExchangeRateProvider, ExchangeRate, OptionSet, OptionSetItem, Warehouse, WarehouseErpLink, ErpWarehouseBrowse, Patch, PatchLevel, PatchHistoryEntry, ComplianceData, ConnectSyncStatus, ConnectSyncHistoryEntry, Territory, SalesRep, Pipeline, Stage, RateCard, BillingRole, PosTerminal, GpsSalesData, GpsTerminalFilter, InfuseTestResult, McpTestConnectionResult, DocumentStats, StorageProvider, StagedDocument, RetentionPolicy, ExpiringDocument, RetentionLogEntry, ApprovalWorkflow, Provider, ProviderType } from '../types';
+import type { ApiResponse, User, AdminRole, Device, SystemHealth, SystemSetting, ProjectType, ProjectTypeStatus, ProjectTypeField, Currency, ExchangeRateProvider, ExchangeRate, OptionSet, OptionSetItem, Warehouse, WarehouseErpLink, ErpWarehouseBrowse, Patch, PatchLevel, PatchHistoryEntry, ComplianceData, ConnectSyncStatus, ConnectSyncHistoryEntry, Territory, SalesRep, Pipeline, Stage, RateCard, BillingRole, PosTerminal, GpsSalesData, GpsTerminalFilter, InfuseTestResult, McpTestConnectionResult, DocumentStats, StorageProvider, StagedDocument, RetentionPolicy, ExpiringDocument, RetentionLogEntry, ApprovalWorkflow, Provider, ProviderType, InternalServicesResponse, InfuseDashboardData } from '../types';
 
 // Raw API for routes mounted at /admin/* (without /api prefix)
 const rawApi = axios.create({ headers: { 'Content-Type': 'application/json' } });
@@ -509,7 +509,7 @@ export async function rollbackPatch(patchCode: string, data?: { notes?: string }
 
 // ===== Endpoints =====
 
-export async function getEndpoints(params?: { entity?: string; action?: string; group?: string; search?: string }) {
+export async function getEndpoints(params?: { entity?: string; action?: string; group?: string; method?: string; search?: string }) {
   const response = await rawApi.get('/admin/endpoints', { params });
   return response.data;
 }
@@ -521,6 +521,16 @@ export async function getEndpointGroups() {
 
 export async function discoverEndpoints() {
   const response = await rawApi.post('/admin/endpoints/discover');
+  return response.data;
+}
+
+export async function getEndpointEntities() {
+  const response = await rawApi.get('/admin/endpoint-entities');
+  return response.data;
+}
+
+export async function getEndpointMethods() {
+  const response = await rawApi.get('/admin/endpoint-methods');
   return response.data;
 }
 
@@ -1269,12 +1279,12 @@ export async function updateConnectMappings(entity: string, data: Record<string,
 }
 
 export async function getConnectSysproFields(entityType: string, subEntity?: string) {
-  const response = await api.get(`/connect/config/fields/syspro/${entityType}`, { params: { subEntity } });
+  const response = await api.get(`/connect/config/mappings/fields/syspro/${entityType}`, { params: { subEntity } });
   return response.data;
 }
 
 export async function getConnectFields(entityType: string) {
-  const response = await api.get(`/connect/config/fields/connect/${entityType}`);
+  const response = await api.get(`/connect/config/mappings/fields/connect/${entityType}`);
   return response.data;
 }
 
@@ -1349,6 +1359,25 @@ export async function getMcpDefaultConfig() {
   return response.data;
 }
 
+export async function getInfuseDashboard(): Promise<ApiResponse<InfuseDashboardData>> {
+  const response = await rawApi.get('/admin/infuse/dashboard');
+  return response.data;
+}
+
+// ===== Internal Services =====
+
+export async function getInternalServices(): Promise<ApiResponse<InternalServicesResponse>> {
+  const response = await api.get('/admin/providers/internal-services');
+  return response.data;
+}
+
+// ===== Service Versions =====
+
+export async function getServiceVersions(): Promise<ApiResponse<Record<string, string>>> {
+  const response = await rawApi.get('/admin/services/versions');
+  return response.data;
+}
+
 // ===== Work (N8N) Admin =====
 
 // Work service is proxied through nginx at /work/ to avoid CORS issues
@@ -1363,11 +1392,13 @@ async function workApiFetch(endpoint: string, options?: { method?: string; data?
     case 'DELETE': response = await rawApi.delete(`/work${endpoint}`); break;
     default: response = await rawApi.get(`/work${endpoint}`);
   }
-  return response.data;
+  // Unwrap sendSuccess envelope: { success, data: {...}, meta } → return inner data
+  const body = response.data;
+  return body?.data ?? body;
 }
 
 export async function getWorkHealth() {
-  return workApiFetch('/api/health');
+  return workApiFetch('/health');
 }
 
 export async function getWorkWorkflows() {
@@ -1445,6 +1476,57 @@ export async function revokeWorkApiKey(id: number) {
 
 export async function deleteWorkApiKey(id: number) {
   return workApiFetch(`/api/api-keys/${id}`, { method: 'DELETE' });
+}
+
+// ===== Work Templates =====
+
+export async function getWorkTemplates(params?: { category?: string }) {
+  const qs = params?.category ? `?category=${encodeURIComponent(params.category)}` : '';
+  return workApiFetch(`/api/templates${qs}`);
+}
+
+export async function getWorkTemplateInstances(params?: { templateId?: number; status?: string }) {
+  const parts: string[] = [];
+  if (params?.templateId) parts.push(`templateId=${params.templateId}`);
+  if (params?.status) parts.push(`status=${encodeURIComponent(params.status)}`);
+  const qs = parts.length ? `?${parts.join('&')}` : '';
+  return workApiFetch(`/api/templates/instances${qs}`);
+}
+
+export async function getWorkTemplateInstance(id: number) {
+  return workApiFetch(`/api/templates/instances/${id}`);
+}
+
+export async function instantiateWorkTemplate(templateId: number, data: { name: string; configuration?: Record<string, unknown>; providerId?: string }) {
+  return workApiFetch(`/api/templates/${templateId}/instantiate`, { method: 'POST', data });
+}
+
+export async function updateWorkTemplateInstance(id: number, data: Record<string, unknown>) {
+  return workApiFetch(`/api/templates/instances/${id}`, { method: 'PUT', data });
+}
+
+export async function provisionWorkTemplate(instanceId: number) {
+  return workApiFetch(`/api/templates/instances/${instanceId}/provision`, { method: 'POST' });
+}
+
+export async function testWorkTemplate(instanceId: number) {
+  return workApiFetch(`/api/templates/instances/${instanceId}/test`, { method: 'POST' });
+}
+
+export async function activateWorkTemplate(instanceId: number) {
+  return workApiFetch(`/api/templates/instances/${instanceId}/activate`, { method: 'POST' });
+}
+
+export async function pauseWorkTemplate(instanceId: number) {
+  return workApiFetch(`/api/templates/instances/${instanceId}/pause`, { method: 'POST' });
+}
+
+export async function archiveWorkTemplateInstance(instanceId: number) {
+  return workApiFetch(`/api/templates/instances/${instanceId}`, { method: 'DELETE' });
+}
+
+export async function getWorkTemplatePreview(templateId: number) {
+  return workApiFetch(`/api/templates/${templateId}/preview`);
 }
 
 // ===== PulpIT (Documents) Admin =====
@@ -1542,67 +1624,67 @@ export async function deleteApprovalWorkflow(id: string) {
 // ===== Providers =====
 
 export async function getProviders(params?: { category?: string; typeCode?: string; isActive?: boolean }): Promise<ApiResponse<Provider[]>> {
-  const response = await rawApi.get('/api/admin/providers', { params });
+  const response = await api.get('/admin/providers', { params });
   return response.data;
 }
 
 export async function getProviderTypes(category?: string): Promise<ApiResponse<ProviderType[]>> {
-  const response = await rawApi.get('/api/admin/providers/types', { params: category ? { category } : {} });
+  const response = await api.get('/admin/providers/types', { params: category ? { category } : {} });
   return response.data;
 }
 
 export async function getProvidersByType(typeCode: string): Promise<ApiResponse<Provider[]>> {
-  const response = await rawApi.get(`/api/admin/providers/by-type/${encodeURIComponent(typeCode)}`);
+  const response = await api.get(`/admin/providers/by-type/${encodeURIComponent(typeCode)}`);
   return response.data;
 }
 
 export async function getProvidersByApp(appCode: string): Promise<ApiResponse<Provider[]>> {
-  const response = await rawApi.get(`/api/admin/providers/by-app/${encodeURIComponent(appCode)}`);
+  const response = await api.get(`/admin/providers/by-app/${encodeURIComponent(appCode)}`);
   return response.data;
 }
 
 export async function getProvider(id: string): Promise<ApiResponse<Provider>> {
-  const response = await rawApi.get(`/api/admin/providers/${id}`);
+  const response = await api.get(`/admin/providers/${id}`);
   return response.data;
 }
 
 export async function createProvider(data: Record<string, unknown>): Promise<ApiResponse<Provider>> {
-  const response = await rawApi.post('/api/admin/providers', data);
+  const response = await api.post('/admin/providers', data);
   return response.data;
 }
 
 export async function updateProvider(id: string, data: Record<string, unknown>): Promise<ApiResponse<Provider>> {
-  const response = await rawApi.put(`/api/admin/providers/${id}`, data);
+  const response = await api.put(`/admin/providers/${id}`, data);
   return response.data;
 }
 
 export async function deleteProvider(id: string): Promise<ApiResponse<Provider>> {
-  const response = await rawApi.delete(`/api/admin/providers/${id}`);
+  const response = await api.delete(`/admin/providers/${id}`);
   return response.data;
 }
 
 export async function destroyProvider(id: string): Promise<ApiResponse<{ deleted: boolean; name: string }>> {
-  const response = await rawApi.delete(`/api/admin/providers/${id}/permanent`);
+  const response = await api.delete(`/admin/providers/${id}/permanent`);
   return response.data;
 }
 
 export async function testProvider(id: string): Promise<{ ok: boolean; message: string }> {
-  const response = await rawApi.post(`/api/admin/providers/${id}/test`);
+  const response = await api.post(`/admin/providers/${id}/test`);
   return response.data?.data || response.data;
 }
 
 export async function setProviderDefault(id: string): Promise<ApiResponse<Provider>> {
-  const response = await rawApi.put(`/api/admin/providers/${id}/default`);
+  const response = await api.put(`/admin/providers/${id}/default`);
   return response.data;
 }
 
 export async function updateProviderApplications(id: string, applications: string[]) {
-  const response = await rawApi.put(`/api/admin/providers/${id}/applications`, { applications });
+  const response = await api.put(`/admin/providers/${id}/applications`, { applications });
   return response.data;
 }
 
 export async function getProviderApiDetails(id: string) {
-  const response = await rawApi.get(`/api/admin/providers/${id}/api-details`);
+  const response = await api.get(`/admin/providers/${id}/api-details`);
   return response.data;
 }
 

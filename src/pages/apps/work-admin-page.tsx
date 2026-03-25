@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Workflow, Play, Edit, Trash2, Plus, Key, RefreshCw, RotateCcw, Ban, Eye, Database, ExternalLink, Wifi, WifiOff, Star } from 'lucide-react';
+import { Workflow, Play, Edit, Trash2, Plus, Key, RefreshCw, RotateCcw, Ban, Eye, Database, ExternalLink, Wifi, WifiOff, Star, Layers, FileText, Mail, Globe, Clock, PackageMinus, AlertTriangle, ShoppingCart, Receipt, ChevronRight, Pause, FlaskConical, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import {
@@ -18,7 +18,7 @@ import {
 } from '@/components/shared';
 import type { TabItem, ColumnDef, TableFilterField, TableColumnPickerColumn } from '@/components/shared';
 import { useModal } from '@shared/hooks';
-import type { WorkWorkflow, WorkExecution, WorkEventMapping, WorkApiKey, Provider } from '@/types';
+import type { WorkWorkflow, WorkExecution, WorkEventMapping, WorkApiKey, Provider, WorkTemplate, WorkTemplateInstance } from '@/types';
 import {
   getWorkHealth,
   getWorkWorkflows,
@@ -42,6 +42,14 @@ import {
   getProviders,
   getProvidersByApp,
   testProvider,
+  getWorkTemplates,
+  getWorkTemplateInstances,
+  instantiateWorkTemplate,
+  provisionWorkTemplate,
+  testWorkTemplate,
+  activateWorkTemplate,
+  pauseWorkTemplate,
+  archiveWorkTemplateInstance,
 } from '@/services/admin-service';
 
 // ===== Constants =====
@@ -49,9 +57,33 @@ import {
 const tabs: TabItem[] = [
   { id: 'status', label: 'Dashboard', icon: <Workflow className="w-4 h-4" /> },
   { id: 'workflows', label: 'Workflows', icon: <Play className="w-4 h-4" /> },
+  { id: 'templates', label: 'Templates', icon: <Layers className="w-4 h-4" /> },
   { id: 'mappings', label: 'Event Mappings', icon: <Workflow className="w-4 h-4" /> },
   { id: 'automation', label: 'Provider', icon: <Database className="w-4 h-4" /> },
 ];
+
+// Icon mapping for template icons (stored as string in DB)
+const TEMPLATE_ICON_MAP: Record<string, React.ReactNode> = {
+  FileText: <FileText className="w-6 h-6" />,
+  Globe: <Globe className="w-6 h-6" />,
+  Mail: <Mail className="w-6 h-6" />,
+  ShoppingCart: <ShoppingCart className="w-6 h-6" />,
+  Receipt: <Receipt className="w-6 h-6" />,
+  AlertTriangle: <AlertTriangle className="w-6 h-6" />,
+  Clock: <Clock className="w-6 h-6" />,
+  PackageMinus: <PackageMinus className="w-6 h-6" />,
+};
+
+const CATEGORY_COLORS: Record<string, { bg: string; text: string; label: string }> = {
+  EMAIL: { bg: 'bg-blue-500/10', text: 'text-blue-400', label: 'Email' },
+  WEBHOOK: { bg: 'bg-purple-500/10', text: 'text-purple-400', label: 'Webhook' },
+  SCHEDULE: { bg: 'bg-amber-500/10', text: 'text-amber-400', label: 'Schedule' },
+  EVENT: { bg: 'bg-teal-500/10', text: 'text-teal-400', label: 'Event' },
+};
+
+const INSTANCE_STATUS_MAP: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
+  active: 'success', paused: 'warning', error: 'danger', provisioning: 'info', draft: 'neutral', archived: 'neutral',
+};
 
 // ===== Form types =====
 
@@ -122,6 +154,10 @@ export default function WorkAdminPage() {
   const [execSearch, setExecSearch] = useState('');
   const [execFilters, setExecFilters] = useState<Record<string, string>>({});
   const [execColumnVisibility, setExecColumnVisibility] = useState<Record<string, boolean>>({});
+
+  // Template modal
+  const templateModal = useModal<WorkTemplate>();
+  const [templateForm, setTemplateForm] = useState<{ name: string; configuration: Record<string, unknown>; providerId: string }>({ name: '', configuration: {}, providerId: '' });
 
   // Mapping modal
   const mappingModal = useModal<WorkEventMapping>();
@@ -260,8 +296,26 @@ export default function WorkAdminPage() {
 
   const automationProviders: Provider[] = automationProvidersData?.data || [];
 
+  // Template queries
+  const { data: templatesData, isLoading: templatesLoading } = useQuery<{ templates: WorkTemplate[] }>({
+    queryKey: ['admin', 'work', 'templates'],
+    queryFn: () => getWorkTemplates(),
+    retry: false,
+    enabled: activeTab === 'templates',
+  });
+
+  const { data: instancesData, isLoading: instancesLoading } = useQuery<{ instances: WorkTemplateInstance[] }>({
+    queryKey: ['admin', 'work', 'template-instances'],
+    queryFn: () => getWorkTemplateInstances(),
+    retry: false,
+    enabled: activeTab === 'templates',
+  });
+
+  const templates: WorkTemplate[] = templatesData?.templates || [];
+  const templateInstances: WorkTemplateInstance[] = instancesData?.instances || [];
+
   const serviceConnected = !!healthData;
-  const n8nConnected = healthData?.n8n?.status === 'connected';
+  const n8nConnected = healthData?.checks?.n8n === 'ok';
   const [testingId, setTestingId] = useState<string | null>(null);
   const activeWfCount = workflows.filter((w) => w.IsActive).length;
 
@@ -342,7 +396,66 @@ export default function WorkAdminPage() {
     onError: (err: Error) => toast.error(err.message),
   });
 
+  // Template mutations
+  const instantiateMutation = useMutation({
+    mutationFn: (data: { templateId: number; name: string; configuration?: Record<string, unknown>; providerId?: string }) =>
+      instantiateWorkTemplate(data.templateId, { name: data.name, configuration: data.configuration, providerId: data.providerId }),
+    onSuccess: () => { invalidateWork(); templateModal.close(); toast.success('Template instance created'); },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const provisionMutation = useMutation({
+    mutationFn: (id: number) => provisionWorkTemplate(id),
+    onSuccess: () => { invalidateWork(); toast.success('Workflow provisioned'); },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const testTemplateMutation = useMutation({
+    mutationFn: (id: number) => testWorkTemplate(id),
+    onSuccess: () => { invalidateWork(); toast.success('Test completed'); },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const activateMutation = useMutation({
+    mutationFn: (id: number) => activateWorkTemplate(id),
+    onSuccess: () => { invalidateWork(); toast.success('Instance activated'); },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const pauseMutation = useMutation({
+    mutationFn: (id: number) => pauseWorkTemplate(id),
+    onSuccess: () => { invalidateWork(); toast.success('Instance paused'); },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const archiveInstanceMutation = useMutation({
+    mutationFn: (id: number) => archiveWorkTemplateInstance(id),
+    onSuccess: () => { invalidateWork(); toast.success('Instance archived'); },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
   // ===== Handlers =====
+
+  function openInstantiateTemplate(template: WorkTemplate) {
+    setTemplateForm({
+      name: template.Name,
+      configuration: (template.DefaultConfig && typeof template.DefaultConfig === 'object') ? { ...template.DefaultConfig } : {},
+      providerId: '',
+    });
+    templateModal.open(template);
+  }
+
+  function handleInstantiate() {
+    const template = templateModal.data;
+    if (!template) return;
+    if (!templateForm.name.trim()) { toast.error('Name is required'); return; }
+    instantiateMutation.mutate({
+      templateId: template.TemplateId,
+      name: templateForm.name,
+      configuration: templateForm.configuration,
+      providerId: templateForm.providerId || undefined,
+    });
+  }
 
   function openCreateWf() {
     setWfForm(INITIAL_WF_FORM);
@@ -775,6 +888,132 @@ export default function WorkAdminPage() {
         </TableCard>
       )}
 
+      {/* Tab: Templates */}
+      {activeTab === 'templates' && (
+        <div className="space-y-6">
+          {templatesLoading ? <LoadingSpinner size="lg" /> : (
+            <>
+              {/* Template Catalog */}
+              {Object.entries(
+                templates.reduce<Record<string, WorkTemplate[]>>((acc, t) => {
+                  const cat = t.Category || 'OTHER';
+                  if (!acc[cat]) acc[cat] = [];
+                  acc[cat].push(t);
+                  return acc;
+                }, {})
+              ).map(([category, catTemplates]) => {
+                const catInfo = CATEGORY_COLORS[category] || { bg: 'bg-neutral-500/10', text: 'text-neutral-400', label: category };
+                return (
+                  <div key={category}>
+                    <h3 className="text-sm font-semibold text-semantic-text-subtle mb-3 flex items-center gap-2">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${catInfo.bg} ${catInfo.text}`}>{catInfo.label}</span>
+                      <span className="text-semantic-text-faint text-xs">({catTemplates.length} template{catTemplates.length !== 1 ? 's' : ''})</span>
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {catTemplates.map((template) => {
+                        const instanceCount = templateInstances.filter((i) => i.TemplateId === template.TemplateId && i.Status !== 'archived').length;
+                        const steps = Array.isArray(template.StepDefinitions) ? template.StepDefinitions : [];
+                        return (
+                          <div key={template.TemplateId} className="bg-surface-raised border border-border rounded-xl p-4 hover:border-primary/30 transition-colors">
+                            <div className="flex items-start gap-3 mb-3">
+                              <div className={`p-2 rounded-lg ${catInfo.bg} ${catInfo.text} shrink-0`}>
+                                {TEMPLATE_ICON_MAP[template.Icon] || <Layers className="w-6 h-6" />}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <h4 className="text-sm font-semibold text-semantic-text-default truncate">{template.Name}</h4>
+                                <p className="text-xs text-semantic-text-faint mt-0.5 line-clamp-2">{template.Description}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 text-xs text-semantic-text-faint mb-3">
+                              <span>{steps.length} step{steps.length !== 1 ? 's' : ''}</span>
+                              <span>v{template.Version}</span>
+                              {instanceCount > 0 && <span className="text-primary">{instanceCount} active</span>}
+                            </div>
+                            <div className="flex flex-wrap gap-1.5 mb-3">
+                              {steps.map((step, i) => (
+                                <span key={i} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-surface-overlay text-semantic-text-faint">
+                                  <ChevronRight className="w-2.5 h-2.5" />{step.label}
+                                </span>
+                              ))}
+                            </div>
+                            <Button size="sm" variant="secondary" className="w-full" onClick={() => openInstantiateTemplate(template)}>
+                              Use Template
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {templates.length === 0 && (
+                <Card className="p-12 text-center">
+                  <Layers className="w-10 h-10 text-semantic-text-faint mx-auto mb-3" />
+                  <p className="text-sm text-semantic-text-subtle">No workflow templates available</p>
+                </Card>
+              )}
+
+              {/* Template Instances */}
+              {templateInstances.length > 0 && (
+                <TableCard
+                  title="Active Instances"
+                  icon={<Zap className="w-4 h-4" />}
+                  count={templateInstances.filter((i) => i.Status !== 'archived').length}
+                >
+                  {instancesLoading ? <LoadingSpinner size="lg" /> : (
+                    <div className="divide-y divide-border">
+                      {templateInstances.filter((i) => i.Status !== 'archived').map((instance) => (
+                        <div key={instance.InstanceId} className="px-4 py-3 flex items-center gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-semantic-text-default truncate">{instance.Name}</span>
+                              <StatusBadge status={INSTANCE_STATUS_MAP[instance.Status] || 'neutral'} label={instance.Status} size="sm" />
+                            </div>
+                            <div className="text-xs text-semantic-text-faint mt-0.5">
+                              {instance.TemplateName || `Template #${instance.TemplateId}`}
+                              {instance.CreatedAt && <> &middot; Created {new Date(instance.CreatedAt).toLocaleDateString()}</>}
+                            </div>
+                            {instance.ErrorMessage && (
+                              <p className="text-xs text-danger mt-1 truncate">{instance.ErrorMessage}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {instance.Status === 'draft' && (
+                              <button type="button" onClick={() => provisionMutation.mutate(instance.InstanceId)} className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover" title="Provision">
+                                <Zap className="w-4 h-4" />
+                              </button>
+                            )}
+                            {(instance.Status === 'draft' || instance.Status === 'active' || instance.Status === 'paused') && (
+                              <button type="button" onClick={() => testTemplateMutation.mutate(instance.InstanceId)} className="p-1.5 text-semantic-text-faint hover:text-info rounded hover:bg-interactive-hover" title="Test">
+                                <FlaskConical className="w-4 h-4" />
+                              </button>
+                            )}
+                            {(instance.Status === 'provisioning' || instance.Status === 'paused') && (
+                              <button type="button" onClick={() => activateMutation.mutate(instance.InstanceId)} className="p-1.5 text-semantic-text-faint hover:text-success rounded hover:bg-interactive-hover" title="Activate">
+                                <Play className="w-4 h-4" />
+                              </button>
+                            )}
+                            {instance.Status === 'active' && (
+                              <button type="button" onClick={() => pauseMutation.mutate(instance.InstanceId)} className="p-1.5 text-semantic-text-faint hover:text-warning rounded hover:bg-interactive-hover" title="Pause">
+                                <Pause className="w-4 h-4" />
+                              </button>
+                            )}
+                            <button type="button" onClick={() => { if (window.confirm('Archive this instance?')) archiveInstanceMutation.mutate(instance.InstanceId); }} className="p-1.5 text-semantic-text-faint hover:text-danger rounded hover:bg-interactive-hover" title="Archive">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TableCard>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
       {/* Tab: Event Mappings */}
       {activeTab === 'mappings' && (
         <TableCard
@@ -1087,6 +1326,98 @@ export default function WorkAdminPage() {
             Copy to Clipboard
           </Button>
         </div>
+      </Modal>
+
+      {/* Template Instantiation Modal */}
+      <Modal
+        isOpen={templateModal.isOpen}
+        onClose={templateModal.close}
+        title={`Use Template: ${templateModal.data?.Name || ''}`}
+        size="lg"
+        footer={
+          <>
+            <Button variant="secondary" onClick={templateModal.close}>Cancel</Button>
+            <Button onClick={handleInstantiate} loading={instantiateMutation.isPending}>Create Instance</Button>
+          </>
+        }
+      >
+        {templateModal.data && (
+          <div className="space-y-4">
+            <p className="text-sm text-semantic-text-subtle">{templateModal.data.Description}</p>
+
+            <FormField label="Instance Name" required>
+              <input type="text" value={templateForm.name} onChange={(e) => setTemplateForm({ ...templateForm, name: e.target.value })} className="form-input" placeholder="My workflow instance" />
+            </FormField>
+
+            {/* Provider selector for EMAIL templates */}
+            {templateModal.data.RequiredProviderTypes?.length > 0 && (
+              <FormField label="Provider">
+                <select
+                  value={templateForm.providerId}
+                  onChange={(e) => setTemplateForm({ ...templateForm, providerId: e.target.value })}
+                  className="form-input"
+                  title="Provider"
+                >
+                  <option value="">-- Select Provider --</option>
+                  {automationProviders
+                    .filter((p) => templateModal.data!.RequiredProviderTypes.includes(p.ProviderTypeCode))
+                    .map((p) => <option key={p.ProviderId} value={p.ProviderId}>{p.Name}</option>)}
+                </select>
+              </FormField>
+            )}
+
+            {/* Dynamic configuration fields from StepDefinitions */}
+            <div>
+              <h4 className="text-xs font-semibold text-semantic-text-subtle mb-2 uppercase tracking-wide">Configuration</h4>
+              <div className="space-y-3">
+                {(Array.isArray(templateModal.data.StepDefinitions) ? templateModal.data.StepDefinitions : []).flatMap((step) =>
+                  (step.configFields || []).map((field) => {
+                    const value = templateForm.configuration[field.name] ?? field.default ?? '';
+                    return (
+                      <FormField key={field.name} label={`${step.label} - ${field.name}`} required={field.required}>
+                        {field.type === 'boolean' ? (
+                          <label className="flex items-center gap-2 mt-1 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={!!value}
+                              onChange={(e) => setTemplateForm({ ...templateForm, configuration: { ...templateForm.configuration, [field.name]: e.target.checked } })}
+                              className="rounded border-border bg-surface-subtle text-primary focus:ring-interactive-focus-ring"
+                            />
+                            <span className="text-sm text-semantic-text-secondary">{String(value)}</span>
+                          </label>
+                        ) : field.type === 'number' ? (
+                          <input
+                            type="number"
+                            value={String(value)}
+                            onChange={(e) => setTemplateForm({ ...templateForm, configuration: { ...templateForm.configuration, [field.name]: parseInt(e.target.value) || 0 } })}
+                            className="form-input"
+                          />
+                        ) : field.type === 'select' && field.options ? (
+                          <select
+                            value={String(value)}
+                            onChange={(e) => setTemplateForm({ ...templateForm, configuration: { ...templateForm.configuration, [field.name]: e.target.value } })}
+                            className="form-input"
+                            title={field.name}
+                          >
+                            {field.options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                          </select>
+                        ) : (
+                          <input
+                            type="text"
+                            value={String(value)}
+                            onChange={(e) => setTemplateForm({ ...templateForm, configuration: { ...templateForm.configuration, [field.name]: e.target.value } })}
+                            className="form-input"
+                            placeholder={field.default !== undefined ? String(field.default) : ''}
+                          />
+                        )}
+                      </FormField>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

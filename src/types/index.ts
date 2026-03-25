@@ -1080,6 +1080,54 @@ export interface WorkServiceHealth {
   n8n?: { status: string };
 }
 
+export interface WorkTemplateConfigField {
+  name: string;
+  type: string;
+  required?: boolean;
+  default?: unknown;
+  options?: string[];
+}
+
+export interface WorkTemplateStep {
+  order: number;
+  type: string;
+  action: string;
+  label: string;
+  configFields: WorkTemplateConfigField[];
+}
+
+export interface WorkTemplate {
+  TemplateId: number;
+  Code: string;
+  Name: string;
+  Description: string;
+  Category: string;
+  Icon: string;
+  Version: number;
+  StepDefinitions: WorkTemplateStep[];
+  DefaultConfig: Record<string, unknown>;
+  RequiredProviderTypes: string[];
+  IsActive: boolean;
+  IsSystem: boolean;
+  SortOrder: number;
+}
+
+export interface WorkTemplateInstance {
+  InstanceId: number;
+  TemplateId: number;
+  TemplateCode?: string;
+  TemplateName?: string;
+  WorkflowId: number | null;
+  Name: string;
+  Configuration: Record<string, unknown>;
+  ProviderId: string | null;
+  Status: string;
+  ErrorMessage: string | null;
+  CreatedAt: string;
+  CreatedBy: string;
+  UpdatedAt?: string;
+}
+
 // ===== PulpIT (Documents) Admin Types =====
 
 export interface DocumentStats {
@@ -1253,6 +1301,103 @@ export interface ProviderApiDetails {
   lastUsedAt?: string | null;
   linkedOAuthClients: number;
   scope: string;
+  allowedCallbackUrls?: string[];
+}
+
+// ===== Internal Services Types =====
+
+export interface SystemService {
+  key: string;
+  name: string;
+  description: string;
+  type: 'BRIDGE_MODE' | 'BRIDGE_SERVICE';
+  enabled: boolean;
+  connectionUrl?: string;
+  healthEndpoint?: string;
+  status?: string | null;
+}
+
+export interface OAuthServerInfo {
+  enabled: boolean;
+  issuer: string;
+  allowedCallbackUrls: string[];
+  mcpResourceUri: string;
+  accessTokenTtl: number;
+  refreshTokenTtl: number;
+  authCodeTtl: number;
+}
+
+export interface InternalServicesResponse {
+  providers: Provider[];
+  systemServices: SystemService[];
+  oauthServer: OAuthServerInfo;
+}
+
+export interface InfuseSessionInfo {
+  active: number;
+  persistenceEnabled: boolean;
+  persistenceAvailable: boolean;
+}
+
+export interface InfuseExecutionSummary {
+  total: number;
+  success: number;
+  failed: number;
+  pending: number;
+  running: number;
+  timeout: number;
+}
+
+export interface InfuseWorkflowStat {
+  workflowName: string;
+  total: number;
+  success: number;
+  failed: number;
+  avgDuration: number;
+}
+
+export interface InfuseChatStats {
+  totalRequests: number;
+  completedRequests: number;
+  failedRequests: number;
+  activeRequests: number;
+  queueSize: number;
+  circuitBreaker: {
+    isOpen: boolean;
+    consecutiveFailures: number;
+    threshold: number;
+    lastFailure: number | null;
+  };
+}
+
+export interface InfuseDashboardData {
+  services: Record<string, { status: string; uptime?: number; error?: string }>;
+  aiProvider: {
+    name: string;
+    type: string;
+    model: string;
+    healthStatus: string | null;
+  } | null;
+  oauthServer: {
+    enabled: boolean;
+    issuer: string;
+    allowedCallbackUrls: string[];
+    mcpResourceUri: string;
+  };
+  config: {
+    enabled: boolean;
+    contextSettings: Record<string, boolean>;
+  };
+  sessions: {
+    mcp: InfuseSessionInfo | null;
+    app: InfuseSessionInfo | null;
+  } | null;
+  workload: {
+    executions: InfuseExecutionSummary | null;
+    workflows: InfuseWorkflowStat[] | null;
+    work: { pendingExecutions: number; database: { status: string }; n8n: { status: string; connected: boolean } } | null;
+    chat: InfuseChatStats | null;
+  } | null;
 }
 
 // ===== About Types =====

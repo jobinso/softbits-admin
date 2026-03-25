@@ -17,6 +17,7 @@ import {
   Map,
   FolderTree,
   ChevronLeft,
+  Settings,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -948,19 +949,38 @@ export default function ConnectAdminPage() {
             </div>
           </Card>
 
-          <Card title="Entity Sync Configuration">
-            <div className="space-y-3">
+          <TableCard
+            title="Entity Sync Configuration"
+            icon={<Settings className="w-4 h-4" />}
+            count={SYNC_ENTITIES.length}
+            headerActions={
+              <Button
+                size="sm"
+                onClick={() => {
+                  const config: Record<string, unknown> = {};
+                  for (const entity of SYNC_ENTITIES) {
+                    const enabled = (document.getElementById(`sync-${entity.key}`) as HTMLInputElement)?.checked ?? true;
+                    const direction = (document.getElementById(`dir-${entity.key}`) as HTMLSelectElement)?.value || 'from_syspro';
+                    config[entity.key] = { enabled, direction };
+                  }
+                  saveConfigMut.mutate(config);
+                }}
+                loading={saveConfigMut.isPending}
+              >
+                Save Configuration
+              </Button>
+            }
+          >
+            <div className="divide-y divide-border">
               {SYNC_ENTITIES.map((entity) => {
                 const configs = syncConfig?.data?.configs ?? [];
                 const cfg = configs.find((c: { EntityType: string }) => c.EntityType?.toLowerCase() === entity.key);
                 return (
-                  <div key={entity.key} className="flex items-center justify-between p-3 bg-interactive-hover border border-border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" defaultChecked={cfg?.SyncEnabled ?? true} className="w-4 h-4 rounded border-border text-primary" id={`sync-${entity.key}`} />
-                        <span className="text-sm text-semantic-text-default font-medium">{entity.label}</span>
-                      </label>
-                    </div>
+                  <div key={entity.key} className="flex items-center justify-between px-5 py-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" defaultChecked={cfg?.SyncEnabled ?? true} className="w-4 h-4 rounded border-border text-primary" id={`sync-${entity.key}`} />
+                      <span className="text-sm text-semantic-text-default font-medium">{entity.label}</span>
+                    </label>
                     <select
                       defaultValue={cfg?.SyncDirection || 'from_syspro'}
                       className="form-input text-sm w-40"
@@ -971,24 +991,8 @@ export default function ConnectAdminPage() {
                   </div>
                 );
               })}
-              <div className="pt-2">
-                <Button
-                  onClick={() => {
-                    const config: Record<string, unknown> = {};
-                    for (const entity of SYNC_ENTITIES) {
-                      const enabled = (document.getElementById(`sync-${entity.key}`) as HTMLInputElement)?.checked ?? true;
-                      const direction = (document.getElementById(`dir-${entity.key}`) as HTMLSelectElement)?.value || 'from_syspro';
-                      config[entity.key] = { enabled, direction };
-                    }
-                    saveConfigMut.mutate(config);
-                  }}
-                  loading={saveConfigMut.isPending}
-                >
-                  Save Configuration
-                </Button>
-              </div>
             </div>
-          </Card>
+          </TableCard>
         </div>
       )}
 

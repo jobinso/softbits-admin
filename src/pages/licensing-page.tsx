@@ -10,11 +10,15 @@ import {
   RefreshCw,
   Upload,
   X,
+  Smartphone,
+  Warehouse,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button, Card, Tabs, StatusBadge, LoadingSpinner, Modal, PageHeader } from '@/components/shared';
 import type { TabItem } from '@/components/shared';
 import type { LicenseModule, LicenseUser, ComplianceData } from '@/types';
+import DevicesPage from './licensing/devices-page';
+import WarehousesPage from './config/warehouses-page';
 import {
   getLicense,
   validateLicense,
@@ -33,6 +37,8 @@ const tabs: TabItem[] = [
   { id: 'modules', label: 'Modules', icon: <Shield className="w-4 h-4" /> },
   { id: 'compliance', label: 'Compliance', icon: <BarChart3 className="w-4 h-4" /> },
   { id: 'users', label: 'Users', icon: <Users className="w-4 h-4" /> },
+  { id: 'devices', label: 'Devices', icon: <Smartphone className="w-4 h-4" /> },
+  { id: 'warehouses', label: 'Warehouses', icon: <Warehouse className="w-4 h-4" /> },
 ];
 
 const MODULE_FIELD_LABELS: Record<string, string> = {
@@ -666,6 +672,12 @@ export default function LicensingPage() {
           </Card>
         </div>
       )}
+
+      {/* Tab: Devices */}
+      {activeTab === 'devices' && <DevicesPage />}
+
+      {/* Tab: Warehouses */}
+      {activeTab === 'warehouses' && <WarehousesPage />}
 
       {/* Upload License Modal */}
       <Modal

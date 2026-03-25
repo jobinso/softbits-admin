@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { setAuthToken } from '../services/api';
-import { verifyLogin, verifyTotp as verifyTotpApi } from '../services/admin-service';
+import { verifyLogin, verifyTotp as verifyTotpApi, uploadLicense } from '../services/admin-service';
 import { STORAGE_KEYS } from '../utils/constants';
 import type { User } from '../types';
 
@@ -22,6 +22,17 @@ interface AuthState {
   verifyTotp: (code: string) => Promise<void>;
   logout: () => void;
   clearError: () => void;
+}
+
+const PENDING_LICENSE_KEY = 'pending-license-xml';
+
+function uploadPendingLicense() {
+  const pendingXml = localStorage.getItem(PENDING_LICENSE_KEY);
+  if (!pendingXml) return;
+  localStorage.removeItem(PENDING_LICENSE_KEY);
+  uploadLicense(pendingXml).catch(() => {
+    // Fire-and-forget: don't block login if license upload fails
+  });
 }
 
 function completeAuth(set: (state: Partial<AuthState>) => void, data: {
@@ -52,6 +63,9 @@ function completeAuth(set: (state: Partial<AuthState>) => void, data: {
     tempToken: null,
     error: null,
   });
+
+  // Upload any pending offline license file staged from the login page
+  uploadPendingLicense();
 }
 
 export const useAuth = create<AuthState>()(

@@ -4,8 +4,8 @@ import {
   Activity,
   FileText,
   Cog,
-  FileKey,
   Globe,
+  Mail,
   Server,
   Download,
   Trash2,
@@ -22,15 +22,15 @@ import {
   clearServiceLogs,
   getDevTasks,
   executeDevTask,
+  getServiceVersions,
+  getHealth,
 } from '@/services/admin-service';
-import EnvPage from '@/pages/services/env-page';
-import { EndpointsPage } from '@/pages/security';
+import { EndpointsPage, ProvidersPage } from '@/pages/services';
 
 // ===== Constants =====
 
 const SERVICE_NAMES: Record<string, string> = {
   'softbits-bridge': 'SoftBITS Bridge',
-  'softbits-valkey': 'SoftBITS Valkey',
   'softbits-connect': 'SoftBITS Connect',
   'connect-sync': 'Connect Sync Engine',
   'softbits-flip': 'SoftBITS Flip',
@@ -52,7 +52,6 @@ const APP_SERVICES = [
 
 const LOG_SERVICES = [
   { value: 'softbits-bridge', label: 'Bridge' },
-  { value: 'softbits-valkey', label: 'Valkey' },
   { value: 'softbits-connect', label: 'Connect' },
   { value: 'connect-sync', label: 'Connect Sync' },
   { value: 'softbits-flip', label: 'Flip' },
@@ -68,8 +67,8 @@ const tabs: TabItem[] = [
   { id: 'health', label: 'Health', icon: <Activity className="w-4 h-4" /> },
   { id: 'logs', label: 'Logs', icon: <FileText className="w-4 h-4" /> },
   { id: 'tasks', label: 'Tasks', icon: <Cog className="w-4 h-4" /> },
-  { id: 'env', label: 'Environment', icon: <FileKey className="w-4 h-4" /> },
   { id: 'endpoints', label: 'Endpoints', icon: <Globe className="w-4 h-4" /> },
+  { id: 'providers', label: 'Provider', icon: <Mail className="w-4 h-4" /> },
 ];
 
 // ===== Helpers =====
@@ -136,21 +135,23 @@ function ServiceToggle({
   enabled,
   onToggle,
   toggling,
+  version,
 }: {
   service: { key: string; name: string; description: string; envVar: string };
   enabled: boolean;
   onToggle: (key: string, enabled: boolean) => void;
   toggling: boolean;
+  version?: string;
 }) {
   return (
     <div className="flex items-center justify-between p-3 bg-interactive-hover border border-border rounded-lg">
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <p className="text-sm font-medium text-semantic-text-default">{service.name}</p>
+          {version && version !== 'unknown' && <span className="text-xs text-semantic-text-faint">v{version}</span>}
           <StatusBadge status={enabled ? 'success' : 'neutral'} label={enabled ? 'Enabled' : 'Disabled'} size="sm" />
         </div>
         <p className="text-xs text-semantic-text-faint">{service.description}</p>
-        <p className="text-xs text-semantic-text-faint font-mono">{service.envVar}</p>
       </div>
       <label className="relative inline-flex items-center cursor-pointer">
         <input
@@ -216,9 +217,8 @@ export default function ServicesPage() {
   const { data: healthRaw, isLoading: healthLoading } = useQuery({
     queryKey: ['health'],
     queryFn: async () => {
-      const res = await fetch('/health');
-      if (!res.ok) throw new Error('Health check failed');
-      return res.json();
+      const res = await getHealth();
+      return res.data ?? res;
     },
     refetchInterval: 15000,
   });
@@ -227,6 +227,13 @@ export default function ServicesPage() {
     queryKey: ['admin', 'services'],
     queryFn: getServices,
   });
+
+  const { data: versionsData } = useQuery({
+    queryKey: ['admin', 'services', 'versions'],
+    queryFn: getServiceVersions,
+  });
+
+  const versions: Record<string, string> = versionsData?.data || {};
 
   const { data: logsData, refetch: refetchLogs } = useQuery({
     queryKey: ['admin', 'logs', logService, logLines],
@@ -276,15 +283,22 @@ export default function ServicesPage() {
         duration: data.duration,
       });
       setRunningTask(null);
+      if (data.success) {
+        toast.success(`Task completed in ${data.duration}ms`);
+      } else {
+        toast.error(`Task failed: ${(data.output || 'Unknown error').slice(0, 120)}`);
+      }
     },
     onError: (error: any) => {
+      const msg = error.response?.data?.error || error.message;
       setTaskOutput({
         id: runningTask || '',
-        output: `Error: ${error.response?.data?.error || error.message}`,
+        output: `Error: ${msg}`,
         success: false,
         duration: 0,
       });
       setRunningTask(null);
+      toast.error(`Task failed: ${msg}`);
     },
   });
 
@@ -474,6 +488,7 @@ export default function ServicesPage() {
                   enabled={appStatuses[svc.key] ?? false}
                   onToggle={handleToggleService}
                   toggling={toggleServiceMutation.isPending}
+                  version={versions[svc.key]}
                 />
               ))}
             </div>
@@ -674,11 +689,12 @@ export default function ServicesPage() {
         </div>
       )}
 
-      {/* Tab: Environment */}
-      {activeTab === 'env' && <EnvPage />}
 
       {/* Tab: Endpoints */}
       {activeTab === 'endpoints' && <EndpointsPage />}
+
+      {/* Tab: Provider */}
+      {activeTab === 'providers' && <ProvidersPage />}
     </div>
   );
 }
