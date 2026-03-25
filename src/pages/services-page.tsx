@@ -5,6 +5,7 @@ import {
   FileText,
   Cog,
   FileKey,
+  Globe,
   Server,
   Download,
   Trash2,
@@ -23,6 +24,7 @@ import {
   executeDevTask,
 } from '@/services/admin-service';
 import EnvPage from '@/pages/services/env-page';
+import { EndpointsPage } from '@/pages/security';
 
 // ===== Constants =====
 
@@ -67,6 +69,7 @@ const tabs: TabItem[] = [
   { id: 'logs', label: 'Logs', icon: <FileText className="w-4 h-4" /> },
   { id: 'tasks', label: 'Tasks', icon: <Cog className="w-4 h-4" /> },
   { id: 'env', label: 'Environment', icon: <FileKey className="w-4 h-4" /> },
+  { id: 'endpoints', label: 'Endpoints', icon: <Globe className="w-4 h-4" /> },
 ];
 
 // ===== Helpers =====
@@ -673,6 +676,9 @@ export default function ServicesPage() {
 
       {/* Tab: Environment */}
       {activeTab === 'env' && <EnvPage />}
+
+      {/* Tab: Endpoints */}
+      {activeTab === 'endpoints' && <EndpointsPage />}
     </div>
   );
 }

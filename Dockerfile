@@ -9,10 +9,11 @@ FROM node:20-alpine AS client-builder
 
 WORKDIR /app/client
 
-# Copy shared tailwind tokens, components, and hooks (referenced in tailwind.config.js and vite aliases)
+# Copy shared tailwind tokens, components, hooks, and utils (referenced in tailwind.config.js, vite aliases, and help system)
 COPY softbits-shared/tailwind-tokens.js /app/softbits-shared/tailwind-tokens.js
 COPY softbits-shared/components/ /app/softbits-shared/components/
 COPY softbits-shared/hooks/ /app/softbits-shared/hooks/
+COPY softbits-shared/utils/ /app/softbits-shared/utils/
 
 # Copy client package files
 COPY softbits-admin/package*.json ./

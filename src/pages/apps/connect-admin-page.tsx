@@ -15,6 +15,7 @@ import {
   CreditCard,
   Briefcase,
   Map,
+  FolderTree,
   ChevronLeft,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -73,6 +74,7 @@ import {
   getConnectMappings,
 } from '@/services/admin-service';
 import { useModal } from '@shared/hooks';
+import { ProjectTypesPage } from '@/pages/config';
 import type {
   ConnectSyncStatus,
   ConnectSyncHistoryEntry,
@@ -99,6 +101,7 @@ const CONNECT_TABS: TabItem[] = [
   { id: 'rates', label: 'Rate Cards', icon: <CreditCard className="w-4 h-4" /> },
   { id: 'roles', label: 'Billing Roles', icon: <Briefcase className="w-4 h-4" /> },
   { id: 'mappings', label: 'Mappings', icon: <Map className="w-4 h-4" /> },
+  { id: 'project-types', label: 'Project Types', icon: <FolderTree className="w-4 h-4" /> },
 ];
 
 const SYNC_ENTITIES = [
@@ -1356,6 +1359,9 @@ export default function ConnectAdminPage() {
           )}
         </div>
       )}
+
+      {/* Tab: Project Types */}
+      {activeTab === 'project-types' && <ProjectTypesPage />}
 
       {/* ===== Modals ===== */}
 

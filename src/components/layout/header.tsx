@@ -1,7 +1,10 @@
-import { RefreshCw, Settings, LogOut, Sun, Moon } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { RefreshCw, Settings, LogOut, Sun, Moon, HelpCircle } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { useTheme } from '@/hooks/use-theme';
 import { useQueryClient } from '@tanstack/react-query';
+import HelpModal from '@/components/help/help-modal';
 
 function formatDate(): string {
   return new Date().toLocaleDateString('en-ZA', {
@@ -25,10 +28,37 @@ export default function Header() {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const queryClient = useQueryClient();
+  const location = useLocation();
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const handleRefresh = () => {
     queryClient.invalidateQueries();
   };
+
+  const openHelp = useCallback(() => setHelpOpen(true), []);
+  const closeHelp = useCallback(() => setHelpOpen(false), []);
+
+  // Keyboard shortcuts: ? and F1 to open help
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // F1 always opens help
+      if (e.key === 'F1') {
+        e.preventDefault();
+        openHelp();
+        return;
+      }
+      // ? opens help only when not focused on an input/textarea/select
+      if (e.key === '?' && !helpOpen) {
+        const tag = (e.target as HTMLElement)?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+        if ((e.target as HTMLElement)?.isContentEditable) return;
+        e.preventDefault();
+        openHelp();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [helpOpen, openHelp]);
 
   return (
     <header className="h-14 bg-surface-raised border-b border-border px-6 flex items-center justify-between shrink-0">
@@ -45,6 +75,13 @@ export default function Header() {
           className="p-2 rounded-lg text-semantic-text-subtle hover:text-semantic-text-default hover:bg-interactive-hover transition-colors"
         >
           <RefreshCw className="w-4 h-4" />
+        </button>
+        <button
+          onClick={openHelp}
+          title="Help (? or F1)"
+          className="p-2 rounded-lg text-semantic-text-subtle hover:text-semantic-text-default hover:bg-interactive-hover transition-colors"
+        >
+          <HelpCircle className="w-4 h-4" />
         </button>
         <button
           title="Settings"
@@ -86,6 +123,8 @@ export default function Header() {
           <LogOut className="w-4 h-4" />
         </button>
       </div>
+
+      <HelpModal open={helpOpen} onClose={closeHelp} currentPath={location.pathname} />
     </header>
   );
 }
