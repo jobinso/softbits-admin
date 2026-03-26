@@ -14,7 +14,7 @@ import {
   Warehouse,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Button, Card, Tabs, StatusBadge, LoadingSpinner, Modal, PageHeader } from '@/components/shared';
+import { Button, Card, Tabs, StatusBadge, LoadingSpinner, Modal, PageHeader, PageStatusBar } from '@/components/shared';
 import type { TabItem } from '@/components/shared';
 import type { LicenseModule, LicenseUser, ComplianceData } from '@/types';
 import DevicesPage from './licensing/devices-page';
@@ -346,36 +346,14 @@ export default function LicensingPage() {
       />
 
       {/* Status Bar */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 p-4 bg-surface-raised border border-border rounded-xl">
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Status</p>
-          <StatusBadge status={statusBadge.status} label={statusBadge.label} size="sm" />
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Tier</p>
-          <p className="text-sm font-medium text-semantic-text-default">{tier || '-'}</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Expiration</p>
-          <p className="text-sm font-medium text-semantic-text-default">{expiresAt ? formatDate(expiresAt) : 'Perpetual'}</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Days Remaining</p>
-          <p className={`text-sm font-semibold ${getDaysColor(daysRemaining)}`}>
-            {daysRemaining !== undefined && daysRemaining !== null
-              ? daysRemaining < 0 ? `${Math.abs(daysRemaining)} overdue` : `${daysRemaining} days`
-              : expiresAt ? '-' : 'Unlimited'}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Active Users</p>
-          <p className="text-sm font-medium text-semantic-text-default">{(licenseData as any)?.activeUsers ?? 0}</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Sessions</p>
-          <p className="text-sm font-medium text-semantic-text-default">{(licenseData as any)?.activeSessions ?? 0}</p>
-        </div>
-      </div>
+      <PageStatusBar items={[
+        { type: 'badge', label: 'Status', status: statusBadge.status, badgeLabel: statusBadge.label },
+        { type: 'text', label: 'Tier', value: tier || '-' },
+        { type: 'text', label: 'Expiration', value: expiresAt ? formatDate(expiresAt) : 'Perpetual' },
+        { type: 'text', label: 'Days Remaining', value: daysRemaining !== undefined && daysRemaining !== null ? (daysRemaining < 0 ? `${Math.abs(daysRemaining)} overdue` : `${daysRemaining} days`) : (expiresAt ? '-' : 'Unlimited'), colorClass: getDaysColor(daysRemaining) },
+        { type: 'text', label: 'Active Users', value: (licenseData as any)?.activeUsers ?? 0 },
+        { type: 'text', label: 'Sessions', value: (licenseData as any)?.activeSessions ?? 0 },
+      ]} />
 
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 

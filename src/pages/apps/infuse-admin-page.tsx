@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Cpu, Save, Zap, Star, ExternalLink, LayoutDashboard, Plug, Shield, Clock, Activity, Server, BarChart3 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Button, Card, Tabs, StatusBadge, LoadingSpinner, PageHeader, DataTable, TableCard } from '@/components/shared';
+import { Button, Card, Tabs, StatusBadge, LoadingSpinner, PageHeader, DataTable, TableCard, PageStatusBar } from '@/components/shared';
 import type { ColumnDef } from '@/components/shared';
 import type { TabItem } from '@/components/shared';
 import type { InfuseConfig, Provider } from '@/types';
@@ -260,38 +260,20 @@ export default function InfuseAdminPage() {
         description="AI integration services configuration"
       />
 
+      {/* Status Bar */}
+      <PageStatusBar items={[
+        { type: 'badge', label: 'AI Provider', status: enabled ? 'success' : 'neutral', badgeLabel: enabled ? 'Enabled' : 'Disabled' },
+        { type: 'badge', label: 'MCP', status: statusData?.data?.mcp?.status === 'ok' ? 'success' : 'danger', badgeLabel: statusData?.data?.mcp?.status === 'ok' ? `Online (${dashboardData?.data?.sessions?.mcp?.active ?? 0})` : 'Offline' },
+        { type: 'badge', label: 'APP', status: statusData?.data?.app?.status === 'ok' ? 'success' : 'danger', badgeLabel: statusData?.data?.app?.status === 'ok' ? `Online (${dashboardData?.data?.sessions?.app?.active ?? 0})` : 'Offline' },
+        { type: 'badge', label: 'HTTP', status: statusData?.data?.http?.status === 'ok' ? 'success' : 'danger', badgeLabel: statusData?.data?.http?.status === 'ok' ? 'Online' : 'Offline' },
+        { type: 'badge', label: 'WORK', status: statusData?.data?.work?.status === 'ok' ? 'success' : 'danger', badgeLabel: statusData?.data?.work?.status === 'ok' ? `Online (${dashboardData?.data?.workload?.work?.pendingExecutions ?? 0} pending)` : 'Offline' },
+      ]} />
+
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
       {/* Tab: Dashboard */}
       {activeTab === 'dashboard' && (
         <div className="space-y-6">
-          {/* Status Bar — pill style matching Licensing */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 p-4 bg-surface-raised border border-border rounded-xl">
-            <div>
-              <p className="text-xs text-semantic-text-faint mb-1">AI Provider</p>
-              <StatusBadge status={enabled ? 'success' : 'neutral'} label={enabled ? 'Enabled' : 'Disabled'} size="sm" />
-            </div>
-            <div>
-              <p className="text-xs text-semantic-text-faint mb-1">MCP</p>
-              <StatusBadge status={statusData?.data?.mcp?.status === 'ok' ? 'success' : 'danger'} label={statusData?.data?.mcp?.status === 'ok' ? 'Online' : 'Offline'} size="sm" />
-              {dashboardData?.data?.sessions?.mcp && <p className="text-xs text-semantic-text-faint mt-0.5">{dashboardData.data.sessions.mcp.active} sessions</p>}
-            </div>
-            <div>
-              <p className="text-xs text-semantic-text-faint mb-1">APP</p>
-              <StatusBadge status={statusData?.data?.app?.status === 'ok' ? 'success' : 'danger'} label={statusData?.data?.app?.status === 'ok' ? 'Online' : 'Offline'} size="sm" />
-              {dashboardData?.data?.sessions?.app && <p className="text-xs text-semantic-text-faint mt-0.5">{dashboardData.data.sessions.app.active} sessions</p>}
-            </div>
-            <div>
-              <p className="text-xs text-semantic-text-faint mb-1">HTTP</p>
-              <StatusBadge status={statusData?.data?.http?.status === 'ok' ? 'success' : 'danger'} label={statusData?.data?.http?.status === 'ok' ? 'Online' : 'Offline'} size="sm" />
-            </div>
-            <div>
-              <p className="text-xs text-semantic-text-faint mb-1">WORK</p>
-              <StatusBadge status={statusData?.data?.work?.status === 'ok' ? 'success' : 'danger'} label={statusData?.data?.work?.status === 'ok' ? 'Online' : 'Offline'} size="sm" />
-              {dashboardData?.data?.workload?.work && <p className="text-xs text-semantic-text-faint mt-0.5">{dashboardData.data.workload.work.pendingExecutions} pending</p>}
-            </div>
-          </div>
-
           {/* Sessions */}
           {dashboardData?.data?.sessions && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

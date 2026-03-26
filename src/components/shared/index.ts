@@ -24,6 +24,9 @@ export {
   useCommandPalette,
 } from '@shared/components';
 
+export { PageStatusBar } from './page-status-bar';
+export type { PageStatusBarProps, StatusBarItem, StatusBarBadgeItem, StatusBarTextItem } from './page-status-bar';
+
 export type {
   ButtonProps,
   CardProps,

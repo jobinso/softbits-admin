@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Settings, Plug, Plus, X, Shield, Globe, Server, AlertTriangle, CheckCircle, XCircle, ExternalLink, HelpCircle } from 'lucide-react';
+import { Settings, Plug, Plus, X, Shield, Globe, Server, AlertTriangle, CheckCircle, XCircle, ExternalLink, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import {
   Button,
   Modal,
@@ -106,8 +106,28 @@ const PROVIDER_EXAMPLES: Record<string, { config: string; credentials: string; h
     credentials: '{}',
     hint: 'Local Ollama instance. No credentials needed for local models.',
   },
+  AI_LMSTUDIO: {
+    config: '{\n  "baseUrl": "http://localhost:1234",\n  "model": "default",\n  "timeout": 120000\n}',
+    credentials: '{}',
+    hint: 'Local LM Studio instance. No credentials needed for local models.',
+  },
+  AI_VLLM: {
+    config: '{\n  "baseUrl": "http://localhost:8000",\n  "model": "default",\n  "timeout": 120000\n}',
+    credentials: '{\n  "apiKey": "vllm-api-key"\n}',
+    hint: 'vLLM high-throughput inference server. API key optional depending on config.',
+  },
+  ERP_SYSPRO: {
+    config: '{\n  "baseUrl": "http://syspro-server:30001",\n  "company": "S",\n  "companyPassword": "",\n  "timeout": 30000\n}',
+    credentials: '{\n  "operator": "ADMIN",\n  "operatorPassword": "password"\n}',
+    hint: 'SYSPRO ERP integration via e.net SOAP/XML services.',
+  },
+  ERP_ACUMATICA: {
+    config: '{\n  "baseUrl": "https://acumatica.company.com",\n  "company": "Company",\n  "branch": "MAIN",\n  "timeout": 30000\n}',
+    credentials: '{\n  "username": "admin",\n  "password": "password"\n}',
+    hint: 'Acumatica ERP integration via REST API.',
+  },
   AUTOMATION_N8N: {
-    config: '{\n  "baseUrl": "http://n8n:5678",\n  "webhookPath": "/webhook",\n  "timeout": 30000\n}',
+    config: '{\n  "baseUrl": "http://n8n.softbits.com.au",\n  "webhookPath": "/webhook",\n  "timeout": 30000\n}',
     credentials: '{\n  "apiKey": "n8n-api-key"\n}',
     hint: 'N8N workflow automation platform for event processing.',
   },
@@ -137,6 +157,31 @@ const PROVIDER_EXAMPLES: Record<string, { config: string; credentials: string; h
     hint: 'Built-in OAuth 2.1 authorization server. RSA keys managed via environment.',
   },
 };
+
+/** Provider type display names for help panel */
+const PROVIDER_TYPE_LABELS: Record<string, string> = {
+  EMAIL_SMTP: 'SMTP Email',
+  EMAIL_OAUTH_MICROSOFT: 'Microsoft 365 OAuth',
+  EMAIL_OAUTH_GOOGLE: 'Google Workspace OAuth',
+  LABEL_BARTENDER: 'BarTender',
+  LABEL_NICELABEL: 'NiceLabel',
+  LABEL_QZ_TRAY: 'QZ Tray',
+  STORAGE_SQL: 'SQL Server Storage',
+  STORAGE_AZURE: 'Azure Blob Storage',
+  EXCHANGE_RATE_API: 'Exchange Rate API',
+  AI_ANTHROPIC: 'Anthropic Claude',
+  AI_OPENAI: 'OpenAI GPT',
+  AI_OLLAMA: 'Ollama (Local)',
+  AI_LMSTUDIO: 'LM Studio (Local)',
+  AI_VLLM: 'vLLM Server',
+  ERP_SYSPRO: 'SYSPRO ERP',
+  ERP_ACUMATICA: 'Acumatica ERP',
+  AUTOMATION_N8N: 'N8N Automation',
+  OAUTH_SERVER: 'OAuth 2.1 Server',
+};
+
+/** Categories excluded from help panel */
+const HELP_EXCLUDED_PREFIXES = ['INTERNAL_'];
 
 // ---------------------------------------------------------------------------
 // Component
@@ -239,9 +284,54 @@ function GeneralTab({
   onToggleApp: (appCode: string) => void;
 }) {
   const examples = PROVIDER_EXAMPLES[form.providerTypeCode] || null;
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [helpExpanded, setHelpExpanded] = useState<string | null>(null);
 
   return (
     <div className="space-y-4">
+      {/* Help panel toggle */}
+      <button
+        type="button"
+        onClick={() => setHelpOpen(!helpOpen)}
+        className="flex items-center gap-1.5 text-xs text-primary hover:text-primary-400 transition-colors"
+      >
+        <HelpCircle className="w-3.5 h-3.5" />
+        Configuration &amp; Credentials Reference
+        {helpOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+      </button>
+
+      {helpOpen && (
+        <div className="border border-border rounded-lg bg-surface-subtle p-3 space-y-1 max-h-64 overflow-y-auto">
+          {Object.entries(PROVIDER_EXAMPLES)
+            .filter(([code]) => !HELP_EXCLUDED_PREFIXES.some((p) => code.startsWith(p)))
+            .map(([code, ex]) => (
+              <div key={code} className="border-b border-border/50 last:border-0">
+                <button
+                  type="button"
+                  onClick={() => setHelpExpanded(helpExpanded === code ? null : code)}
+                  className="flex items-center justify-between w-full py-1.5 text-left text-xs font-medium text-semantic-text-secondary hover:text-semantic-text-primary"
+                >
+                  <span>{PROVIDER_TYPE_LABELS[code] || code}</span>
+                  {helpExpanded === code ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                </button>
+                {helpExpanded === code && (
+                  <div className="pb-2 space-y-2">
+                    <p className="text-[10px] text-semantic-text-faint">{ex.hint}</p>
+                    <div>
+                      <span className="text-[10px] font-semibold text-semantic-text-subtle uppercase tracking-wide">Configuration</span>
+                      <pre className="mt-0.5 p-2 rounded bg-dark-100 text-[10px] font-mono text-semantic-text-secondary overflow-x-auto">{ex.config}</pre>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-semibold text-semantic-text-subtle uppercase tracking-wide">Credentials</span>
+                      <pre className="mt-0.5 p-2 rounded bg-dark-100 text-[10px] font-mono text-semantic-text-secondary overflow-x-auto">{ex.credentials}</pre>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+        </div>
+      )}
+
       {/* Provider Type */}
       {!isEditing && (
         <FormField label="Provider Type" required>

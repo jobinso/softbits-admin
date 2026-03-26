@@ -1021,6 +1021,10 @@ export interface WorkWorkflow {
   IsActive: boolean;
   LastExecutedAt?: string;
   CreatedAt?: string;
+  TemplateId?: number;
+  TemplateCode?: string;
+  TemplateName?: string;
+  ExecutionHandler?: string;
 }
 
 export interface WorkExecution {
@@ -1110,6 +1114,7 @@ export interface WorkTemplate {
   IsActive: boolean;
   IsSystem: boolean;
   SortOrder: number;
+  ExecutionHandler?: string;
 }
 
 export interface WorkTemplateInstance {

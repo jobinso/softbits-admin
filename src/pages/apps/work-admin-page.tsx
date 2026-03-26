@@ -15,6 +15,7 @@ import {
   TableCard,
   TableFilterDropdown,
   TableColumnPicker,
+  PageStatusBar,
 } from '@/components/shared';
 import type { TabItem, ColumnDef, TableFilterField, TableColumnPickerColumn } from '@/components/shared';
 import { useModal } from '@shared/hooks';
@@ -96,11 +97,14 @@ interface WorkflowForm {
   webhookUrl: string;
   isActive: boolean;
   providerId: string;
+  templateId: number | null;
+  templateName: string;
 }
 
 const INITIAL_WF_FORM: WorkflowForm = {
   name: '', n8nWorkflowId: '', description: '', triggerType: 'webhook',
   timeoutMs: 30000, webhookUrl: '', isActive: true, providerId: '',
+  templateId: null, templateName: '',
 };
 
 interface MappingForm {
@@ -291,7 +295,7 @@ export default function WorkAdminPage() {
   const { data: automationProvidersData, isLoading: automationProvidersLoading } = useQuery({
     queryKey: ['admin', 'providers', { app: 'INFUSE' }],
     queryFn: () => getProvidersByApp('INFUSE'),
-    enabled: activeTab === 'automation' || activeTab === 'workflows',
+    enabled: activeTab === 'automation' || activeTab === 'workflows' || activeTab === 'templates',
   });
 
   const automationProviders: Provider[] = automationProvidersData?.data || [];
@@ -301,7 +305,7 @@ export default function WorkAdminPage() {
     queryKey: ['admin', 'work', 'templates'],
     queryFn: () => getWorkTemplates(),
     retry: false,
-    enabled: activeTab === 'templates',
+    enabled: activeTab === 'templates' || activeTab === 'workflows',
   });
 
   const { data: instancesData, isLoading: instancesLoading } = useQuery<{ instances: WorkTemplateInstance[] }>({
@@ -340,8 +344,8 @@ export default function WorkAdminPage() {
 
   const execWfMutation = useMutation({
     mutationFn: (id: number) => executeWorkWorkflow(id),
-    onSuccess: (data: any) => { toast.success(`Execution started (ID: ${data.executionId || 'N/A'})`); invalidateWork(); },
-    onError: (err: Error) => toast.error(err.message),
+    onSuccess: (data: any) => { toast.success(`Execution started (ID: ${data?.executionId || 'N/A'})`); invalidateWork(); },
+    onError: (err: any) => toast.error(err?.response?.data?.error?.message || err?.message || 'Workflow execution failed'),
   });
 
   const retryExecMutation = useMutation({
@@ -469,6 +473,7 @@ export default function WorkAdminPage() {
       name: wf.Name, n8nWorkflowId: wf.N8NWorkflowId, description: wf.Description || '',
       triggerType: wf.TriggerType || 'webhook', timeoutMs: wf.TimeoutMs || 30000,
       webhookUrl: wf.WebhookUrl || '', isActive: wf.IsActive, providerId: wf.ProviderId || '',
+      templateId: wf.TemplateId || null, templateName: wf.TemplateName || '',
     });
     setIsEditingWf(true);
     setEditingWfId(wf.WorkflowId);
@@ -477,13 +482,16 @@ export default function WorkAdminPage() {
 
   function handleSaveWf() {
     if (!wfForm.name.trim()) { toast.error('Name is required'); return; }
-    if (!wfForm.n8nWorkflowId.trim()) { toast.error('N8N Workflow ID is required'); return; }
+    if (wfForm.providerId && !wfForm.n8nWorkflowId.trim()) { toast.error('External ID is required when a provider is selected'); return; }
+    const isInternal = !wfForm.providerId;
+    const externalId = isInternal ? (wfForm.n8nWorkflowId || `INTERNAL-${Date.now()}`) : wfForm.n8nWorkflowId;
     saveWfMutation.mutate({
       id: editingWfId || undefined,
       payload: {
-        name: wfForm.name, n8nWorkflowId: wfForm.n8nWorkflowId, description: wfForm.description,
+        name: wfForm.name, n8nWorkflowId: externalId, description: wfForm.description,
         triggerType: wfForm.triggerType, timeoutMs: wfForm.timeoutMs,
         webhookUrl: wfForm.webhookUrl, isActive: wfForm.isActive, providerId: wfForm.providerId || null,
+        executionHandler: isInternal ? 'internal' : 'n8n',
       },
     });
   }
@@ -573,7 +581,8 @@ export default function WorkAdminPage() {
         </div>
       ),
     },
-    { key: 'N8NWorkflowId', label: 'N8N ID', width: 120, sortable: true, render: (val) => <code className="text-primary text-xs">{val}</code> },
+    { key: 'TemplateName', label: 'Template', width: 140, sortable: true, render: (val) => val ? <span className="text-semantic-text-secondary text-xs">{val}</span> : <span className="text-semantic-text-faint text-xs">-</span> },
+    { key: 'N8NWorkflowId', label: 'Type', width: 100, sortable: true, render: (val, row) => String(val || '').startsWith('INTERNAL') || row.ExecutionHandler === 'internal' ? <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary">Internal</span> : <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-500/10 text-orange-400">External</span> },
     { key: 'TriggerType', label: 'Trigger', width: 100, sortable: true },
     {
       key: 'ProviderId', label: 'Provider', width: 140,
@@ -771,46 +780,21 @@ export default function WorkAdminPage() {
         description="Work order and job management"
       />
 
-      {/* Status Bar — pill style matching Licensing */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 p-4 bg-surface-raised border border-border rounded-xl">
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Service</p>
-          <StatusBadge status={serviceConnected ? 'success' : 'danger'} label={serviceConnected ? 'Connected' : 'Offline'} size="sm" />
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">N8N</p>
-          <StatusBadge status={n8nConnected ? 'success' : 'danger'} label={n8nConnected ? 'Connected' : 'Disconnected'} size="sm" />
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Active Workflows</p>
-          <p className="text-sm font-semibold text-semantic-text-default tabular-nums">{activeWfCount}</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Executions Today</p>
-          <p className="text-sm font-semibold text-semantic-text-default tabular-nums">{execStats?.summary?.total || 0}</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Failed</p>
-          <p className={`text-sm font-semibold tabular-nums ${(execStats?.summary?.failed || 0) > 0 ? 'text-danger' : 'text-semantic-text-faint'}`}>{execStats?.summary?.failed || 0}</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Pending</p>
-          <p className={`text-sm font-semibold tabular-nums ${(execStats?.summary?.pending || 0) > 0 ? 'text-warning' : 'text-semantic-text-faint'}`}>{execStats?.summary?.pending || 0}</p>
-        </div>
-      </div>
+      {/* Status Bar */}
+      <PageStatusBar items={[
+        { type: 'badge', label: 'Service', status: serviceConnected ? 'success' : 'danger', badgeLabel: serviceConnected ? 'Connected' : 'Offline' },
+        { type: 'badge', label: 'N8N', status: n8nConnected ? 'success' : 'danger', badgeLabel: n8nConnected ? 'Connected' : 'Disconnected' },
+        { type: 'text', label: 'Active Workflows', value: activeWfCount },
+        { type: 'text', label: 'Executions Today', value: execStats?.summary?.total || 0 },
+        { type: 'text', label: 'Failed', value: execStats?.summary?.failed || 0, colorClass: (execStats?.summary?.failed || 0) > 0 ? 'text-danger' : 'text-semantic-text-faint' },
+        { type: 'text', label: 'Pending', value: execStats?.summary?.pending || 0, colorClass: (execStats?.summary?.pending || 0) > 0 ? 'text-warning' : 'text-semantic-text-faint' },
+      ]} />
 
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
       {/* Tab: Status */}
       {activeTab === 'status' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <StatusCard label="Service" value={serviceConnected ? 'Connected' : 'Offline'} status={serviceConnected ? 'success' : 'danger'} />
-            <StatusCard label="N8N" value={n8nConnected ? 'Connected' : 'Disconnected'} status={n8nConnected ? 'success' : 'danger'} />
-            <StatusCard label="Active Workflows" value={String(activeWfCount)} status={activeWfCount > 0 ? 'info' : 'neutral'} />
-            <StatusCard label="Executions Today" value={String(execStats?.summary?.total || 0)} status={(execStats?.summary?.total || 0) > 0 ? 'success' : 'neutral'} />
-          </div>
-
           {/* Execution stats */}
           {execStats?.summary && (
             <div className="grid grid-cols-5 gap-3">
@@ -925,6 +909,9 @@ export default function WorkAdminPage() {
                               </div>
                             </div>
                             <div className="flex items-center gap-3 text-xs text-semantic-text-faint mb-3">
+                              <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${template.ExecutionHandler === 'n8n' ? 'bg-orange-500/10 text-orange-400' : 'bg-primary/10 text-primary'}`}>
+                                {template.ExecutionHandler === 'n8n' ? 'N8N' : 'Internal'}
+                              </span>
                               <span>{steps.length} step{steps.length !== 1 ? 's' : ''}</span>
                               <span>v{template.Version}</span>
                               {instanceCount > 0 && <span className="text-primary">{instanceCount} active</span>}
@@ -1112,14 +1099,75 @@ export default function WorkAdminPage() {
         }
       >
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <FormField label="Name" required>
-              <input type="text" value={wfForm.name} onChange={(e) => setWfForm({ ...wfForm, name: e.target.value })} className="form-input" placeholder="My Workflow" />
+          {/* Template — read-only when editing, dropdown when creating */}
+          {isEditingWf ? (
+            wfForm.templateName && (
+              <FormField label="Template">
+                <input type="text" value={wfForm.templateName} className="form-input bg-surface-subtle text-semantic-text-subtle" disabled />
+              </FormField>
+            )
+          ) : (
+            <FormField label="Template">
+              <select
+                value={wfForm.templateId ?? ''}
+                onChange={(e) => {
+                  const tid = e.target.value ? parseInt(e.target.value) : null;
+                  const tmpl = templates.find((t) => t.TemplateId === tid);
+                  setWfForm({ ...wfForm, templateId: tid, templateName: tmpl?.Name || '' });
+                }}
+                className="form-input"
+                title="Template"
+              >
+                <option value="">-- None (standalone workflow) --</option>
+                {templates.map((t) => (
+                  <option key={t.TemplateId} value={t.TemplateId}>{t.Name}</option>
+                ))}
+              </select>
             </FormField>
-            <FormField label="N8N Workflow ID" required>
-              <input type="text" value={wfForm.n8nWorkflowId} onChange={(e) => setWfForm({ ...wfForm, n8nWorkflowId: e.target.value })} className="form-input" placeholder="abc123" />
-            </FormField>
-          </div>
+          )}
+          <FormField label="Automation Provider">
+            {isEditingWf && wfForm.templateId ? (
+              <input
+                type="text"
+                value={automationProviders.find((p) => p.ProviderId === wfForm.providerId)?.Name || '-- None (internal workflow) --'}
+                readOnly
+                disabled
+                className="form-input bg-surface-subtle text-content-secondary cursor-not-allowed"
+                title="Provider is set by the template and cannot be changed here"
+              />
+            ) : (
+              <select
+                value={wfForm.providerId}
+                onChange={(e) => {
+                  const pid = e.target.value;
+                  const provider = automationProviders.find((p) => p.ProviderId === pid);
+                  const config = provider?.Configuration as Record<string, string> | undefined;
+                  const webhookUrl = config ? `${config.baseUrl || ''}${config.webhookPath || ''}` : '';
+                  setWfForm({ ...wfForm, providerId: pid, webhookUrl: webhookUrl || wfForm.webhookUrl, n8nWorkflowId: pid ? wfForm.n8nWorkflowId : '' });
+                }}
+                className="form-input"
+                title="Automation provider"
+              >
+                <option value="">-- None (internal workflow) --</option>
+                {automationProviders.map((p) => (
+                  <option key={p.ProviderId} value={p.ProviderId}>{p.Name}</option>
+                ))}
+              </select>
+            )}
+          </FormField>
+          {wfForm.providerId && (
+            <>
+              <FormField label="External ID" required>
+                <input type="text" value={wfForm.n8nWorkflowId} onChange={(e) => setWfForm({ ...wfForm, n8nWorkflowId: e.target.value })} className="form-input" placeholder="External workflow ID" />
+              </FormField>
+              <FormField label="Webhook URL">
+                <input type="text" value={wfForm.webhookUrl} onChange={(e) => setWfForm({ ...wfForm, webhookUrl: e.target.value })} className="form-input" placeholder="Optional webhook URL" />
+              </FormField>
+            </>
+          )}
+          <FormField label="Name" required>
+            <input type="text" value={wfForm.name} onChange={(e) => setWfForm({ ...wfForm, name: e.target.value })} className="form-input" placeholder="My Workflow" />
+          </FormField>
           <FormField label="Description">
             <input type="text" value={wfForm.description} onChange={(e) => setWfForm({ ...wfForm, description: e.target.value })} className="form-input" placeholder="Optional description" />
           </FormField>
@@ -1141,28 +1189,6 @@ export default function WorkAdminPage() {
               </label>
             </FormField>
           </div>
-          <FormField label="Automation Provider">
-            <select
-              value={wfForm.providerId}
-              onChange={(e) => {
-                const pid = e.target.value;
-                const provider = automationProviders.find((p) => p.ProviderId === pid);
-                const config = provider?.Configuration as Record<string, string> | undefined;
-                const webhookUrl = config ? `${config.baseUrl || ''}${config.webhookPath || ''}` : '';
-                setWfForm({ ...wfForm, providerId: pid, webhookUrl: webhookUrl || wfForm.webhookUrl });
-              }}
-              className="form-input"
-              title="Automation provider"
-            >
-              <option value="">-- None (manual URL) --</option>
-              {automationProviders.map((p) => (
-                <option key={p.ProviderId} value={p.ProviderId}>{p.Name}</option>
-              ))}
-            </select>
-          </FormField>
-          <FormField label="Webhook URL">
-            <input type="text" value={wfForm.webhookUrl} onChange={(e) => setWfForm({ ...wfForm, webhookUrl: e.target.value })} className="form-input" placeholder="Optional webhook URL" />
-          </FormField>
         </div>
       </Modal>
 
@@ -1432,15 +1458,6 @@ function FormField({ label, required, children }: { label: string; required?: bo
         {label}{required && <span className="text-danger ml-0.5">*</span>}
       </label>
       {children}
-    </div>
-  );
-}
-
-function StatusCard({ label, value, status }: { label: string; value: string; status: 'success' | 'danger' | 'warning' | 'info' | 'neutral' }) {
-  return (
-    <div className="bg-surface-raised border border-border rounded-xl p-4">
-      <div className="text-xs text-semantic-text-faint mb-1">{label}</div>
-      <StatusBadge status={status} label={value} size="sm" />
     </div>
   );
 }

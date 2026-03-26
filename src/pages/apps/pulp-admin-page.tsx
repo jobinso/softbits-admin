@@ -13,6 +13,7 @@ import {
   LoadingSpinner,
   PageHeader,
   TableCard,
+  PageStatusBar,
 } from '@/components/shared';
 import type { TabItem, ColumnDef } from '@/components/shared';
 import { useModal } from '@shared/hooks';
@@ -566,25 +567,13 @@ export default function PulpAdminPage() {
         description="Document management configuration"
       />
 
-      {/* Status Bar — pill style matching Licensing */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-surface-raised border border-border rounded-xl">
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Service</p>
-          <StatusBadge status={isServiceConnected ? 'success' : 'danger'} label={isServiceConnected ? 'Connected' : 'Offline'} size="sm" />
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Total Documents</p>
-          <p className="text-sm font-semibold text-semantic-text-default tabular-nums">{stats?.totalDocuments || 0}</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Storage Used</p>
-          <p className="text-sm font-semibold text-semantic-text-default tabular-nums">{formatStorageSize(stats?.storageMB || 0)}</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Staged Queue</p>
-          <p className={`text-sm font-semibold tabular-nums ${stagedCount > 0 ? 'text-warning' : 'text-semantic-text-faint'}`}>{stagedCount}</p>
-        </div>
-      </div>
+      {/* Status Bar */}
+      <PageStatusBar items={[
+        { type: 'badge', label: 'Service', status: isServiceConnected ? 'success' : 'danger', badgeLabel: isServiceConnected ? 'Connected' : 'Offline' },
+        { type: 'text', label: 'Total Documents', value: stats?.totalDocuments || 0 },
+        { type: 'text', label: 'Storage Used', value: formatStorageSize(stats?.storageMB || 0) },
+        { type: 'text', label: 'Staged Queue', value: stagedCount, colorClass: stagedCount > 0 ? 'text-warning' : 'text-semantic-text-faint' },
+      ]} />
 
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 

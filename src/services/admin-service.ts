@@ -1383,18 +1383,22 @@ export async function getServiceVersions(): Promise<ApiResponse<Record<string, s
 // Work service is proxied through nginx at /work/ to avoid CORS issues
 async function workApiFetch(endpoint: string, options?: { method?: string; data?: unknown }) {
   const method = options?.method || 'GET';
-  const config: Record<string, unknown> = { params: {} };
-  if (options?.data) config.data = options.data;
-  let response;
-  switch (method) {
-    case 'POST': response = await rawApi.post(`/work${endpoint}`, options?.data); break;
-    case 'PUT': response = await rawApi.put(`/work${endpoint}`, options?.data); break;
-    case 'DELETE': response = await rawApi.delete(`/work${endpoint}`); break;
-    default: response = await rawApi.get(`/work${endpoint}`);
+  try {
+    let response;
+    switch (method) {
+      case 'POST': response = await rawApi.post(`/work${endpoint}`, options?.data); break;
+      case 'PUT': response = await rawApi.put(`/work${endpoint}`, options?.data); break;
+      case 'DELETE': response = await rawApi.delete(`/work${endpoint}`); break;
+      default: response = await rawApi.get(`/work${endpoint}`);
+    }
+    // Unwrap sendSuccess envelope: { success, data: {...}, meta } → return inner data
+    const body = response.data;
+    return body?.data ?? body;
+  } catch (err: any) {
+    const serverMessage = err?.response?.data?.error?.message;
+    if (serverMessage) throw new Error(serverMessage);
+    throw err;
   }
-  // Unwrap sendSuccess envelope: { success, data: {...}, meta } → return inner data
-  const body = response.data;
-  return body?.data ?? body;
 }
 
 export async function getWorkHealth() {

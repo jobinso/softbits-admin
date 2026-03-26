@@ -8,7 +8,7 @@ import {
   Play,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Button, Tabs, StatusBadge, LoadingSpinner, Modal, DataTable, PageHeader, TableCard } from '@/components/shared';
+import { Button, Tabs, StatusBadge, LoadingSpinner, Modal, DataTable, PageHeader, TableCard, PageStatusBar } from '@/components/shared';
 import type { TabItem, ColumnDef } from '@/components/shared';
 import type { Patch, PatchHistoryEntry } from '@/types';
 import {
@@ -279,25 +279,12 @@ export default function PatchesPage() {
       />
 
       {/* Status Bar */}
-      <div className="flex flex-wrap items-center gap-6 p-4 bg-surface-raised border border-border rounded-xl">
-        <div>
-          <p className="text-xs text-semantic-text-subtle mb-1">Bridge Version</p>
-          <p className="text-sm font-semibold text-semantic-text-default">2.1.0</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-subtle mb-1">Patches Applied</p>
-          <p className="text-sm font-semibold text-primary">{level.TotalApplied ?? 0}</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-subtle mb-1">Latest Patch</p>
-          <p className="text-sm font-medium text-semantic-text-default font-mono">{level.LatestPatch || 'None'}</p>
-        </div>
-        {(level.PendingCritical ?? 0) > 0 && (
-          <div className="px-3 py-1.5 bg-danger/10 border border-danger/20 rounded-lg">
-            <span className="text-sm font-semibold text-danger">{level.PendingCritical} critical pending</span>
-          </div>
-        )}
-      </div>
+      <PageStatusBar items={[
+        { type: 'text', label: 'Bridge Version', value: '2.1.0' },
+        { type: 'text', label: 'Patches Applied', value: level.TotalApplied ?? 0, colorClass: 'text-primary' },
+        { type: 'text', label: 'Latest Patch', value: level.LatestPatch || 'None' },
+        { type: 'text', label: 'Critical Pending', value: level.PendingCritical ?? 0, colorClass: 'text-danger', visible: (level.PendingCritical ?? 0) > 0 },
+      ]} />
 
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 

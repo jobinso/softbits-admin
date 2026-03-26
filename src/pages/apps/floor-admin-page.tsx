@@ -12,6 +12,7 @@ import {
   LoadingSpinner,
   PageHeader,
   TableCard,
+  PageStatusBar,
 } from '@/components/shared';
 import type { ColumnDef, TabItem } from '@/components/shared';
 import {
@@ -450,33 +451,15 @@ export default function FloorAdminPage() {
         description="Shop floor labor tracking configuration"
       />
 
-      {/* Status Bar — pill style matching Licensing */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 p-4 bg-surface-raised border border-border rounded-xl">
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Service</p>
-          <StatusBadge status={status.enabled !== false ? 'success' : 'danger'} label={status.enabled !== false ? 'Connected' : 'Offline'} size="sm" />
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Active Operators</p>
-          <p className="text-sm font-semibold text-semantic-text-default tabular-nums">{status.activeOperators ?? '-'}</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Active Jobs</p>
-          <p className="text-sm font-semibold text-semantic-text-default tabular-nums">{status.activeJobs ?? '-'}</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Hours Today</p>
-          <p className="text-sm font-semibold text-semantic-text-default tabular-nums">{dashboard.laborStats?.totalHoursToday?.toFixed(1) || '-'}</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Qty Completed</p>
-          <p className="text-sm font-semibold text-semantic-text-default tabular-nums">{dashboard.laborStats?.qtyCompletedToday ?? '-'}</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">On Break</p>
-          <p className="text-sm font-semibold text-semantic-text-default tabular-nums">{dashboard.laborStats?.onBreak ?? '-'}</p>
-        </div>
-      </div>
+      {/* Status Bar */}
+      <PageStatusBar items={[
+        { type: 'badge', label: 'Service', status: status.enabled !== false ? 'success' : 'danger', badgeLabel: status.enabled !== false ? 'Connected' : 'Offline' },
+        { type: 'text', label: 'Active Operators', value: status.activeOperators ?? '-' },
+        { type: 'text', label: 'Active Jobs', value: status.activeJobs ?? '-' },
+        { type: 'text', label: 'Hours Today', value: dashboard.laborStats?.totalHoursToday?.toFixed(1) || '-' },
+        { type: 'text', label: 'Qty Completed', value: dashboard.laborStats?.qtyCompletedToday ?? '-' },
+        { type: 'text', label: 'On Break', value: dashboard.laborStats?.onBreak ?? '-' },
+      ]} />
 
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 

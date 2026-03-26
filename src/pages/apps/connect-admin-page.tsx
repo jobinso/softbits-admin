@@ -30,6 +30,7 @@ import {
   Card,
   PageHeader,
   TableCard,
+  PageStatusBar,
 } from '@/components/shared';
 import type { ColumnDef, TabItem } from '@/components/shared';
 import {
@@ -870,26 +871,12 @@ export default function ConnectAdminPage() {
       />
 
       {/* Status Bar */}
-      <div className="flex flex-wrap items-center gap-6 p-4 bg-surface-raised border border-border rounded-xl text-xs">
-        <div className="flex items-center gap-1.5">
-          <span className="text-semantic-text-faint">Service:</span>
-          <StatusBadge status={syncStatus ? 'success' : 'danger'} label={syncStatus ? 'Connected' : 'Offline'} size="sm" />
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-semantic-text-faint">Sync:</span>
-          <StatusBadge status={syncStatus?.isRunning ? 'warning' : 'success'} label={syncStatus?.isRunning ? 'Syncing...' : 'Ready'} size="sm" />
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-semantic-text-faint">Last Sync:</span>
-          <span className="text-semantic-text-secondary font-medium">{formatTimeAgo(syncStatus?.lastSync)}</span>
-        </div>
-        {(syncStatus?.queuePending ?? 0) > 0 && (
-          <div className="flex items-center gap-1.5">
-            <span className="text-semantic-text-faint">Pending:</span>
-            <span className="text-warning font-medium">{syncStatus?.queuePending}</span>
-          </div>
-        )}
-      </div>
+      <PageStatusBar items={[
+        { type: 'badge', label: 'Service', status: syncStatus ? 'success' : 'danger', badgeLabel: syncStatus ? 'Connected' : 'Offline' },
+        { type: 'badge', label: 'Sync', status: syncStatus?.isRunning ? 'warning' : 'success', badgeLabel: syncStatus?.isRunning ? 'Syncing...' : 'Ready' },
+        { type: 'text', label: 'Last Sync', value: formatTimeAgo(syncStatus?.lastSync) },
+        { type: 'text', label: 'Pending', value: syncStatus?.queuePending ?? 0, colorClass: 'text-warning', visible: (syncStatus?.queuePending ?? 0) > 0 },
+      ]} />
 
       <Tabs tabs={CONNECT_TABS} activeTab={activeTab} onChange={setActiveTab} />
 

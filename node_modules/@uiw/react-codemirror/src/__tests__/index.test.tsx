@@ -6,6 +6,65 @@ import { render, fireEvent, screen } from '@testing-library/react';
 // import '@testing-library/jest-dom';
 import CodeMirror, { ReactCodeMirrorRef } from '..';
 
+// Setup JSDOM mocks for CodeMirror
+beforeAll(() => {
+  // Mock Range.getClientRects
+  Object.defineProperty(global.Range.prototype, 'getClientRects', {
+    writable: true,
+    value: jest.fn(() => ({
+      length: 1,
+      item: () => ({ bottom: 16, height: 16, left: 0, right: 100, top: 0, width: 100 }),
+      [Symbol.iterator]: function* () {
+        yield { bottom: 16, height: 16, left: 0, right: 100, top: 0, width: 100 };
+      },
+    })),
+  });
+
+  Object.defineProperty(global.Range.prototype, 'getBoundingClientRect', {
+    writable: true,
+    value: jest.fn(() => ({ bottom: 16, height: 16, left: 0, right: 100, top: 0, width: 100 })),
+  });
+
+  // Mock observers used by CodeMirror internals in JSDOM.
+  class MockIntersectionObserver {
+    observe = jest.fn();
+    unobserve = jest.fn();
+    disconnect = jest.fn();
+    takeRecords = jest.fn(() => []);
+  }
+  class MockResizeObserver {
+    observe = jest.fn();
+    unobserve = jest.fn();
+    disconnect = jest.fn();
+  }
+  class MockMutationObserver {
+    observe = jest.fn();
+    disconnect = jest.fn();
+    takeRecords = jest.fn(() => []);
+  }
+  global.IntersectionObserver = MockIntersectionObserver as unknown as typeof IntersectionObserver;
+  global.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
+  global.MutationObserver = MockMutationObserver as unknown as typeof MutationObserver;
+  window.IntersectionObserver = global.IntersectionObserver;
+  window.ResizeObserver = global.ResizeObserver;
+  window.MutationObserver = global.MutationObserver;
+
+  // Mock element properties
+  Object.defineProperty(global.HTMLElement.prototype, 'clientHeight', { get: () => 100 });
+  Object.defineProperty(global.HTMLElement.prototype, 'clientWidth', { get: () => 500 });
+  Object.defineProperty(global.HTMLElement.prototype, 'offsetHeight', { get: () => 100 });
+  Object.defineProperty(global.HTMLElement.prototype, 'offsetWidth', { get: () => 500 });
+  Object.defineProperty(global.Element.prototype, 'scrollIntoView', { writable: true, value: jest.fn() });
+
+  // Suppress CodeMirror JSDOM warnings
+  const originalError = console.error;
+  console.error = (...args) => {
+    if (args[0]?.toString?.().includes('getClientRects') || args[0]?.toString?.().includes('observe is not a function'))
+      return;
+    originalError.apply(console, args);
+  };
+});
+
 it('CodeMirror', async () => {
   const component = renderer.create(<CodeMirror />);
   let tree = component.toJSON();

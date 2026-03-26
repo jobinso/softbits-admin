@@ -15,7 +15,7 @@ import {
   Save,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Button, Card, Modal, Tabs, StatusBadge, LoadingSpinner, PageHeader } from '@/components/shared';
+import { Button, Card, Modal, Tabs, StatusBadge, LoadingSpinner, PageHeader, PageStatusBar } from '@/components/shared';
 import type { TabItem } from '@/components/shared';
 import type { CacheStats, CacheTtlConfig, WarmerStatus, WarmerTarget } from '@/types';
 import {
@@ -400,35 +400,20 @@ export default function CachePage() {
         description="Monitor cache performance and manage entries"
       />
 
+      {/* Status Bar */}
+      <PageStatusBar items={[
+        { type: 'badge', label: 'Redis / Valkey', status: redisAvailable ? 'success' : 'neutral', badgeLabel: redisAvailable ? 'Connected' : 'Offline' },
+        { type: 'text', label: 'L1 Cache Keys', value: localKeys.toLocaleString() },
+        { type: 'text', label: 'Hit Rate', value: hitRate },
+        { type: 'text', label: 'Total Hits', value: hits.toLocaleString() },
+        { type: 'text', label: 'Total Misses', value: misses.toLocaleString() },
+      ]} />
+
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
       {/* Tab: Overview */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
-          {/* Status Bar */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 p-4 bg-surface-raised border border-border rounded-xl">
-            <div>
-              <p className="text-xs text-semantic-text-faint mb-1">Redis / Valkey</p>
-              <StatusBadge status={redisAvailable ? 'success' : 'neutral'} label={redisAvailable ? 'Connected' : 'Offline'} size="sm" />
-            </div>
-            <div>
-              <p className="text-xs text-semantic-text-faint mb-1">L1 Cache Keys</p>
-              <p className="text-sm font-semibold text-semantic-text-default tabular-nums">{localKeys.toLocaleString()}</p>
-            </div>
-            <div>
-              <p className="text-xs text-semantic-text-faint mb-1">Hit Rate</p>
-              <p className="text-sm font-semibold text-semantic-text-default tabular-nums">{hitRate}</p>
-            </div>
-            <div>
-              <p className="text-xs text-semantic-text-faint mb-1">Total Hits</p>
-              <p className="text-sm font-semibold text-semantic-text-default tabular-nums">{hits.toLocaleString()}</p>
-            </div>
-            <div>
-              <p className="text-xs text-semantic-text-faint mb-1">Total Misses</p>
-              <p className="text-sm font-semibold text-semantic-text-default tabular-nums">{misses.toLocaleString()}</p>
-            </div>
-          </div>
-
           {/* TTL Configuration (read-only overview) */}
           <Card title="Current TTL Settings">
             <div className="space-y-4">

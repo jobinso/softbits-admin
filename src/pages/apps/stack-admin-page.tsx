@@ -14,6 +14,7 @@ import {
   Tabs,
   Card,
   PageHeader,
+  PageStatusBar,
 } from '@/components/shared';
 import type { TabItem } from '@/components/shared';
 import {
@@ -155,43 +156,17 @@ export default function StackAdminPage() {
         description="Warehouse management configuration"
       />
 
-      {/* Status Bar — pill style matching Licensing */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 p-4 bg-surface-raised border border-border rounded-xl">
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Service</p>
-          <StatusBadge status={isConnected ? 'success' : 'danger'} label={isConnected ? 'Connected' : 'Offline'} size="sm" />
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Uptime</p>
-          <p className="text-sm font-medium text-semantic-text-default">{formatUptime(uptime)}</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Services</p>
-          <p className="text-sm font-medium text-semantic-text-default">
-            {status?.services ? Object.values(status.services as Record<string, { running: boolean }>).filter((s) => s.running).length : '-'}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">WebSocket</p>
-          <StatusBadge status={wsData?.enabled ? 'success' : 'neutral'} label={wsData?.enabled ? `Active (${wsData.connections ?? 0})` : 'Inactive'} size="sm" />
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Picks Pending</p>
-          <p className={`text-sm font-semibold tabular-nums ${picksPending > 0 ? 'text-warning' : 'text-semantic-text-faint'}`}>{picksPending}</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Packs Pending</p>
-          <p className={`text-sm font-semibold tabular-nums ${packsPending > 0 ? 'text-warning' : 'text-semantic-text-faint'}`}>{packsPending}</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Ships Pending</p>
-          <p className={`text-sm font-semibold tabular-nums ${shipsPending > 0 ? 'text-warning' : 'text-semantic-text-faint'}`}>{shipsPending}</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Completed Today</p>
-          <p className={`text-sm font-semibold tabular-nums ${completedToday > 0 ? 'text-success' : 'text-semantic-text-faint'}`}>{completedToday}</p>
-        </div>
-      </div>
+      {/* Status Bar */}
+      <PageStatusBar items={[
+        { type: 'badge', label: 'Service', status: isConnected ? 'success' : 'danger', badgeLabel: isConnected ? 'Connected' : 'Offline' },
+        { type: 'text', label: 'Uptime', value: formatUptime(uptime) },
+        { type: 'text', label: 'Services', value: status?.services ? Object.values(status.services as Record<string, { running: boolean }>).filter((s) => s.running).length : '-' },
+        { type: 'badge', label: 'WebSocket', status: wsData?.enabled ? 'success' : 'neutral', badgeLabel: wsData?.enabled ? `Active (${wsData.connections ?? 0})` : 'Inactive' },
+        { type: 'text', label: 'Picks Pending', value: picksPending, colorClass: picksPending > 0 ? 'text-warning' : 'text-semantic-text-faint' },
+        { type: 'text', label: 'Packs Pending', value: packsPending, colorClass: packsPending > 0 ? 'text-warning' : 'text-semantic-text-faint' },
+        { type: 'text', label: 'Ships Pending', value: shipsPending, colorClass: shipsPending > 0 ? 'text-warning' : 'text-semantic-text-faint' },
+        { type: 'text', label: 'Completed Today', value: completedToday, colorClass: completedToday > 0 ? 'text-success' : 'text-semantic-text-faint' },
+      ]} />
 
       <Tabs tabs={STACK_TABS} activeTab={activeTab} onChange={setActiveTab} />
 
