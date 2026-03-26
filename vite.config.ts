@@ -42,6 +42,10 @@ export default defineConfig(({ mode }) => {
           target: bridgeUrl,
           changeOrigin: true,
         },
+        '/api-docs': {
+          target: bridgeUrl,
+          changeOrigin: true,
+        },
         '/work': {
           target: env.VITE_WORK_URL || 'http://localhost:3990',
           changeOrigin: true,

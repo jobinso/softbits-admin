@@ -1,7 +1,7 @@
 import { api, getAuthToken, setAuthToken } from './api';
 import axios from 'axios';
 import { STORAGE_KEYS } from '../utils/constants';
-import type { ApiResponse, User, AdminRole, Device, SystemHealth, SystemSetting, ProjectType, ProjectTypeStatus, ProjectTypeField, Currency, ExchangeRateProvider, ExchangeRate, OptionSet, OptionSetItem, Warehouse, WarehouseErpLink, ErpWarehouseBrowse, Patch, PatchLevel, PatchHistoryEntry, ComplianceData, ConnectSyncStatus, ConnectSyncHistoryEntry, Territory, SalesRep, Pipeline, Stage, RateCard, BillingRole, PosTerminal, GpsSalesData, GpsTerminalFilter, InfuseTestResult, McpTestConnectionResult, DocumentStats, StorageProvider, StagedDocument, RetentionPolicy, ExpiringDocument, RetentionLogEntry, ApprovalWorkflow, Provider, ProviderType, InternalServicesResponse, InfuseDashboardData } from '../types';
+import type { ApiResponse, User, AdminRole, Device, SystemHealth, SystemSetting, ProjectType, ProjectTypeStatus, ProjectTypeField, Currency, ExchangeRateProvider, ExchangeRate, OptionSet, OptionSetItem, Warehouse, WarehouseErpLink, ErpWarehouseBrowse, Patch, PatchLevel, PatchHistoryEntry, ComplianceData, ConnectSyncStatus, ConnectSyncHistoryEntry, Territory, SalesRep, Pipeline, Stage, RateCard, BillingRole, PosTerminal, GpsSalesData, GpsTerminalFilter, InfuseTestResult, McpTestConnectionResult, DocumentStats, StorageProvider, StagedDocument, RetentionPolicy, ExpiringDocument, RetentionLogEntry, ApprovalWorkflow, DocumentTypeConfig, Provider, ProviderType, InternalServicesResponse, InfuseDashboardData } from '../types';
 
 // Raw API for routes mounted at /admin/* (without /api prefix)
 const rawApi = axios.create({ headers: { 'Content-Type': 'application/json' } });
@@ -1625,6 +1625,32 @@ export async function deleteApprovalWorkflow(id: string) {
   return response.data?.data ?? response.data;
 }
 
+// ===== Document Types =====
+
+export async function getDocumentTypes(includeInactive = false): Promise<DocumentTypeConfig[]> {
+  const response = await api.get('/documents/types', { params: includeInactive ? { all: true } : {} });
+  return response.data?.data ?? response.data;
+}
+
+export async function getDocumentType(id: number): Promise<DocumentTypeConfig> {
+  const response = await api.get(`/documents/types/${id}`);
+  return response.data?.data ?? response.data;
+}
+
+export async function updateDocumentType(id: number, data: Partial<DocumentTypeConfig>): Promise<DocumentTypeConfig> {
+  const response = await api.put(`/documents/types/${id}`, data);
+  return response.data?.data ?? response.data;
+}
+
+export async function createDocumentType(data: Partial<DocumentTypeConfig>): Promise<DocumentTypeConfig> {
+  const response = await api.post('/documents/types', data);
+  return response.data?.data ?? response.data;
+}
+
+export async function deleteDocumentType(id: number): Promise<void> {
+  await api.delete(`/documents/types/${id}`);
+}
+
 // ===== Providers =====
 
 export async function getProviders(params?: { category?: string; typeCode?: string; isActive?: boolean }): Promise<ApiResponse<Provider[]>> {
@@ -1716,5 +1742,10 @@ export async function createSystemSetting(data: { key: string; value: string; de
 
 export async function deleteSystemSetting(key: string): Promise<ApiResponse<unknown>> {
   const response = await rawApi.delete(`/admin/settings/${encodeURIComponent(key)}`);
+  return response.data;
+}
+
+export async function reloadSettingsCache(): Promise<ApiResponse<{ message: string; count: number }>> {
+  const response = await rawApi.post('/admin/settings/reload');
   return response.data;
 }

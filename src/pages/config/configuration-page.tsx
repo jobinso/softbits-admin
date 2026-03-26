@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, ListTree, Search, Plus, Sliders } from 'lucide-react';
+import { Settings, Search, Plus, Sliders, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   Button,
@@ -9,26 +9,16 @@ import {
 } from '@/components/shared';
 import {
   getSystemSettings,
-  getOptionSets,
-  createOptionSet,
   createSystemSetting,
+  reloadSettingsCache,
 } from '@/services/admin-service';
 import { useModal } from '@shared/hooks';
-import type { SystemSetting, OptionSet } from '@/types';
+import type { SystemSetting } from '@/types';
 import SettingsCategoryDetail, {
   getCategory,
   getCategoryLabel,
   KNOWN_CATEGORY_ORDER,
 } from './settings-category-detail';
-import OptionSetDetail from './option-set-detail';
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-type Selection =
-  | { type: 'settings'; category: string }
-  | { type: 'option-set'; name: string };
 
 // ---------------------------------------------------------------------------
 // Component
@@ -36,11 +26,9 @@ type Selection =
 
 export default function ConfigurationPage() {
   const queryClient = useQueryClient();
-  const [selected, setSelected] = useState<Selection | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const createSetModal = useModal();
   const createSettingModal = useModal();
-  const [newSetForm, setNewSetForm] = useState({ name: '', displayName: '', description: '', category: '' });
   const [newSettingForm, setNewSettingForm] = useState({ key: '', value: '', description: '', dataType: 'string' as const });
 
   // ---- Data fetching ----
@@ -50,13 +38,7 @@ export default function ConfigurationPage() {
     queryFn: getSystemSettings,
   });
 
-  const { data: setsResponse, isLoading: setsLoading } = useQuery({
-    queryKey: ['admin', 'option-sets'],
-    queryFn: getOptionSets,
-  });
-
   const allSettings: SystemSetting[] = settingsResponse?.data ?? [];
-  const allOptionSets: OptionSet[] = setsResponse?.data?.optionSets ?? setsResponse?.data ?? [];
 
   // ---- Group settings by category ----
 
@@ -84,7 +66,6 @@ export default function ConfigurationPage() {
     const q = searchQuery.toLowerCase();
     return settingsCategories
       .map(([cat, settings]) => {
-        // Match on category label or individual settings
         if (getCategoryLabel(cat).toLowerCase().includes(q)) return [cat, settings] as [string, SystemSetting[]];
         const filtered = settings.filter(
           (s) =>
@@ -97,39 +78,13 @@ export default function ConfigurationPage() {
       .filter(Boolean) as [string, SystemSetting[]][];
   }, [settingsCategories, searchQuery]);
 
-  const filteredOptionSets = useMemo(() => {
-    if (!searchQuery) return allOptionSets;
-    const q = searchQuery.toLowerCase();
-    return allOptionSets.filter(
-      (os) =>
-        os.Name.toLowerCase().includes(q) ||
-        (os.DisplayName || '').toLowerCase().includes(q) ||
-        (os.Category || '').toLowerCase().includes(q)
-    );
-  }, [allOptionSets, searchQuery]);
-
   // ---- Get selected data ----
 
-  const selectedSettingsCategory = selected?.type === 'settings'
-    ? settingsCategories.find(([cat]) => cat === selected.category)
+  const selectedSettingsCategory = selectedCategory
+    ? settingsCategories.find(([cat]) => cat === selectedCategory)
     : null;
 
-  const selectedOptionSet = selected?.type === 'option-set'
-    ? allOptionSets.find((os) => os.Name === selected.name)
-    : null;
-
-  // ---- Create mutations ----
-
-  const createSetMutation = useMutation({
-    mutationFn: (data: Partial<OptionSet>) => createOptionSet(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'option-sets'] });
-      createSetModal.close();
-      toast.success('Option set created');
-      setNewSetForm({ name: '', displayName: '', description: '', category: '' });
-    },
-    onError: (err: Error) => toast.error(err.message || 'Failed to create option set'),
-  });
+  // ---- Mutations ----
 
   const createSettingMutation = useMutation({
     mutationFn: (data: { key: string; value: string; description?: string; dataType?: string }) =>
@@ -143,11 +98,6 @@ export default function ConfigurationPage() {
     onError: (err: Error) => toast.error(err.message || 'Failed to create setting'),
   });
 
-  function handleCreateSet() {
-    if (!newSetForm.name.trim()) { toast.error('Name is required'); return; }
-    createSetMutation.mutate(newSetForm);
-  }
-
   function handleCreateSetting() {
     if (!newSettingForm.key.trim()) { toast.error('Key is required'); return; }
     if (newSettingForm.dataType === 'json') {
@@ -156,9 +106,15 @@ export default function ConfigurationPage() {
     createSettingMutation.mutate(newSettingForm);
   }
 
+  const reloadMutation = useMutation({
+    mutationFn: reloadSettingsCache,
+    onSuccess: (res) => toast.success(`Settings cache reloaded (${res?.data?.count ?? '?'} settings)`),
+    onError: (err: Error) => toast.error(err.message || 'Failed to reload settings cache'),
+  });
+
   // ---- Loading ----
 
-  if (settingsLoading || setsLoading) {
+  if (settingsLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <LoadingSpinner size="lg" />
@@ -181,19 +137,27 @@ export default function ConfigurationPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search..."
+                placeholder="Search settings..."
                 className="form-input pl-8 text-xs py-1.5"
               />
             </div>
           </div>
 
           <div className="p-2 max-h-[calc(100vh-280px)] overflow-y-auto">
-            {/* Settings section */}
-            <div className="mb-3">
-              <div className="px-2 py-1.5 flex items-center justify-between">
-                <span className="text-[10px] uppercase tracking-wider font-bold text-semantic-text-faint">
-                  Settings
-                </span>
+            <div className="px-2 py-1.5 flex items-center justify-between">
+              <span className="text-[10px] uppercase tracking-wider font-bold text-semantic-text-faint">
+                Settings
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => reloadMutation.mutate()}
+                  disabled={reloadMutation.isPending}
+                  className="p-0.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors disabled:opacity-50"
+                  title="Reload settings cache on server"
+                >
+                  <RefreshCw className={`w-3 h-3 ${reloadMutation.isPending ? 'animate-spin' : ''}`} />
+                </button>
                 <button
                   type="button"
                   onClick={() => { setNewSettingForm({ key: '', value: '', description: '', dataType: 'string' }); createSettingModal.open(); }}
@@ -203,149 +167,46 @@ export default function ConfigurationPage() {
                   <Plus className="w-3 h-3" />
                 </button>
               </div>
-              {filteredCategories.map(([category, settings]) => {
-                const isSelected = selected?.type === 'settings' && selected.category === category;
-                return (
-                  <button
-                    key={category}
-                    type="button"
-                    onClick={() => setSelected({ type: 'settings', category })}
-                    className={`w-full flex items-center justify-between px-2.5 py-1.5 text-xs rounded-md mb-0.5 transition-colors ${
-                      isSelected
-                        ? 'bg-accent-primary/10 text-accent-primary font-medium'
-                        : 'text-semantic-text-subtle hover:bg-interactive-hover'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Settings className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate">{getCategoryLabel(category)}</span>
-                    </div>
-                    <span className="text-[10px] text-semantic-text-faint ml-1">{settings.length}</span>
-                  </button>
-                );
-              })}
             </div>
-
-            {/* Option Sets section */}
-            <div>
-              <div className="px-2 py-1.5 flex items-center justify-between">
-                <span className="text-[10px] uppercase tracking-wider font-bold text-semantic-text-faint">
-                  Option Sets
-                </span>
+            {filteredCategories.map(([category, settings]) => {
+              const isSelected = selectedCategory === category;
+              return (
                 <button
+                  key={category}
                   type="button"
-                  onClick={() => { setNewSetForm({ name: '', displayName: '', description: '', category: '' }); createSetModal.open(); }}
-                  className="p-0.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors"
-                  title="New option set"
+                  onClick={() => setSelectedCategory(category)}
+                  className={`w-full flex items-center justify-between px-2.5 py-1.5 text-xs rounded-md mb-0.5 transition-colors ${
+                    isSelected
+                      ? 'bg-accent-primary/10 text-accent-primary font-medium'
+                      : 'text-semantic-text-subtle hover:bg-interactive-hover'
+                  }`}
                 >
-                  <Plus className="w-3 h-3" />
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Settings className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">{getCategoryLabel(category)}</span>
+                  </div>
+                  <span className="text-[10px] text-semantic-text-faint ml-1">{settings.length}</span>
                 </button>
-              </div>
-              {filteredOptionSets.map((os) => {
-                const isSelected = selected?.type === 'option-set' && selected.name === os.Name;
-                return (
-                  <button
-                    key={os.Name}
-                    type="button"
-                    onClick={() => setSelected({ type: 'option-set', name: os.Name })}
-                    className={`w-full flex items-center justify-between px-2.5 py-1.5 text-xs rounded-md mb-0.5 transition-colors ${
-                      isSelected
-                        ? 'bg-accent-primary/10 text-accent-primary font-medium'
-                        : 'text-semantic-text-subtle hover:bg-interactive-hover'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <ListTree className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate">{os.DisplayName || os.Name}</span>
-                    </div>
-                    <span className="text-[10px] text-semantic-text-faint ml-1">{os.ItemCount || 0}</span>
-                  </button>
-                );
-              })}
-            </div>
+              );
+            })}
           </div>
         </div>
       </div>
 
       {/* Right detail panel */}
       <div className="lg:col-span-3">
-        {!selected ? (
+        {!selectedSettingsCategory ? (
           <div className="rounded-lg border border-border bg-surface-raised p-12 text-center">
             <Sliders className="w-12 h-12 text-semantic-text-disabled mx-auto mb-3" />
-            <p className="text-semantic-text-faint">Select a settings category or option set to view and manage its configuration.</p>
+            <p className="text-semantic-text-faint">Select a settings category to view and manage its configuration.</p>
           </div>
-        ) : selected.type === 'settings' && selectedSettingsCategory ? (
+        ) : (
           <SettingsCategoryDetail
             category={selectedSettingsCategory[0]}
             settings={selectedSettingsCategory[1]}
           />
-        ) : selected.type === 'option-set' && selectedOptionSet ? (
-          <OptionSetDetail
-            setName={selected.name}
-            optionSet={selectedOptionSet}
-          />
-        ) : (
-          <div className="rounded-lg border border-border bg-surface-raised p-12 text-center">
-            <Sliders className="w-12 h-12 text-semantic-text-disabled mx-auto mb-3" />
-            <p className="text-semantic-text-faint">The selected item was not found. It may have been deleted.</p>
-          </div>
         )}
       </div>
-
-      {/* Create Option Set Modal */}
-      <Modal
-        isOpen={createSetModal.isOpen}
-        onClose={createSetModal.close}
-        title="Create Option Set"
-        size="md"
-        footer={
-          <>
-            <Button variant="secondary" onClick={createSetModal.close}>Cancel</Button>
-            <Button onClick={handleCreateSet} loading={createSetMutation.isPending}>Create</Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <FormField label="Name (key)" required>
-              <input
-                type="text"
-                value={newSetForm.name}
-                onChange={(e) => setNewSetForm({ ...newSetForm, name: e.target.value })}
-                className="form-input"
-                placeholder="e.g. task-priorities"
-              />
-            </FormField>
-            <FormField label="Display Name">
-              <input
-                type="text"
-                value={newSetForm.displayName}
-                onChange={(e) => setNewSetForm({ ...newSetForm, displayName: e.target.value })}
-                className="form-input"
-                placeholder="Task Priorities"
-              />
-            </FormField>
-          </div>
-          <FormField label="Description">
-            <textarea
-              value={newSetForm.description}
-              onChange={(e) => setNewSetForm({ ...newSetForm, description: e.target.value })}
-              className="form-input"
-              rows={2}
-              placeholder="Optional description"
-            />
-          </FormField>
-          <FormField label="Category">
-            <input
-              type="text"
-              value={newSetForm.category}
-              onChange={(e) => setNewSetForm({ ...newSetForm, category: e.target.value })}
-              className="form-input"
-              placeholder="e.g. CRM, System"
-            />
-          </FormField>
-        </div>
-      </Modal>
 
       {/* Create Setting Modal */}
       <Modal

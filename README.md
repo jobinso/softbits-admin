@@ -24,7 +24,7 @@ softbits-admin is the **system administration console** for the softBITS suite. 
 
 - **Manages users and security** - Console users, roles, API tokens, devices, 2FA/TOTP enrollment
 - **Monitors services** - Real-time health dashboard, service status, cache statistics
-- **Configures the platform** - Project types, currencies, exchange rates, option sets, warehouses, ERP config
+- **Configures the platform** - Currencies, exchange rates, system configuration, option sets, ERP config
 - **Controls licensing** - License upload, validation, module management, compliance checks
 - **Administers applications** - Per-app admin pages for ConnectIT, StackIT, FlipIT, FloorIT, LabelIT, ShopIT, InfuseIT, WorkIT, PulpIT
 - **Manages system patches** - Apply, rollback, and track patch levels
@@ -126,7 +126,14 @@ softbits-admin/
 │   │   ├── security-page.tsx       # Tabbed: Users, Roles, Tokens, Devices, Endpoints, Providers
 │   │   ├── services-page.tsx       # Service monitoring
 │   │   ├── cache-page.tsx          # Cache management + warmer
-│   │   ├── config-page.tsx         # Tabbed: Project Types, Currencies, Option Sets, Warehouses, System Settings
+│   │   ├── config-page.tsx         # Tabbed: Currencies, Exchange Rates, Configuration, Options
+│   │   ├── config/
+│   │   │   ├── currencies-page.tsx     # Currencies table
+│   │   │   ├── exchange-rates-page.tsx # Provider settings + exchange rates table
+│   │   │   ├── configuration-page.tsx  # System settings
+│   │   │   ├── options-page.tsx        # Option sets
+│   │   │   ├── project-types-page.tsx  # Project types
+│   │   │   └── warehouses-page.tsx     # Warehouses
 │   │   ├── erp-config-page.tsx     # ERP configuration file editor
 │   │   ├── licensing-page.tsx      # License management
 │   │   ├── patches-page.tsx        # System patches
@@ -264,7 +271,7 @@ Internal service headers added to proxied requests:
 | `/security` | Security | Tabbed: Users, Roles, Tokens, Devices, Endpoints, Providers |
 | `/services` | Services | Service health monitoring, environment variables, logs |
 | `/cache` | Cache | Cache stats, TTL config, category defaults, cache warmer controls |
-| `/config` | Configuration | Tabbed: Project Types, Currencies, Option Sets, Warehouses, System Settings |
+| `/config` | Configuration | Tabbed: Currencies, Exchange Rates, Configuration, Options |
 | `/erp-config` | ERP Config | JSON file editor for ERP query/mapping configs |
 | `/licensing` | Licensing | License upload, validation, modules, compliance, user seat tracking |
 | `/patches` | Patches | Patch levels, apply/rollback patches, history |
@@ -420,7 +427,7 @@ AdminIT consumes the following Bridge API routes. All routes require authenticat
 | POST | `/admin/patches/:code/apply` | Apply patch |
 | POST | `/admin/patches/:code/rollback` | Rollback patch |
 
-### Configuration
+### Configuration (`/admin/config/*`, `/admin/env`, `/admin/endpoints`)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/admin/config/files` | List config files |
@@ -431,6 +438,26 @@ AdminIT consumes the following Bridge API routes. All routes require authenticat
 | GET | `/admin/endpoints` | List registered endpoints |
 | GET | `/admin/endpoint-groups` | List endpoint groups |
 | POST | `/admin/endpoints/discover` | Discover endpoints |
+
+### Currencies (`/api/admin/currencies/*`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/admin/currencies` | List all currencies |
+| POST | `/api/admin/currencies` | Create currency |
+| PUT | `/api/admin/currencies/:id` | Update currency |
+| DELETE | `/api/admin/currencies/:id` | Delete currency (soft) |
+| POST | `/api/admin/currencies/:id/set-default` | Set default currency |
+
+### Exchange Rates (`/api/admin/exchange-rates/*`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/admin/exchange-rates/provider` | Get provider config |
+| PUT | `/api/admin/exchange-rates/provider` | Update provider settings |
+| POST | `/api/admin/exchange-rates/provider/fetch` | Trigger rate fetch |
+| GET | `/api/admin/exchange-rates/rates` | Get rates (optional ?date=) |
+| POST | `/api/admin/exchange-rates/rates` | Create exchange rate |
+| PUT | `/api/admin/exchange-rates/rates/:id` | Update exchange rate |
+| DELETE | `/api/admin/exchange-rates/rates/:id` | Delete exchange rate |
 
 ### App-Specific Admin Routes
 
@@ -561,5 +588,5 @@ docker exec softbits-admin tail -f /var/log/nginx/error.log
 ---
 
 **Version:** 1.2.0
-**Last Updated:** 2026-03-25
+**Last Updated:** 2026-03-27
 **Maintainer:** softBITS Team

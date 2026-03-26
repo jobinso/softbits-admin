@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Edit, Trash2, ArrowUp, ArrowDown, Lock, Filter } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   DataTable,
@@ -80,6 +80,7 @@ export default function OptionSetDetail({ setName, optionSet }: OptionSetDetailP
   const [itemForm, setItemForm] = useState<ItemForm>(INITIAL_ITEM_FORM);
   const [isEditingItem, setIsEditingItem] = useState(false);
   const [editingItemGuid, setEditingItemGuid] = useState<string | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<string>('');
 
   // ---- Data fetching ----
 
@@ -91,6 +92,17 @@ export default function OptionSetDetail({ setName, optionSet }: OptionSetDetailP
 
   const setDetail = setDetailResponse?.data?.optionSet ?? setDetailResponse?.data;
   const items: OptionSetItem[] = setDetail?.items ?? [];
+
+  const categories = useMemo(() => {
+    const cats = new Set<string>();
+    items.forEach((item) => { if (item.category) cats.add(item.category); });
+    return Array.from(cats).sort();
+  }, [items]);
+
+  const filteredItems = useMemo(() => {
+    if (!categoryFilter) return items;
+    return items.filter((item) => item.category === categoryFilter);
+  }, [items, categoryFilter]);
 
   // ---- Mutations ----
 
@@ -240,7 +252,22 @@ export default function OptionSetDetail({ setName, optionSet }: OptionSetDetailP
       sortable: true,
       render: (val) => <code className="text-xs bg-info/10 text-info px-1.5 py-0.5 rounded">{val}</code>,
     },
-    { key: 'name', label: 'Name', sortable: true, render: (val) => <span className="text-semantic-text-default">{val}</span> },
+    {
+      key: 'name',
+      label: 'Name',
+      sortable: true,
+      render: (val, row) => (
+        <span className="inline-flex items-center gap-1.5">
+          <span className="text-semantic-text-default">{val}</span>
+          {row.isSystem && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-semantic-text-faint bg-surface-subtle border border-border px-1.5 py-0.5 rounded-full">
+              <Lock className="w-2.5 h-2.5" />
+              System
+            </span>
+          )}
+        </span>
+      ),
+    },
     { key: 'category', label: 'Category', width: 100, sortable: true, render: (val) => <span className="text-semantic-text-faint">{val || '-'}</span> },
     { key: 'type', label: 'Type', width: 80, sortable: true, render: (val) => <span className="text-semantic-text-faint">{val || 'text'}</span> },
     {
@@ -318,9 +345,11 @@ export default function OptionSetDetail({ setName, optionSet }: OptionSetDetailP
             <button type="button" onClick={() => openEditItem(row)} className="p-1 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors" title="Edit">
               <Edit className="w-3.5 h-3.5" />
             </button>
-            <button type="button" onClick={() => deleteItemModal.open(row)} className="p-1 text-semantic-text-faint hover:text-danger rounded hover:bg-interactive-hover transition-colors" title="Deactivate">
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
+            {!row.isSystem && (
+              <button type="button" onClick={() => deleteItemModal.open(row)} className="p-1 text-semantic-text-faint hover:text-danger rounded hover:bg-interactive-hover transition-colors" title="Deactivate">
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         );
       },
@@ -355,11 +384,36 @@ export default function OptionSetDetail({ setName, optionSet }: OptionSetDetailP
       {detailLoading ? (
         <div className="flex justify-center py-8"><LoadingSpinner /></div>
       ) : (
-        <TableCard title="Items" count={items.length}>
+        <TableCard title="Items" count={filteredItems.length}>
+          {categories.length > 0 && (
+            <div className="flex items-center gap-2 px-4 py-2 border-b border-border">
+              <Filter className="w-3.5 h-3.5 text-semantic-text-faint" />
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="form-input text-xs py-1 px-2 w-auto min-w-[140px]"
+                title="Filter by category"
+              >
+                <option value="">All Categories</option>
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+              {categoryFilter && (
+                <button
+                  type="button"
+                  onClick={() => setCategoryFilter('')}
+                  className="text-xs text-semantic-text-faint hover:text-semantic-text-default transition-colors"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          )}
           <DataTable<OptionSetItem>
             id="admin-option-set-items"
             columns={itemColumns}
-            data={items}
+            data={filteredItems}
             rowKey="_id"
             onRowClick={openEditItem}
             emptyMessage="No items in this option set"

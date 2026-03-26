@@ -23,6 +23,11 @@ export const helpTopics: Record<string, { title: string; file: string }> = {
   'admin-apps': { title: 'App Administration', file: 'admin-apps' },
   'admin-patches': { title: 'Database Patches', file: 'admin-patches' },
   'admin-shortcuts': { title: 'Keyboard Shortcuts', file: 'admin-shortcuts' },
+  'workit-overview': { title: 'WorkIT - Workflow Automation', file: 'workit' },
+  'workit-event-mappings': { title: 'WorkIT - Event Mappings', file: 'workit-event-mappings' },
+  'workit-webhooks': { title: 'WorkIT - Webhooks', file: 'workit-webhooks' },
+  'workit-document-capture': { title: 'WorkIT - Document Capture', file: 'workit-document-capture' },
+  'workit-document-process': { title: 'WorkIT - Document Processing', file: 'workit-document-process' },
 };
 
 /** Map route paths to help topic IDs for contextual help */
@@ -47,6 +52,7 @@ export const routeToTopic: Record<string, string> = {
   '/licensing': 'admin-licensing',
   '/patches': 'admin-patches',
   '/providers': 'admin-security',
+  '/apps/work': 'workit-overview',
 };
 
 // Markdown to HTML converter — local ESM version (softbits-shared uses CJS which Vite can't transform via alias)
@@ -110,6 +116,64 @@ The Dashboard provides a real-time view of the softBITS platform health and key 
 ### App Service Table
 
 Lists all registered softBITS applications with their enabled/connected state and uptime.`,
+  },
+  'workit-overview': {
+    title: 'WorkIT - Workflow Automation',
+    content: `# WorkIT - Workflow Automation
+
+InfuseIT - Work provides workflow automation and event management, integrating with N8N for event-driven workflows across softBITS.
+
+## Key Features
+
+- **Workflows** - Register and manage N8N workflow connections
+- **Event Mappings** - Route application events to workflows with conditions and transforms
+- **Executions** - Track, retry, and troubleshoot workflow runs
+- **API Keys** - Manage authentication for external integrations
+- **Templates** - Pre-built workflow configurations
+
+## Getting Started
+
+1. Register an N8N workflow in the **Workflows** tab
+2. Create an **Event Mapping** to connect events to workflows
+3. Monitor executions in the **Status** tab
+
+Press **F1** and select "Event Mappings" for detailed conditions and transform template documentation.`,
+  },
+  'workit-event-mappings': {
+    title: 'WorkIT - Event Mappings',
+    content: `# Event Mappings
+
+Event mappings connect softBITS application events to N8N workflows.
+
+## Conditions
+
+Use MongoDB-style JSON to filter events:
+- \`$eq\`, \`$ne\` - Equals / not equals
+- \`$gt\`, \`$gte\`, \`$lt\`, \`$lte\` - Numeric comparisons
+- \`$in\`, \`$nin\` - Value in / not in array
+- \`$exists\` - Field exists
+
+Example: \`{ "order.total": { "$gte": 1000 } }\`
+
+## Transform Templates
+
+Use \`{{path}}\` placeholders to reshape the payload:
+
+\`{ "orderId": "{{order.id}}", "amount": "{{order.total}}" }\`
+
+Leave empty to send the full event payload.
+
+## Event Types
+
+Connect: \`connect.account.created\`, \`connect.opportunity.won\`, \`connect.quote.converted\`, \`connect.activity.created\`
+Pulp: \`pulp.document.uploaded\`, \`pulp.approval.submitted\`, \`pulp.approval.approved\`, \`pulp.staged.captured\`
+Shop: \`shop.order.created\`, \`shop.order.updated\`
+Floor: \`floor.job.completed\`, \`floor.scrap.recorded\`
+Stack: \`stack.order.shipped\`, \`stack.inventory.low\`
+Flip: \`flip.transaction.completed\`, \`flip.transaction.voided\`
+Admin: \`admin.user.created\`, \`admin.user.locked\`, \`admin.role.updated\`, \`admin.device.registered\`
+Labels: \`labels.print.completed\`, \`labels.print.failed\`
+Bridge: \`bridge.syspro.order\`, \`bridge.syspro.invoice\``,
   },
   'admin-shortcuts': {
     title: 'Keyboard Shortcuts',

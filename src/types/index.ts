@@ -312,6 +312,7 @@ export interface OptionSetItem {
   sortOrder?: number;
   isDefault: boolean;
   isActive: boolean;
+  isSystem?: boolean;
 }
 
 // ===== Warehouses =====
@@ -1039,8 +1040,25 @@ export interface WorkExecution {
   CompletedAt?: string;
   DurationMs?: number;
   ErrorMessage?: string;
+  ErrorDetails?: string;
+  ErrorDetailsParsed?: PipelineResult;
   InputPayload?: string;
   OutputPayload?: string;
+  OutputPayloadParsed?: PipelineResult;
+}
+
+export interface PipelineStep {
+  order: number;
+  label: string;
+  status: string;
+  data?: unknown;
+  durationMs: number;
+}
+
+export interface PipelineResult {
+  success: boolean;
+  steps: PipelineStep[];
+  durationMs: number;
 }
 
 export interface WorkExecutionStats {
@@ -1215,6 +1233,46 @@ export interface ApprovalWorkflow {
   ApprovalRoles: string[];
   SequentialApproval: boolean;
   AutoPublishOnApproval: boolean;
+}
+
+export interface DocumentTypeConfig {
+  DocumentTypeId: number;
+  TypeCode: string;
+  DisplayName: string;
+  Description: string | null;
+  Category: string;
+  IconName: string | null;
+  SortOrder: number;
+  IsActive: boolean;
+  // Upload control
+  IsUploadEnabled: boolean;
+  AllowedRoles: string | null; // JSON array string
+  // Classification
+  ClassificationRequired: boolean;
+  AutoAdvanceClassification: boolean;
+  ClassificationConfidenceThreshold: number;
+  // Extraction
+  ExtractionRequired: boolean;
+  RequiredFields: string | null; // JSON array string
+  // Entity matching
+  EntityMatchRequired: boolean;
+  EntityMatchMinConfidence: number;
+  // Review
+  ReviewRequired: boolean;
+  ReviewBypassConfidence: number | null;
+  ReviewBypassMaxValue: number | null;
+  // Posting
+  PostingEnabled: boolean;
+  PostingType: string;
+  AutoPostEnabled: boolean;
+  AutoPostMinConfidence: number;
+  AutoPostMaxValue: number | null;
+  AutoPostMaxLines: number | null;
+  // Audit
+  CreatedAt: string;
+  CreatedBy: string;
+  UpdatedAt: string;
+  UpdatedBy: string | null;
 }
 
 // ===== ERP Config Types =====

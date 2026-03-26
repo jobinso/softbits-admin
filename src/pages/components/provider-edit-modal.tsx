@@ -438,6 +438,17 @@ function GeneralTab({
         />
       </FormField>
 
+      {/* Credentials warning for editing */}
+      {isEditing && (
+        <div className="flex items-start gap-2 p-3 rounded-lg border border-amber-500/30 bg-amber-500/5">
+          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          <div className="text-xs text-amber-300/90">
+            <span className="font-semibold">Credentials are encrypted at rest.</span>{' '}
+            If you save any changes to this provider, you must re-enter the full credentials below — they cannot be read back from the database.
+          </div>
+        </div>
+      )}
+
       {/* Credentials JSON */}
       <FormField label={
         <span className="flex items-center">
@@ -461,7 +472,7 @@ function GeneralTab({
           }}
           className="form-input font-mono text-xs"
           rows={4}
-          placeholder={examples?.credentials || '{}'}
+          placeholder={isEditing ? (examples?.credentials || 'Re-enter credentials to update') : (examples?.credentials || '{}')}
         />
       </FormField>
 

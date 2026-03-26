@@ -24,8 +24,14 @@ import type { SystemSetting } from '@/types';
 
 /** Map setting key prefixes to user-friendly display names */
 const CATEGORY_LABELS: Record<string, string> = {
-  pos: 'POS / Point of Sale',
-  inventory: 'Inventory',
+  company: 'Company Information',
+  modules: 'Module Enables',
+  cacheWarmer: 'Cache Warmer',
+  connect: 'ConnectIT (CRM)',
+  stack: 'StackIT (WMS)',
+  floor: 'FloorIT (Shop Floor)',
+  documents: 'PulpIT (Document Management)',
+  pos: 'FlipIT (POS)',
   system: 'System',
   audit: 'Audit Logging',
   presentation: 'Presentation',

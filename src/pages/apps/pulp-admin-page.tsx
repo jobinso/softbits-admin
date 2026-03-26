@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { FileText, Database, Archive, Shield, CheckCircle, Clock, Plus, Edit3, Trash2, RefreshCw, AlertTriangle, ExternalLink, Star, Wifi, WifiOff } from 'lucide-react';
+import { FileText, Database, Archive, Shield, CheckCircle, Clock, Plus, Edit3, Trash2, RefreshCw, AlertTriangle, ExternalLink, Star, Wifi, WifiOff, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   DataTable,
@@ -17,7 +17,7 @@ import {
 } from '@/components/shared';
 import type { TabItem, ColumnDef } from '@/components/shared';
 import { useModal } from '@shared/hooks';
-import type { StagedDocument, RetentionPolicy, ExpiringDocument, RetentionLogEntry, ApprovalWorkflow, Provider, ArchivedDocument } from '@/types';
+import type { StagedDocument, RetentionPolicy, ExpiringDocument, RetentionLogEntry, ApprovalWorkflow, DocumentTypeConfig, Provider, ArchivedDocument } from '@/types';
 import {
   getHealth,
   getDocumentStats,
@@ -36,6 +36,8 @@ import {
   getApprovalWorkflows,
   createApprovalWorkflow,
   deleteApprovalWorkflow,
+  getDocumentTypes,
+  updateDocumentType,
   getProviders,
   getProvidersByApp,
   testProvider,
@@ -50,6 +52,7 @@ const tabs: TabItem[] = [
   { id: 'archive', label: 'Archive', icon: <Archive className="w-4 h-4" /> },
   { id: 'workflows', label: 'Approvals', icon: <CheckCircle className="w-4 h-4" /> },
   { id: 'providers', label: 'Provider', icon: <Database className="w-4 h-4" /> },
+  { id: 'types', label: 'Document Types', icon: <Settings className="w-4 h-4" /> },
 ];
 
 const STAGED_STATUSES_ACTIONABLE = ['CAPTURED', 'CLASSIFYING', 'STAGED', 'REVIEWING'];
@@ -121,6 +124,10 @@ export default function PulpAdminPage() {
   const workflowModal = useModal();
   const [wfForm, setWfForm] = useState<WorkflowForm>(INITIAL_WF_FORM);
 
+  // Document type modal
+  const docTypeModal = useModal();
+  const [editingDocType, setEditingDocType] = useState<DocumentTypeConfig | null>(null);
+
   // ===== Queries =====
 
   const { data: stats, isLoading: statsLoading } = useQuery({
@@ -171,6 +178,12 @@ export default function PulpAdminPage() {
     enabled: activeTab === 'workflows',
   });
 
+  const { data: documentTypes, isLoading: docTypesLoading } = useQuery({
+    queryKey: ['admin', 'pulp', 'document-types'],
+    queryFn: () => getDocumentTypes(true),
+    enabled: activeTab === 'types',
+  });
+
   const { data: archivedDocs, isLoading: archivedLoading } = useQuery({
     queryKey: ['admin', 'pulp', 'archived-documents'],
     queryFn: () => getArchivedDocuments({ limit: 50 }),
@@ -183,6 +196,7 @@ export default function PulpAdminPage() {
   const expiringList: ExpiringDocument[] = Array.isArray(expiringDocs) ? expiringDocs : [];
   const logsList: RetentionLogEntry[] = Array.isArray(retentionLogs) ? retentionLogs : [];
   const workflowsList: ApprovalWorkflow[] = Array.isArray(approvalWorkflows) ? approvalWorkflows : [];
+  const docTypesList: DocumentTypeConfig[] = Array.isArray(documentTypes) ? documentTypes : [];
   const archivedList: ArchivedDocument[] = Array.isArray(archivedDocs) ? archivedDocs : (archivedDocs as { data?: ArchivedDocument[] })?.data || [];
 
   const invalidatePulp = () => queryClient.invalidateQueries({ queryKey: ['admin', 'pulp'] });
@@ -253,6 +267,12 @@ export default function PulpAdminPage() {
   const deleteWfMutation = useMutation({
     mutationFn: (id: string) => deleteApprovalWorkflow(id),
     onSuccess: () => { invalidatePulp(); toast.success('Workflow deleted'); },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const updateDocTypeMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<DocumentTypeConfig> }) => updateDocumentType(id, data),
+    onSuccess: () => { invalidatePulp(); docTypeModal.close(); setEditingDocType(null); toast.success('Document type updated'); },
     onError: (err: Error) => toast.error(err.message),
   });
 
@@ -357,7 +377,37 @@ export default function PulpAdminPage() {
     });
   }
 
+  function openEditDocType(docType: DocumentTypeConfig) {
+    setEditingDocType({ ...docType });
+    docTypeModal.open();
+  }
+
+  function handleSaveDocType() {
+    if (!editingDocType) return;
+    const { DocumentTypeId, CreatedAt: _ca, CreatedBy: _cb, UpdatedAt: _ua, UpdatedBy: _ub, TypeCode: _tc, ...updates } = editingDocType;
+    updateDocTypeMutation.mutate({ id: DocumentTypeId, data: updates });
+  }
+
   // ===== Column definitions =====
+
+  const docTypeColumns: ColumnDef<DocumentTypeConfig>[] = [
+    { key: 'TypeCode', label: 'Code', width: 140, sortable: true, filterable: true, render: (val) => <span className="font-mono text-xs text-semantic-text-default">{val}</span> },
+    { key: 'DisplayName', label: 'Name', sortable: true, filterable: true, render: (val) => <span className="font-medium text-semantic-text-default">{val}</span> },
+    {
+      key: 'Category', label: 'Category', width: 130, sortable: true,
+      render: (val) => {
+        const map: Record<string, 'success' | 'info' | 'warning' | 'neutral' | 'danger'> = {
+          COMMERCIAL: 'info', FINANCIAL: 'success', QUALITY: 'warning', LOGISTICS: 'neutral', ENGINEERING: 'danger', GENERAL: 'neutral',
+        };
+        return <StatusBadge status={map[val as string] || 'neutral'} label={val as string} size="sm" />;
+      },
+    },
+    { key: 'PostingType', label: 'Posting', width: 130, render: (val) => <span className="text-xs text-semantic-text-faint">{val === 'NONE' ? '-' : val}</span> },
+    { key: 'ReviewRequired', label: 'Review', width: 80, render: (val) => <StatusBadge status={val ? 'warning' : 'neutral'} label={val ? 'Yes' : 'No'} size="sm" /> },
+    { key: 'AutoAdvanceClassification', label: 'Auto-Class', width: 95, render: (val) => <StatusBadge status={val ? 'success' : 'neutral'} label={val ? 'Yes' : 'No'} size="sm" /> },
+    { key: 'PostingEnabled', label: 'Post', width: 70, render: (val) => <StatusBadge status={val ? 'success' : 'neutral'} label={val ? 'Yes' : 'No'} size="sm" /> },
+    { key: 'IsActive', label: 'Active', width: 80, render: (val) => <StatusBadge status={val ? 'success' : 'danger'} label={val ? 'Yes' : 'No'} size="sm" /> },
+  ];
 
   const providerColumns: ColumnDef<Provider>[] = [
     {
@@ -818,6 +868,152 @@ export default function PulpAdminPage() {
         </TableCard>
       )}
 
+      {/* Tab: Document Types */}
+      {activeTab === 'types' && (
+        <TableCard
+          title="Document Types"
+          icon={<Settings className="w-4 h-4" />}
+          count={docTypesList.length}
+        >
+          {docTypesLoading ? <LoadingSpinner size="lg" /> : (
+            <DataTable<DocumentTypeConfig>
+              id="admin-pulp-doc-types"
+              columns={docTypeColumns}
+              data={docTypesList}
+              rowKey="DocumentTypeId"
+              onRowClick={openEditDocType}
+              emptyMessage="No document types configured"
+              emptyIcon={Settings}
+              showFilters
+              embedded
+              showColumnPicker={false}
+            />
+          )}
+        </TableCard>
+      )}
+
+      {/* Edit Document Type Modal */}
+      <Modal
+        isOpen={docTypeModal.isOpen}
+        onClose={() => { docTypeModal.close(); setEditingDocType(null); }}
+        title={editingDocType ? `Edit: ${editingDocType.DisplayName}` : 'Document Type'}
+        size="xl"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => { docTypeModal.close(); setEditingDocType(null); }}>Cancel</Button>
+            <Button onClick={handleSaveDocType} loading={updateDocTypeMutation.isPending}>Save</Button>
+          </>
+        }
+      >
+        {editingDocType && (
+          <div className="space-y-6">
+            {/* General */}
+            <div>
+              <h4 className="text-xs font-semibold text-semantic-text-subtle uppercase tracking-wider mb-3">General</h4>
+              <div className="grid grid-cols-3 gap-4">
+                <FormField label="Display Name" required>
+                  <input type="text" value={editingDocType.DisplayName} onChange={(e) => setEditingDocType({ ...editingDocType, DisplayName: e.target.value })} className="form-input" />
+                </FormField>
+                <FormField label="Category">
+                  <select value={editingDocType.Category} onChange={(e) => setEditingDocType({ ...editingDocType, Category: e.target.value })} className="form-input" title="Category">
+                    {['COMMERCIAL', 'FINANCIAL', 'QUALITY', 'LOGISTICS', 'ENGINEERING', 'GENERAL'].map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </FormField>
+                <FormField label="Sort Order">
+                  <input type="number" min="0" value={editingDocType.SortOrder} onChange={(e) => setEditingDocType({ ...editingDocType, SortOrder: parseInt(e.target.value) || 0 })} className="form-input" />
+                </FormField>
+              </div>
+              <div className="grid grid-cols-2 gap-4 mt-3">
+                <FormField label="Description">
+                  <textarea value={editingDocType.Description || ''} onChange={(e) => setEditingDocType({ ...editingDocType, Description: e.target.value || null })} className="form-input" rows={2} />
+                </FormField>
+                <FormField label="Active">
+                  <ToggleField checked={editingDocType.IsActive} onChange={(v) => setEditingDocType({ ...editingDocType, IsActive: v })} label={editingDocType.IsActive ? 'Active' : 'Inactive'} />
+                </FormField>
+              </div>
+            </div>
+
+            {/* Upload Control */}
+            <div>
+              <h4 className="text-xs font-semibold text-semantic-text-subtle uppercase tracking-wider mb-3">Upload Control</h4>
+              <ToggleField checked={editingDocType.IsUploadEnabled} onChange={(v) => setEditingDocType({ ...editingDocType, IsUploadEnabled: v })} label="Upload Enabled" />
+            </div>
+
+            {/* Classification */}
+            <div>
+              <h4 className="text-xs font-semibold text-semantic-text-subtle uppercase tracking-wider mb-3">Classification</h4>
+              <div className="grid grid-cols-3 gap-4">
+                <ToggleField checked={editingDocType.ClassificationRequired} onChange={(v) => setEditingDocType({ ...editingDocType, ClassificationRequired: v })} label="Classification Required" />
+                <ToggleField checked={editingDocType.AutoAdvanceClassification} onChange={(v) => setEditingDocType({ ...editingDocType, AutoAdvanceClassification: v })} label="Auto-Advance Classification" />
+                <FormField label={`Confidence Threshold (${Math.round(editingDocType.ClassificationConfidenceThreshold * 100)}%)`}>
+                  <input type="number" min="0" max="1" step="0.01" value={editingDocType.ClassificationConfidenceThreshold} onChange={(e) => setEditingDocType({ ...editingDocType, ClassificationConfidenceThreshold: parseFloat(e.target.value) || 0 })} className="form-input" />
+                </FormField>
+              </div>
+            </div>
+
+            {/* Extraction */}
+            <div>
+              <h4 className="text-xs font-semibold text-semantic-text-subtle uppercase tracking-wider mb-3">Extraction</h4>
+              <ToggleField checked={editingDocType.ExtractionRequired} onChange={(v) => setEditingDocType({ ...editingDocType, ExtractionRequired: v })} label="Extraction Required" />
+            </div>
+
+            {/* Entity Matching */}
+            <div>
+              <h4 className="text-xs font-semibold text-semantic-text-subtle uppercase tracking-wider mb-3">Entity Matching</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <ToggleField checked={editingDocType.EntityMatchRequired} onChange={(v) => setEditingDocType({ ...editingDocType, EntityMatchRequired: v })} label="Entity Match Required" />
+                <FormField label={`Min Confidence (${Math.round(editingDocType.EntityMatchMinConfidence * 100)}%)`}>
+                  <input type="number" min="0" max="1" step="0.01" value={editingDocType.EntityMatchMinConfidence} onChange={(e) => setEditingDocType({ ...editingDocType, EntityMatchMinConfidence: parseFloat(e.target.value) || 0 })} className="form-input" />
+                </FormField>
+              </div>
+            </div>
+
+            {/* Review */}
+            <div>
+              <h4 className="text-xs font-semibold text-semantic-text-subtle uppercase tracking-wider mb-3">Review</h4>
+              <div className="grid grid-cols-3 gap-4">
+                <ToggleField checked={editingDocType.ReviewRequired} onChange={(v) => setEditingDocType({ ...editingDocType, ReviewRequired: v })} label="Review Required" />
+                <FormField label={`Bypass Confidence${editingDocType.ReviewBypassConfidence != null ? ` (${Math.round(editingDocType.ReviewBypassConfidence * 100)}%)` : ''}`}>
+                  <input type="number" min="0" max="1" step="0.01" value={editingDocType.ReviewBypassConfidence ?? ''} onChange={(e) => setEditingDocType({ ...editingDocType, ReviewBypassConfidence: e.target.value ? parseFloat(e.target.value) : null })} className="form-input" placeholder="Optional" />
+                </FormField>
+                <FormField label="Bypass Max Value">
+                  <input type="number" min="0" value={editingDocType.ReviewBypassMaxValue ?? ''} onChange={(e) => setEditingDocType({ ...editingDocType, ReviewBypassMaxValue: e.target.value ? parseFloat(e.target.value) : null })} className="form-input" placeholder="Optional" />
+                </FormField>
+              </div>
+            </div>
+
+            {/* Posting */}
+            <div>
+              <h4 className="text-xs font-semibold text-semantic-text-subtle uppercase tracking-wider mb-3">Posting</h4>
+              <div className="grid grid-cols-3 gap-4">
+                <ToggleField checked={editingDocType.PostingEnabled} onChange={(v) => setEditingDocType({ ...editingDocType, PostingEnabled: v })} label="Posting Enabled" />
+                <FormField label="Posting Type">
+                  <select value={editingDocType.PostingType} onChange={(e) => setEditingDocType({ ...editingDocType, PostingType: e.target.value })} className="form-input" title="Posting type">
+                    {['NONE', 'SALES_ORDER', 'AP_INVOICE', 'CREDIT_NOTE', 'PO_RECEIPT'].map((t) => (
+                      <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
+                    ))}
+                  </select>
+                </FormField>
+                <ToggleField checked={editingDocType.AutoPostEnabled} onChange={(v) => setEditingDocType({ ...editingDocType, AutoPostEnabled: v })} label="Auto-Post Enabled" />
+              </div>
+              <div className="grid grid-cols-3 gap-4 mt-3">
+                <FormField label={`Auto-Post Min Confidence (${Math.round(editingDocType.AutoPostMinConfidence * 100)}%)`}>
+                  <input type="number" min="0" max="1" step="0.01" value={editingDocType.AutoPostMinConfidence} onChange={(e) => setEditingDocType({ ...editingDocType, AutoPostMinConfidence: parseFloat(e.target.value) || 0 })} className="form-input" />
+                </FormField>
+                <FormField label="Auto-Post Max Value">
+                  <input type="number" min="0" value={editingDocType.AutoPostMaxValue ?? ''} onChange={(e) => setEditingDocType({ ...editingDocType, AutoPostMaxValue: e.target.value ? parseFloat(e.target.value) : null })} className="form-input" placeholder="Optional" />
+                </FormField>
+                <FormField label="Auto-Post Max Lines">
+                  <input type="number" min="0" value={editingDocType.AutoPostMaxLines ?? ''} onChange={(e) => setEditingDocType({ ...editingDocType, AutoPostMaxLines: e.target.value ? parseInt(e.target.value) : null })} className="form-input" placeholder="Optional" />
+                </FormField>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       {/* Create / Edit Policy Modal */}
       <Modal
         isOpen={policyModal.isOpen}
@@ -940,6 +1136,23 @@ function FormField({ label, required, children }: { label: string; required?: bo
       </label>
       {children}
     </div>
+  );
+}
+
+function ToggleField({ checked, onChange, label }: { checked: boolean; onChange: (val: boolean) => void; label: string }) {
+  return (
+    <label className="flex items-center gap-2 cursor-pointer py-1">
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${checked ? 'bg-primary' : 'bg-dark-200'}`}
+      >
+        <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${checked ? 'translate-x-[18px]' : 'translate-x-[3px]'}`} />
+      </button>
+      <span className="text-sm text-semantic-text-secondary">{label}</span>
+    </label>
   );
 }
 

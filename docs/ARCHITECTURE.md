@@ -4,7 +4,7 @@
 
 AdminIT is the system administration console for the softBITS platform. It is a React SPA that replaced the former vanilla HTML/JS admin console (31,000 lines across `admin.html` + 30 JS modules in Bridge).
 
-AdminIT manages all 17 admin sections: Dashboard, Security (Users/Roles/Tokens/Devices), Services, Cache, Config (Project Types/Currencies/Option Sets/Warehouses), Licensing, Patches, Providers, and 9 app-specific admin pages (ConnectIT, StackIT, FlipIT, FloorIT, LabelIT, ShopIT, InfuseIT, WorkIT, PulpIT).
+AdminIT manages all 17 admin sections: Dashboard, Security (Users/Roles/Tokens/Devices), Services, Cache, Config (Currencies/Exchange Rates/Configuration/Options), Licensing, Patches, Providers, and 9 app-specific admin pages (ConnectIT, StackIT, FlipIT, FloorIT, LabelIT, ShopIT, InfuseIT, WorkIT, PulpIT).
 
 ## Architecture
 
@@ -70,7 +70,7 @@ softbits-admin/
 │   │   ├── login-page.tsx
 │   │   ├── dashboard-page.tsx
 │   │   ├── security/          # Users, Roles, Tokens, Devices
-│   │   ├── config/            # Project Types, Currencies, etc.
+│   │   ├── config/            # Currencies, Exchange Rates, Configuration, Options
 │   │   ├── cache-page.tsx
 │   │   ├── services-page.tsx
 │   │   ├── licensing-page.tsx
@@ -145,10 +145,10 @@ AdminIT uses shared React components from `softbits-shared/components/`:
 | `/security/devices` | Device Management | admin-devices.js |
 | `/services` | Service Monitoring | admin-services.js |
 | `/cache` | Cache Management | admin-cache.js |
-| `/config/project-types` | Project Types | admin-project-types.js |
-| `/config/currencies` | Currencies | admin-currencies-config.js |
-| `/config/option-sets` | Option Sets | admin-config.js |
-| `/config/warehouses` | Warehouses | admin-warehouses.js |
+| `/config` (Currencies tab) | Currencies | currencies-page.tsx |
+| `/config` (Exchange Rates tab) | Exchange Rates | exchange-rates-page.tsx |
+| `/config` (Configuration tab) | System Settings | configuration-page.tsx |
+| `/config` (Options tab) | Option Sets | options-page.tsx |
 | `/licensing` | License Management | admin-licensing.js |
 | `/patches` | System Patches | admin-patches.js |
 | `/providers` | Provider Management | admin-providers.js |

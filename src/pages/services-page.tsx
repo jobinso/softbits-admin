@@ -40,6 +40,7 @@ const SERVICE_NAMES: Record<string, string> = {
   'infuse-mcp': 'Infuse MCP',
   'infuse-http': 'Infuse HTTP',
   'infuse-work': 'Infuse Work',
+  'softbits-pulp': 'SoftBITS Pulp',
 };
 
 const APP_SERVICES = [
@@ -61,6 +62,7 @@ const LOG_SERVICES = [
   { value: 'infuse-mcp', label: 'Infuse MCP' },
   { value: 'infuse-http', label: 'Infuse HTTP' },
   { value: 'infuse-work', label: 'Infuse Work' },
+  { value: 'softbits-pulp', label: 'Pulp' },
 ];
 
 const tabs: TabItem[] = [

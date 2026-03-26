@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
+import { subDays } from 'date-fns';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Workflow, Play, Edit, Trash2, Plus, Key, RefreshCw, RotateCcw, Ban, Eye, Database, ExternalLink, Wifi, WifiOff, Star, Layers, FileText, Mail, Globe, Clock, PackageMinus, AlertTriangle, ShoppingCart, Receipt, ChevronRight, Pause, FlaskConical, Zap } from 'lucide-react';
+import { Workflow, Play, Edit, Trash2, Plus, Key, RefreshCw, RotateCcw, Ban, Eye, Database, ExternalLink, Wifi, WifiOff, Star, Layers, FileText, Mail, Globe, Clock, PackageMinus, AlertTriangle, ShoppingCart, Receipt, ChevronRight, ChevronDown, ChevronUp, Pause, FlaskConical, Zap, HelpCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import {
@@ -19,7 +20,7 @@ import {
 } from '@/components/shared';
 import type { TabItem, ColumnDef, TableFilterField, TableColumnPickerColumn } from '@/components/shared';
 import { useModal } from '@shared/hooks';
-import type { WorkWorkflow, WorkExecution, WorkEventMapping, WorkApiKey, Provider, WorkTemplate, WorkTemplateInstance } from '@/types';
+import type { WorkWorkflow, WorkExecution, WorkEventMapping, WorkApiKey, Provider, WorkTemplate, WorkTemplateInstance, PipelineResult } from '@/types';
 import {
   getWorkHealth,
   getWorkWorkflows,
@@ -137,6 +138,103 @@ const INITIAL_KEY_FORM: ApiKeyForm = {
 
 const ALL_PERMISSIONS = ['callback', 'status', 'execute', 'manage', 'read'];
 
+// ---------------------------------------------------------------------------
+// Event Mapping Reference Data
+// ---------------------------------------------------------------------------
+
+const EVENT_MAPPING_EXAMPLES: Record<string, { label: string; hint: string; conditions: string; transform: string }> = {
+  'high-value-orders': {
+    label: 'High-Value Orders',
+    hint: 'Trigger only for orders over $1,000 from premium customers.',
+    conditions: '{\n  "order.total": { "$gte": 1000 },\n  "customer.status": { "$eq": "premium" }\n}',
+    transform: '{\n  "orderId": "{{order.id}}",\n  "customer": "{{customer.name}}",\n  "amount": "{{order.total}}",\n  "email": "{{customer.email}}"\n}',
+  },
+  'inventory-alerts': {
+    label: 'Low Inventory Alert',
+    hint: 'Trigger when stock falls below reorder point in specific warehouses.',
+    conditions: '{\n  "quantity": { "$lte": 10 },\n  "warehouse": { "$in": ["WH01", "WH02"] }\n}',
+    transform: '{\n  "stockCode": "{{stockCode}}",\n  "description": "{{description}}",\n  "onHand": "{{quantity}}",\n  "warehouse": "{{warehouse}}"\n}',
+  },
+  'job-completion-scrap': {
+    label: 'Job Completion with Scrap',
+    hint: 'Trigger when a shop floor job completes with scrap recorded.',
+    conditions: '{\n  "scrapQty": { "$gt": 0 },\n  "status": { "$eq": "completed" }\n}',
+    transform: '{\n  "jobNumber": "{{job.number}}",\n  "operation": "{{operation}}",\n  "goodQty": "{{completedQty}}",\n  "scrapQty": "{{scrapQty}}"\n}',
+  },
+  'new-customer-sync': {
+    label: 'New Customer Notification',
+    hint: 'Trigger when a customer is synced from ERP, send details to N8N.',
+    conditions: '{\n  "source": { "$eq": "erp" }\n}',
+    transform: '{\n  "customerCode": "{{customer.code}}",\n  "name": "{{customer.name}}",\n  "email": "{{customer.email}}",\n  "territory": "{{customer.territory}}"\n}',
+  },
+  'opportunity-won': {
+    label: 'Opportunity Won Notification',
+    hint: 'Trigger when an opportunity is marked as won to notify the team.',
+    conditions: '{\n  "stage": { "$eq": "won" },\n  "value": { "$gte": 5000 }\n}',
+    transform: '{\n  "opportunityName": "{{name}}",\n  "account": "{{account.name}}",\n  "value": "{{value}}",\n  "salesRep": "{{owner.name}}",\n  "closedDate": "{{closedDate}}"\n}',
+  },
+  'document-approval': {
+    label: 'Document Approval Required',
+    hint: 'Trigger when a document is submitted for approval.',
+    conditions: '{\n  "documentType": { "$in": ["Invoice", "PurchaseOrder", "Contract"] }\n}',
+    transform: '{\n  "documentId": "{{documentId}}",\n  "title": "{{documentTitle}}",\n  "type": "{{documentType}}",\n  "submittedBy": "{{submittedBy}}",\n  "approvalUrl": "{{approvalUrl}}"\n}',
+  },
+  'user-account-locked': {
+    label: 'User Account Locked',
+    hint: 'Trigger when a user account is locked due to failed login attempts.',
+    conditions: '',
+    transform: '{\n  "username": "{{username}}",\n  "email": "{{email}}",\n  "lockReason": "{{reason}}",\n  "failedAttempts": "{{failedAttempts}}",\n  "lockedAt": "{{lockedAt}}"\n}',
+  },
+  'webhook-passthrough': {
+    label: 'Passthrough (No Filter)',
+    hint: 'Forward the full event payload to N8N without filtering or transformation.',
+    conditions: '',
+    transform: '',
+  },
+};
+
+const CONDITION_OPERATORS = [
+  { op: '$eq', desc: 'Equals', example: '{ "status": { "$eq": "active" } }' },
+  { op: '$ne', desc: 'Not equals', example: '{ "type": { "$ne": "draft" } }' },
+  { op: '$gt', desc: 'Greater than', example: '{ "total": { "$gt": 500 } }' },
+  { op: '$gte', desc: 'Greater than or equal', example: '{ "total": { "$gte": 1000 } }' },
+  { op: '$lt', desc: 'Less than', example: '{ "qty": { "$lt": 5 } }' },
+  { op: '$lte', desc: 'Less than or equal', example: '{ "qty": { "$lte": 10 } }' },
+  { op: '$in', desc: 'In array', example: '{ "region": { "$in": ["US", "CA"] } }' },
+  { op: '$nin', desc: 'Not in array', example: '{ "type": { "$nin": ["draft", "void"] } }' },
+  { op: '$exists', desc: 'Field exists', example: '{ "email": { "$exists": true } }' },
+  { op: '(direct)', desc: 'Simple equality', example: '{ "status": "active" }' },
+];
+
+const EVENT_TYPE_CATALOG = [
+  { app: 'Connect', types: [
+    'connect.account.created', 'connect.account.updated', 'connect.customer.synced',
+    'connect.contact.created', 'connect.contact.updated',
+    'connect.opportunity.created', 'connect.opportunity.updated', 'connect.opportunity.won', 'connect.opportunity.lost',
+    'connect.project.created', 'connect.project.updated',
+    'connect.quote.created', 'connect.quote.sent', 'connect.quote.accepted', 'connect.quote.converted',
+    'connect.activity.created',
+  ] },
+  { app: 'Pulp', types: [
+    'pulp.document.uploaded', 'pulp.document.updated', 'pulp.document.archived', 'pulp.document.classified',
+    'pulp.approval.submitted', 'pulp.approval.approved', 'pulp.approval.rejected',
+    'pulp.staged.captured',
+  ] },
+  { app: 'Shop', types: ['shop.order.created', 'shop.order.updated', 'shop.customer.created', 'shop.sync.completed'] },
+  { app: 'Floor', types: ['floor.job.started', 'floor.job.completed', 'floor.scrap.recorded', 'floor.downtime.started', 'floor.quality.failed'] },
+  { app: 'Stack', types: ['stack.order.picked', 'stack.order.packed', 'stack.order.shipped', 'stack.inventory.low'] },
+  { app: 'Flip', types: ['flip.transaction.completed', 'flip.transaction.voided'] },
+  { app: 'Admin', types: [
+    'admin.user.created', 'admin.user.updated', 'admin.user.password.changed', 'admin.user.locked', 'admin.user.unlocked',
+    'admin.role.created', 'admin.role.updated',
+    'admin.device.registered', 'admin.device.retired',
+    'admin.token.created', 'admin.token.deactivated',
+  ] },
+  { app: 'Labels', types: ['labels.print.completed', 'labels.print.failed'] },
+  { app: 'Bridge', types: ['bridge.syspro.order', 'bridge.syspro.invoice'] },
+  { app: 'API', types: ['api.webhook.received'] },
+];
+
 // ===== Component =====
 
 export default function WorkAdminPage() {
@@ -169,6 +267,8 @@ export default function WorkAdminPage() {
   const [mappingForm, setMappingForm] = useState<MappingForm>(INITIAL_MAPPING_FORM);
   const [isEditingMapping, setIsEditingMapping] = useState(false);
   const [editingMappingId, setEditingMappingId] = useState<number | null>(null);
+  const [mappingHelpOpen, setMappingHelpOpen] = useState(false);
+  const [mappingHelpSection, setMappingHelpSection] = useState<string | null>(null);
 
   // API key modal
   const apiKeyModal = useModal();
@@ -237,8 +337,13 @@ export default function WorkAdminPage() {
     setExecColumnVisibility((prev) => ({ ...prev, [key]: prev[key] === false ? true : false }));
   };
 
+  const toDateStr = (d: Date) => d.toISOString().slice(0, 10);
+
   const execFilterFields: TableFilterField[] = useMemo(() => [
-    { key: 'WorkflowName', label: 'Workflow', type: 'text' },
+    {
+      key: 'WorkflowName', label: 'Workflow', type: 'select',
+      options: workflows.map((w) => ({ value: w.Name, label: w.Name })),
+    },
     { key: 'EventType', label: 'Event', type: 'text' },
     { key: 'SourceApp', label: 'Source', type: 'text' },
     {
@@ -252,7 +357,15 @@ export default function WorkAdminPage() {
         { value: 'cancelled', label: 'Cancelled' },
       ],
     },
-  ], []);
+    {
+      key: 'StartedAt', label: 'Date Range', type: 'daterange',
+      presets: [
+        { label: 'Today', from: toDateStr(new Date()), to: toDateStr(new Date()) },
+        { label: 'Last 7 Days', from: toDateStr(subDays(new Date(), 7)), to: toDateStr(new Date()) },
+        { label: 'Last 30 Days', from: toDateStr(subDays(new Date(), 30)), to: toDateStr(new Date()) },
+      ],
+    },
+  ], [workflows]);
 
   const execPickerColumns: TableColumnPickerColumn[] = useMemo(() => [
     { key: 'ExecutionId', label: 'ID' },
@@ -262,6 +375,7 @@ export default function WorkAdminPage() {
     { key: 'Status', label: 'Status' },
     { key: 'StartedAt', label: 'Started' },
     { key: 'DurationMs', label: 'Duration' },
+    { key: 'ErrorMessage', label: 'Error' },
   ], []);
 
   const filteredExecData = useMemo(() => {
@@ -281,6 +395,14 @@ export default function WorkAdminPage() {
     if (activeFilters.length > 0) {
       result = result.filter((row) =>
         activeFilters.every(([key, value]) => {
+          if (key.endsWith('_from')) {
+            const rowVal = (row as any)[key.replace(/_from$/, '')];
+            return rowVal ? rowVal.slice(0, 10) >= value : false;
+          }
+          if (key.endsWith('_to')) {
+            const rowVal = (row as any)[key.replace(/_to$/, '')];
+            return rowVal ? rowVal.slice(0, 10) <= value : false;
+          }
           const rowVal = (row as any)[key];
           if (rowVal == null) return false;
           const field = execFilterFields.find((f) => f.key === key);
@@ -344,7 +466,15 @@ export default function WorkAdminPage() {
 
   const execWfMutation = useMutation({
     mutationFn: (id: number) => executeWorkWorkflow(id),
-    onSuccess: (data: any) => { toast.success(`Execution started (ID: ${data?.executionId || 'N/A'})`); invalidateWork(); },
+    onSuccess: (data: any) => {
+      if (data?.triggered === 'email-poll') {
+        const p = data.poll;
+        toast.success(`Poll completed: ${p?.emailsFound ?? 0} found, ${p?.emailsProcessed ?? 0} processed`);
+      } else {
+        toast.success(`Execution started (ID: ${data?.executionId || 'N/A'})`);
+      }
+      invalidateWork();
+    },
     onError: (err: any) => toast.error(err?.response?.data?.error?.message || err?.message || 'Workflow execution failed'),
   });
 
@@ -627,6 +757,7 @@ export default function WorkAdminPage() {
     },
     { key: 'StartedAt', label: 'Started', width: 160, sortable: true, hidden: execColumnVisibility.StartedAt === false, render: (val) => <span className="text-xs text-semantic-text-faint">{val ? new Date(val).toLocaleString() : '-'}</span> },
     { key: 'DurationMs', label: 'Duration', width: 90, sortable: true, hidden: execColumnVisibility.DurationMs === false, render: (val) => <span className="text-semantic-text-faint">{val ? (val / 1000).toFixed(2) + 's' : '-'}</span> },
+    { key: 'ErrorMessage', label: 'Error', sortable: false, hidden: execColumnVisibility.ErrorMessage === false, render: (val) => val ? <span className="text-xs text-danger truncate block max-w-[300px]" title={val}>{val}</span> : <span className="text-semantic-text-faint">-</span> },
     {
       key: 'ExecutionId' as any, label: 'Actions', width: 80, sortable: false,
       render: (_val, row) => (
@@ -1214,19 +1345,39 @@ export default function WorkAdminPage() {
             {execDetail.ErrorMessage && (
               <div>
                 <label className="block text-xs font-medium text-danger mb-1">Error</label>
-                <pre className="bg-surface-overlay rounded-lg p-3 text-xs text-danger font-mono overflow-auto max-h-[150px]">{execDetail.ErrorMessage}</pre>
+                <pre className="bg-surface-overlay rounded-lg p-3 text-xs text-danger font-mono overflow-auto max-h-[100px]">{execDetail.ErrorMessage}</pre>
+              </div>
+            )}
+            {(() => {
+              const pipelineResult = execDetail.OutputPayloadParsed || execDetail.ErrorDetailsParsed;
+              if (pipelineResult?.steps) {
+                return (
+                  <div>
+                    <label className="block text-xs font-medium text-semantic-text-subtle mb-1">Pipeline Steps</label>
+                    <div className="bg-surface-overlay rounded-lg p-3 overflow-auto max-h-[250px]">
+                      <PipelineSteps result={pipelineResult} />
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+            {execDetail.OutputPayload && !execDetail.OutputPayloadParsed?.steps && (
+              <div>
+                <label className="block text-xs font-medium text-semantic-text-subtle mb-1">Output</label>
+                <pre className="bg-surface-overlay rounded-lg p-3 text-xs text-success font-mono overflow-auto max-h-[150px]">{tryFormatJson(execDetail.OutputPayload)}</pre>
+              </div>
+            )}
+            {execDetail.ErrorDetails && !execDetail.ErrorDetailsParsed?.steps && (
+              <div>
+                <label className="block text-xs font-medium text-danger mb-1">Error Details</label>
+                <pre className="bg-surface-overlay rounded-lg p-3 text-xs text-danger font-mono overflow-auto max-h-[150px]">{tryFormatJson(execDetail.ErrorDetails)}</pre>
               </div>
             )}
             {execDetail.InputPayload && (
               <div>
                 <label className="block text-xs font-medium text-semantic-text-subtle mb-1">Input</label>
                 <pre className="bg-surface-overlay rounded-lg p-3 text-xs text-semantic-text-subtle font-mono overflow-auto max-h-[150px]">{tryFormatJson(execDetail.InputPayload)}</pre>
-              </div>
-            )}
-            {execDetail.OutputPayload && (
-              <div>
-                <label className="block text-xs font-medium text-semantic-text-subtle mb-1">Output</label>
-                <pre className="bg-surface-overlay rounded-lg p-3 text-xs text-success font-mono overflow-auto max-h-[150px]">{tryFormatJson(execDetail.OutputPayload)}</pre>
               </div>
             )}
           </div>
@@ -1247,9 +1398,163 @@ export default function WorkAdminPage() {
         }
       >
         <div className="space-y-4">
+          {/* Reference panel toggle */}
+          <button
+            type="button"
+            onClick={() => setMappingHelpOpen(!mappingHelpOpen)}
+            className="flex items-center gap-1.5 text-xs text-primary hover:text-primary-400 transition-colors"
+          >
+            <HelpCircle className="w-3.5 h-3.5" />
+            Event Mapping Reference
+            {mappingHelpOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          </button>
+
+          {/* Reference panel content */}
+          {mappingHelpOpen && (
+            <div className="border border-border rounded-lg bg-surface-subtle p-3 space-y-1 max-h-64 overflow-y-auto">
+              {/* Condition Operators */}
+              <div className="border-b border-border/50">
+                <button
+                  type="button"
+                  onClick={() => setMappingHelpSection(mappingHelpSection === 'operators' ? null : 'operators')}
+                  className="flex items-center justify-between w-full py-1.5 text-left text-xs font-medium text-semantic-text-secondary hover:text-semantic-text-primary"
+                >
+                  <span>Condition Operators</span>
+                  {mappingHelpSection === 'operators' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                </button>
+                {mappingHelpSection === 'operators' && (
+                  <div className="pb-2 space-y-1">
+                    <p className="text-[10px] text-semantic-text-faint">All conditions use AND logic. Supports dot-notation paths (e.g., &quot;order.total&quot;).</p>
+                    {CONDITION_OPERATORS.map((op) => (
+                      <div key={op.op} className="flex items-start gap-2">
+                        <code className="text-[10px] font-mono text-primary shrink-0 w-16">{op.op}</code>
+                        <span className="text-[10px] text-semantic-text-subtle shrink-0 w-28">{op.desc}</span>
+                        <pre className="text-[10px] font-mono text-semantic-text-faint truncate">{op.example}</pre>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Transform Templates */}
+              <div className="border-b border-border/50">
+                <button
+                  type="button"
+                  onClick={() => setMappingHelpSection(mappingHelpSection === 'transforms' ? null : 'transforms')}
+                  className="flex items-center justify-between w-full py-1.5 text-left text-xs font-medium text-semantic-text-secondary hover:text-semantic-text-primary"
+                >
+                  <span>Transform Templates</span>
+                  {mappingHelpSection === 'transforms' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                </button>
+                {mappingHelpSection === 'transforms' && (
+                  <div className="pb-2 space-y-2">
+                    <p className="text-[10px] text-semantic-text-faint">
+                      Use <code className="text-primary">{`{{field}}`}</code> placeholders to extract values from the event payload.
+                      Supports dot-notation for nested fields. Leave empty to send the full payload.
+                    </p>
+                    <div>
+                      <span className="text-[10px] font-semibold text-semantic-text-subtle uppercase tracking-wide">Example</span>
+                      <pre className="mt-0.5 p-2 rounded bg-dark-100 text-[10px] font-mono text-semantic-text-secondary overflow-x-auto">{`{
+  "orderId": "{{order.id}}",
+  "customer": "{{customer.name}}",
+  "total": "{{order.total}}"
+}`}</pre>
+                    </div>
+                    <p className="text-[10px] text-semantic-text-faint">
+                      The transformed payload is sent to N8N. An <code className="text-primary">_event</code> metadata object is always appended with type, sourceApp, correlationId, and timestamp.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Event Types */}
+              <div className="border-b border-border/50">
+                <button
+                  type="button"
+                  onClick={() => setMappingHelpSection(mappingHelpSection === 'events' ? null : 'events')}
+                  className="flex items-center justify-between w-full py-1.5 text-left text-xs font-medium text-semantic-text-secondary hover:text-semantic-text-primary"
+                >
+                  <span>Event Types by App</span>
+                  {mappingHelpSection === 'events' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                </button>
+                {mappingHelpSection === 'events' && (
+                  <div className="pb-2 space-y-1.5">
+                    <p className="text-[10px] text-semantic-text-faint">Click an event type to populate the Event Type field.</p>
+                    {EVENT_TYPE_CATALOG.map((cat) => (
+                      <div key={cat.app}>
+                        <span className="text-[10px] font-semibold text-semantic-text-subtle">{cat.app}</span>
+                        <div className="flex flex-wrap gap-1 mt-0.5">
+                          {cat.types.map((t) => (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => setMappingForm({ ...mappingForm, eventType: t })}
+                              className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-dark-100 text-primary hover:text-primary-400 hover:bg-dark-200 transition-colors cursor-pointer"
+                            >
+                              {t}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Scenario Examples */}
+              <div className="last:border-0">
+                <button
+                  type="button"
+                  onClick={() => setMappingHelpSection(mappingHelpSection === 'examples' ? null : 'examples')}
+                  className="flex items-center justify-between w-full py-1.5 text-left text-xs font-medium text-semantic-text-secondary hover:text-semantic-text-primary"
+                >
+                  <span>Example Scenarios</span>
+                  {mappingHelpSection === 'examples' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                </button>
+                {mappingHelpSection === 'examples' && (
+                  <div className="pb-2 space-y-2">
+                    {Object.entries(EVENT_MAPPING_EXAMPLES).map(([key, ex]) => (
+                      <div key={key} className="border border-border/30 rounded p-2 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-semibold text-semantic-text-secondary">{ex.label}</span>
+                          <button
+                            type="button"
+                            onClick={() => setMappingForm({ ...mappingForm, conditions: ex.conditions, transformTemplate: ex.transform })}
+                            className="text-[10px] text-primary hover:text-primary-400"
+                          >
+                            Use example
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-semantic-text-faint">{ex.hint}</p>
+                        {ex.conditions && (
+                          <div>
+                            <span className="text-[10px] font-semibold text-semantic-text-subtle uppercase tracking-wide">Conditions</span>
+                            <pre className="mt-0.5 p-1.5 rounded bg-dark-100 text-[10px] font-mono text-semantic-text-secondary overflow-x-auto">{ex.conditions}</pre>
+                          </div>
+                        )}
+                        {ex.transform && (
+                          <div>
+                            <span className="text-[10px] font-semibold text-semantic-text-subtle uppercase tracking-wide">Transform</span>
+                            <pre className="mt-0.5 p-1.5 rounded bg-dark-100 text-[10px] font-mono text-semantic-text-secondary overflow-x-auto">{ex.transform}</pre>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Form fields */}
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Event Type" required>
-              <input type="text" value={mappingForm.eventType} onChange={(e) => setMappingForm({ ...mappingForm, eventType: e.target.value })} className="form-input" placeholder="e.g., order.created" />
+              <input type="text" list="event-type-options" value={mappingForm.eventType} onChange={(e) => setMappingForm({ ...mappingForm, eventType: e.target.value })} className="form-input" placeholder="e.g., shop.order.created" />
+              <datalist id="event-type-options">
+                {EVENT_TYPE_CATALOG.flatMap((cat) => cat.types.map((t) => (
+                  <option key={t} value={t}>{cat.app}: {t}</option>
+                )))}
+              </datalist>
             </FormField>
             <FormField label="Workflow" required>
               <select value={mappingForm.workflowId} onChange={(e) => setMappingForm({ ...mappingForm, workflowId: e.target.value })} className="form-input" title="Workflow">
@@ -1261,6 +1566,7 @@ export default function WorkAdminPage() {
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Priority">
               <input type="number" value={mappingForm.priority} onChange={(e) => setMappingForm({ ...mappingForm, priority: parseInt(e.target.value) || 100 })} className="form-input" />
+              <p className="text-[10px] text-semantic-text-faint mt-1">Lower numbers execute first. Default: 100.</p>
             </FormField>
             <FormField label="Status">
               <label className="flex items-center gap-2 mt-2 cursor-pointer">
@@ -1270,10 +1576,12 @@ export default function WorkAdminPage() {
             </FormField>
           </div>
           <FormField label="Conditions (JSON)">
-            <textarea value={mappingForm.conditions} onChange={(e) => setMappingForm({ ...mappingForm, conditions: e.target.value })} className="form-input font-mono text-sm" rows={3} placeholder='{"field": "value"}' />
+            <textarea value={mappingForm.conditions} onChange={(e) => setMappingForm({ ...mappingForm, conditions: e.target.value })} className="form-input font-mono text-xs" rows={4} placeholder='{"field": {"$operator": value}}' />
+            <p className="text-[10px] text-semantic-text-faint mt-1">Optional. All conditions must match (AND logic). Leave empty to trigger on every event of this type.</p>
           </FormField>
           <FormField label="Transform Template">
-            <textarea value={mappingForm.transformTemplate} onChange={(e) => setMappingForm({ ...mappingForm, transformTemplate: e.target.value })} className="form-input font-mono text-sm" rows={3} placeholder="Optional transform template" />
+            <textarea value={mappingForm.transformTemplate} onChange={(e) => setMappingForm({ ...mappingForm, transformTemplate: e.target.value })} className="form-input font-mono text-xs" rows={4} placeholder={'{\n  "key": "{{payload.field}}"\n}'} />
+            <p className="text-[10px] text-semantic-text-faint mt-1">Optional. Reshape the payload sent to N8N using {'{{field}}'} placeholders. Leave empty to send the full event payload.</p>
           </FormField>
         </div>
       </Modal>
@@ -1482,4 +1790,24 @@ function DetailItem({ label, value }: { label: string; value: string }) {
 
 function tryFormatJson(str: string): string {
   try { return JSON.stringify(JSON.parse(str), null, 2); } catch { return str; }
+}
+
+function PipelineSteps({ result }: { result: PipelineResult }) {
+  return (
+    <div className="space-y-1">
+      {result.steps.map((step) => (
+        <div key={step.order} className="flex items-start gap-2 text-xs font-mono">
+          <span className={`w-4 text-center shrink-0 ${step.status === 'success' ? 'text-success' : step.status === 'skipped' ? 'text-semantic-text-faint' : 'text-danger'}`}>
+            {step.status === 'success' ? '\u2713' : step.status === 'skipped' ? '\u2014' : '\u2717'}
+          </span>
+          <span className="text-semantic-text-faint w-4 text-right shrink-0">{step.order}.</span>
+          <span className="text-semantic-text-default flex-1">{step.label}</span>
+          <span className="text-semantic-text-faint shrink-0">{step.durationMs}ms</span>
+        </div>
+      ))}
+      <div className="text-xs text-semantic-text-faint mt-1 pt-1 border-t border-border">
+        Total: {result.durationMs}ms
+      </div>
+    </div>
+  );
 }

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Globe, RefreshCw } from 'lucide-react';
+import { Globe, RefreshCw, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   DataTable,
@@ -152,6 +152,14 @@ export default function EndpointsPage() {
         search={{ value: search, onChange: setSearch, placeholder: "Search endpoints by path, method, entity, or group..." }}
         headerActions={
           <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<ExternalLink className="w-3.5 h-3.5" />}
+              onClick={() => window.open(`${window.location.protocol}//${window.location.hostname}:3000/api-docs`, '_blank', 'noopener')}
+            >
+              Open API
+            </Button>
             <select
               value={entityFilter}
               onChange={(e) => setEntityFilter(e.target.value)}
