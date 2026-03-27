@@ -28,6 +28,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   modules: 'Module Enables',
   cacheWarmer: 'Cache Warmer',
   connect: 'ConnectIT (CRM)',
+  portal: 'Customer Portal',
   stack: 'StackIT (WMS)',
   floor: 'FloorIT (Shop Floor)',
   documents: 'PulpIT (Document Management)',

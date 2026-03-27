@@ -29,6 +29,7 @@ const ShopAdminPage = lazy(() => import('@/pages/apps/shop-admin-page'));
 const InfuseAdminPage = lazy(() => import('@/pages/apps/infuse-admin-page'));
 const WorkAdminPage = lazy(() => import('@/pages/apps/work-admin-page'));
 const PulpAdminPage = lazy(() => import('@/pages/apps/pulp-admin-page'));
+const EmailPollerAdminPage = lazy(() => import('@/pages/apps/email-poller-admin-page'));
 
 function App() {
   const { isAuthenticated } = useAuth();
@@ -83,6 +84,7 @@ function App() {
           <Route path="/apps/infuse" element={<InfuseAdminPage />} />
           <Route path="/apps/work" element={<WorkAdminPage />} />
           <Route path="/apps/pulp" element={<PulpAdminPage />} />
+          <Route path="/apps/email-poller" element={<EmailPollerAdminPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

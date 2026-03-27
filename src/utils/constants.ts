@@ -20,6 +20,7 @@ export const ADMIN_TABS = {
     { id: 'infuseit', label: 'InfuseIT', icon: 'Brain', app: 'infuse' },
     { id: 'workit', label: 'WorkIT', icon: 'Briefcase', app: 'work' },
     { id: 'pulpit', label: 'PulpIT', icon: 'FileText', app: 'pulp' },
+    { id: 'email-poller', label: 'PollIT', icon: 'Mail', app: 'email-poller' },
   ],
 } as const;
 

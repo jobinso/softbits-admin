@@ -1749,3 +1749,58 @@ export async function reloadSettingsCache(): Promise<ApiResponse<{ message: stri
   const response = await rawApi.post('/admin/settings/reload');
   return response.data;
 }
+
+// ===== Email Poller =====
+
+export async function getEmailPollerStatus() {
+  const response = await api.get('/admin/email-poller');
+  return response.data;
+}
+
+export async function getEmailPollerRoutingRules(providerId: string) {
+  const response = await api.get('/admin/email-poller/routing-rules', { params: { providerId } });
+  return response.data;
+}
+
+export async function createEmailPollerRoutingRule(rule: Record<string, unknown>) {
+  const response = await api.post('/admin/email-poller/routing-rules', rule);
+  return response.data;
+}
+
+export async function updateEmailPollerRoutingRule(ruleId: string, updates: Record<string, unknown>) {
+  const response = await api.put(`/admin/email-poller/routing-rules/${ruleId}`, updates);
+  return response.data;
+}
+
+export async function deleteEmailPollerRoutingRule(ruleId: string) {
+  const response = await api.delete(`/admin/email-poller/routing-rules/${ruleId}`);
+  return response.data;
+}
+
+export async function getEmailPollerWorkflows() {
+  const response = await api.get('/admin/email-poller/workflows');
+  return response.data;
+}
+
+export async function getEmailPollerSecurityEvents(params?: { providerId?: string; eventType?: string; limit?: number }) {
+  const response = await api.get('/admin/email-poller/security-events', { params });
+  return response.data;
+}
+
+export async function getEmailPollerSecuritySummary(params?: { providerId?: string; days?: number }) {
+  const response = await api.get('/admin/email-poller/security-events/summary', { params });
+  return response.data;
+}
+
+export async function getEmailPollerCircuitBreakers() {
+  const response = await api.get('/admin/email-poller/circuit-breakers');
+  return response.data;
+}
+
+export async function triggerEmailPoll(providerId?: string) {
+  const url = providerId
+    ? `/admin/email-poller/trigger/${providerId}`
+    : '/admin/email-poller/trigger';
+  const response = await api.post(url);
+  return response.data;
+}

@@ -44,6 +44,7 @@ const AVAILABLE_TABS: Array<{ id: string; name: string; category: string }> = [
   { id: 'infuseit', name: 'InfuseIT - MCP', category: 'Applications' },
   { id: 'shopit', name: 'ShopIT', category: 'Applications' },
   { id: 'pulpit', name: 'PulpIT', category: 'Applications' },
+  { id: 'email-poller', name: 'PollIT', category: 'Applications' },
 ];
 
 const ENTITY_PERM_ENTITIES: Array<{ id: string; label: string }> = [
