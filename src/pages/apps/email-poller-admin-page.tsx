@@ -193,46 +193,90 @@ function StatusTab({ providers, circuitBreakers, clamav }: { providers: Provider
   });
 
   const providerColumns: ColumnDef<ProviderStatus>[] = [
-    { key: 'name', label:'Provider', render: (_v, row) => <span className="font-medium">{row.name}</span> },
-    { key: 'mailbox', label:'Mailbox' },
-    { key: 'folder', label:'Folder' },
-    { key: 'intervalMs', label:'Interval', render: (_v, row) => `${Math.round(row.intervalMs / 1000)}s` },
-    { key: 'lastPollStatus', label:'Last Poll', render: (_v, row) => (
-      <StatusBadge status={row.lastPollStatus === 'success' ? 'success' : row.lastPollStatus === 'error' ? 'error' : 'neutral'}>
-        {row.lastPollStatus || 'Never'}
-      </StatusBadge>
-    )},
-    { key: 'rateLimit', label:'Rate', render: (_v, row) => `${row.rateLimit?.current || 0}/min` },
-    { key: 'stats', label:'Processed', render: (_v, row) => row.stats?.TotalProcessed?.toLocaleString() || '0' },
-    { key: 'actions', label:'', render: (_v, row) => (
-      <Button size="sm" variant="ghost" onClick={() => triggerMutation.mutate(row.providerId)}>
-        <RefreshCw className="w-3 h-3" />
-      </Button>
-    )},
+    {
+      key: 'name', label: 'Provider', sortable: true,
+      render: (val) => <span className="font-medium text-semantic-text-default">{val}</span>,
+    },
+    {
+      key: 'mailbox', label: 'Mailbox', sortable: true,
+      render: (val) => <span className="text-semantic-text-secondary">{val}</span>,
+    },
+    {
+      key: 'folder', label: 'Folder', width: 100,
+      render: (val) => <span className="text-semantic-text-faint">{val}</span>,
+    },
+    {
+      key: 'intervalMs', label: 'Interval', width: 100,
+      render: (val) => <span className="text-semantic-text-faint">{val ? `${Math.round(Number(val) / 1000)}s` : '-'}</span>,
+    },
+    {
+      key: 'lastPollStatus', label: 'Status', width: 110,
+      render: (val) => {
+        const statusMap: Record<string, 'success' | 'danger' | 'neutral'> = { success: 'success', error: 'danger' };
+        return <StatusBadge status={statusMap[val] || 'neutral'} label={val || 'Never'} size="sm" />;
+      },
+    },
+    {
+      key: 'lastPollAt', label: 'Last Poll', width: 160,
+      render: (val) => <span className="text-xs text-semantic-text-faint">{val ? new Date(val).toLocaleString() : '-'}</span>,
+    },
+    {
+      key: 'rateLimit', label: 'Rate', width: 80,
+      render: (val) => <span className="text-semantic-text-faint">{val?.current || 0}/min</span>,
+    },
+    {
+      key: 'stats', label: 'Processed', width: 100,
+      render: (val) => <span className="text-semantic-text-default">{val?.TotalProcessed?.toLocaleString() || '0'}</span>,
+    },
+    {
+      key: 'providerId', label: 'Actions', width: 80, sortable: false,
+      render: (_val, row) => (
+        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            onClick={() => triggerMutation.mutate(row.providerId)}
+            className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors"
+            title="Trigger Poll Now"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        </div>
+      ),
+    },
   ];
 
   const breakerColumns: ColumnDef<CircuitBreakerStatus>[] = [
-    { key: 'workflowCode', label:'Workflow', render: (_v, row) => <span className="font-mono text-sm">{row.workflowCode}</span> },
-    { key: 'state', label:'State', render: (_v, row) => (
-      <StatusBadge status={row.state === 'CLOSED' ? 'success' : row.state === 'OPEN' ? 'error' : 'warning'}>
-        {row.state}
-      </StatusBadge>
-    )},
-    { key: 'successes', label:'Successes' },
-    { key: 'failures', label:'Failures' },
-    { key: 'rejects', label:'Rejected' },
-    { key: 'timeouts', label:'Timeouts' },
+    {
+      key: 'workflowCode', label: 'Workflow', sortable: true,
+      render: (val) => <span className="font-medium text-semantic-text-default font-mono">{val}</span>,
+    },
+    {
+      key: 'state', label: 'State', width: 110,
+      render: (val) => {
+        const statusMap: Record<string, 'success' | 'danger' | 'warning'> = { CLOSED: 'success', OPEN: 'danger', HALF_OPEN: 'warning' };
+        return <StatusBadge status={statusMap[val] || 'neutral'} label={val} size="sm" />;
+      },
+    },
+    { key: 'successes', label: 'Successes', width: 90 },
+    { key: 'failures', label: 'Failures', width: 80 },
+    { key: 'rejects', label: 'Rejected', width: 80 },
+    { key: 'timeouts', label: 'Timeouts', width: 80 },
   ];
 
   return (
     <div className="space-y-6">
-      <TableCard title="Providers" count={providers.length}>
+      <TableCard
+        title="Providers"
+        icon={<Mail className="w-4 h-4" />}
+        count={providers.length}
+      >
         <DataTable<ProviderStatus>
           id="pollit-providers"
           columns={providerColumns}
           data={providers}
           rowKey="providerId"
-          emptyMessage="No providers configured"
+          emptyMessage="No email providers configured"
+          emptyIcon={Mail}
           embedded
           showColumnPicker={false}
         />
@@ -241,35 +285,41 @@ function StatusTab({ providers, circuitBreakers, clamav }: { providers: Provider
       {clamav && (
         <Card>
           <div className="flex items-center gap-3 mb-3">
-            <Shield className="w-5 h-5" />
-            <h3 className="text-sm font-medium">ClamAV Antivirus</h3>
-            <StatusBadge status={clamav.status === 'connected' ? 'success' : clamav.enabled ? 'warning' : 'neutral'}>
-              {clamav.status === 'connected' ? 'Connected' : clamav.enabled ? 'Unavailable' : 'Disabled'}
-            </StatusBadge>
+            <Shield className="w-4 h-4 text-semantic-text-faint" />
+            <span className="text-sm font-medium text-semantic-text-default">ClamAV Antivirus</span>
+            <StatusBadge
+              status={clamav.status === 'connected' ? 'success' : clamav.enabled ? 'warning' : 'neutral'}
+              label={clamav.status === 'connected' ? 'Connected' : clamav.enabled ? 'Unavailable' : 'Disabled'}
+              size="sm"
+            />
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
-              <span className="text-muted">Enabled</span>
-              <div className="font-medium">{clamav.enabled ? 'Yes' : 'No'}</div>
+              <span className="text-semantic-text-faint text-xs">Enabled</span>
+              <div className="font-medium text-semantic-text-default">{clamav.enabled ? 'Yes' : 'No'}</div>
             </div>
             <div>
-              <span className="text-muted">Host</span>
-              <div className="font-medium font-mono">{clamav.host || '-'}</div>
+              <span className="text-semantic-text-faint text-xs">Host</span>
+              <div className="font-medium text-semantic-text-secondary font-mono">{clamav.host || '-'}</div>
             </div>
             <div>
-              <span className="text-muted">Port</span>
-              <div className="font-medium font-mono">{clamav.port || '-'}</div>
+              <span className="text-semantic-text-faint text-xs">Port</span>
+              <div className="font-medium text-semantic-text-secondary font-mono">{clamav.port || '-'}</div>
             </div>
             <div>
-              <span className="text-muted">Status</span>
-              <div className="font-medium">{clamav.status === 'connected' ? 'Scanning active' : clamav.enabled ? 'Connection failed — scans skipped' : 'Virus scanning disabled'}</div>
+              <span className="text-semantic-text-faint text-xs">Detail</span>
+              <div className="font-medium text-semantic-text-default">{clamav.status === 'connected' ? 'Scanning active' : clamav.enabled ? 'Connection failed' : 'Virus scanning disabled'}</div>
             </div>
           </div>
         </Card>
       )}
 
       {circuitBreakers.length > 0 && (
-        <TableCard title="Circuit Breakers" count={circuitBreakers.length}>
+        <TableCard
+          title="Circuit Breakers"
+          icon={<Activity className="w-4 h-4" />}
+          count={circuitBreakers.length}
+        >
           <DataTable<CircuitBreakerStatus>
             id="pollit-circuit-breakers"
             columns={breakerColumns}
@@ -382,31 +432,58 @@ function RoutingTab({ providerId }: { providerId: string }) {
   };
 
   const columns: ColumnDef<RoutingRule>[] = [
-    { key: 'Priority', label:'Priority', render: (_v, row) => <span className="font-mono">{row.Priority}</span> },
-    { key: 'Name', label:'Name', render: (_v, row) => <span className="font-medium">{row.Name}</span> },
-    { key: 'match', label:'Match', render: (_v, row) => {
-      const parts = [];
-      if (row.MatchRecipient) parts.push(`To: ${row.MatchRecipient}`);
-      if (row.MatchRecipientPattern) parts.push(`To: ${row.MatchRecipientPattern}`);
-      if (row.MatchSubjectPattern) parts.push(`Subj: ${row.MatchSubjectPattern}`);
-      if (row.MatchSenderDomain) parts.push(`Domain: ${row.MatchSenderDomain}`);
-      if (row.MatchSenderAddress) parts.push(`From: ${row.MatchSenderAddress}`);
-      return <span className="text-sm text-muted">{parts.join(', ') || 'Catch-all'}</span>;
-    }},
-    { key: 'WorkflowCode', label:'Workflow', render: (_v, row) => (
-      <span className="font-mono text-sm bg-surface-100 px-2 py-0.5 rounded">{row.WorkflowCode}</span>
-    )},
-    { key: 'IsActive', label:'Active', render: (_v, row) => (
-      <StatusBadge status={row.IsActive ? 'success' : 'neutral'}>{row.IsActive ? 'Yes' : 'No'}</StatusBadge>
-    )},
-    { key: 'actions', label:'', render: (_v, row) => (
-      <div className="flex gap-1">
-        <Button size="sm" variant="ghost" onClick={() => handleEdit(row)}><Edit3 className="w-3 h-3" /></Button>
-        <Button size="sm" variant="ghost" onClick={() => {
-          if (confirm(`Delete rule "${row.Name}"?`)) deleteMutation.mutate(row.RuleId);
-        }}><Trash2 className="w-3 h-3 text-red-400" /></Button>
-      </div>
-    )},
+    {
+      key: 'Priority', label: 'Priority', width: 80, sortable: true,
+      render: (val) => <span className="font-mono text-semantic-text-faint">{val}</span>,
+    },
+    {
+      key: 'Name', label: 'Name', sortable: true,
+      render: (val) => <span className="font-medium text-semantic-text-default">{val}</span>,
+    },
+    {
+      key: 'IsActive', label: 'Status', width: 100,
+      render: (val) => <StatusBadge status={val ? 'success' : 'danger'} label={val ? 'Active' : 'Inactive'} size="sm" />,
+    },
+    {
+      key: 'MatchRecipient', label: 'Match', render: (_val, row) => {
+        const parts: string[] = [];
+        if (row.MatchRecipient) parts.push(`To: ${row.MatchRecipient}`);
+        if (row.MatchRecipientPattern) parts.push(`To: ${row.MatchRecipientPattern}`);
+        if (row.MatchSubjectPattern) parts.push(`Subj: ${row.MatchSubjectPattern}`);
+        if (row.MatchSenderDomain) parts.push(`Domain: ${row.MatchSenderDomain}`);
+        if (row.MatchSenderAddress) parts.push(`From: ${row.MatchSenderAddress}`);
+        return parts.length > 0
+          ? <span className="text-semantic-text-secondary">{parts.join(', ')}</span>
+          : <span className="text-semantic-text-faint">Catch-all</span>;
+      },
+    },
+    {
+      key: 'WorkflowCode', label: 'Workflow', width: 180, sortable: true,
+      render: (val) => <span className="font-mono text-xs px-2 py-0.5 bg-info/10 text-info rounded-full">{val}</span>,
+    },
+    {
+      key: 'RuleId', label: 'Actions', width: 80, sortable: false,
+      render: (_val, row) => (
+        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            onClick={() => handleEdit(row)}
+            className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors"
+            title="Edit Rule"
+          >
+            <Edit3 className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => { if (window.confirm(`Delete rule "${row.Name}"?`)) deleteMutation.mutate(row.RuleId); }}
+            className="p-1.5 text-semantic-text-faint hover:text-danger rounded hover:bg-interactive-hover transition-colors"
+            title="Delete Rule"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      ),
+    },
   ];
 
   if (isLoading) return <LoadingSpinner />;
@@ -429,67 +506,80 @@ function RoutingTab({ providerId }: { providerId: string }) {
         />
       </TableCard>
 
-      <Modal isOpen={isOpen} onClose={close} title={editingRule ? 'Edit Routing Rule' : 'New Routing Rule'}>
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Name *</label>
-              <input className="input-field" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g., PO Emails" />
-            </div>
-            <div>
-              <label className="label">Priority</label>
-              <input className="input-field" type="number" value={form.priority} onChange={e => setForm({ ...form, priority: parseInt(e.target.value) || 100 })} />
-            </div>
-          </div>
-          <div>
-            <label className="label">Description</label>
-            <input className="input-field" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
-          </div>
-          <div className="border-t border-surface-200 pt-4">
-            <h4 className="text-sm font-medium mb-3">Match Conditions <span className="text-muted">(all non-empty conditions must match)</span></h4>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="label">Recipient (exact)</label>
-                <input className="input-field" value={form.matchRecipient} onChange={e => setForm({ ...form, matchRecipient: e.target.value })} placeholder="po@company.com" />
-              </div>
-              <div>
-                <label className="label">Recipient (pattern)</label>
-                <input className="input-field" value={form.matchRecipientPattern} onChange={e => setForm({ ...form, matchRecipientPattern: e.target.value })} placeholder="*-po@company.com" />
-              </div>
-              <div>
-                <label className="label">Subject (contains/*glob*)</label>
-                <input className="input-field" value={form.matchSubjectPattern} onChange={e => setForm({ ...form, matchSubjectPattern: e.target.value })} placeholder="*quote*" />
-              </div>
-              <div>
-                <label className="label">Sender Domain</label>
-                <input className="input-field" value={form.matchSenderDomain} onChange={e => setForm({ ...form, matchSenderDomain: e.target.value })} placeholder="supplier.com" />
-              </div>
-              <div>
-                <label className="label">Sender Address (exact)</label>
-                <input className="input-field" value={form.matchSenderAddress} onChange={e => setForm({ ...form, matchSenderAddress: e.target.value })} placeholder="orders@supplier.com" />
-              </div>
-            </div>
-          </div>
-          <div className="border-t border-surface-200 pt-4 grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Workflow *</label>
-              <select className="input-field" value={form.workflowCode} onChange={e => setForm({ ...form, workflowCode: e.target.value })}>
-                {workflows.map(w => <option key={w} value={w}>{w}</option>)}
-                {workflows.length === 0 && <option value="DOCUMENT_CAPTURE">DOCUMENT_CAPTURE</option>}
-              </select>
-            </div>
-            <div className="flex items-end">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={form.isActive} onChange={e => setForm({ ...form, isActive: e.target.checked })} className="rounded" />
-                <span className="text-sm">Active</span>
-              </label>
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="ghost" onClick={close}>Cancel</Button>
-            <Button onClick={handleSave} disabled={!form.name || !form.workflowCode}>
-              {editingRule ? 'Update' : 'Create'}
+      <Modal
+        isOpen={isOpen}
+        onClose={close}
+        title={editingRule ? `Edit: ${editingRule.Name}` : 'New Routing Rule'}
+        size="xl"
+        footer={
+          <>
+            <Button variant="secondary" onClick={close}>Cancel</Button>
+            <Button
+              onClick={handleSave}
+              disabled={!form.name || !form.workflowCode}
+              loading={createMutation.isPending || updateMutation.isPending}
+            >
+              {editingRule ? 'Save' : 'Create'}
             </Button>
+          </>
+        }
+      >
+        <div className="space-y-6">
+          {/* General */}
+          <div>
+            <h4 className="text-xs font-semibold text-semantic-text-subtle uppercase tracking-wider mb-3">General</h4>
+            <div className="grid grid-cols-3 gap-4">
+              <FormField label="Name" required>
+                <input type="text" className="form-input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g., Purchase Orders" />
+              </FormField>
+              <FormField label="Priority">
+                <input type="number" className="form-input" value={form.priority} onChange={e => setForm({ ...form, priority: parseInt(e.target.value) || 100 })} />
+              </FormField>
+              <FormField label="Active">
+                <ToggleField checked={form.isActive} onChange={(v) => setForm({ ...form, isActive: v })} label={form.isActive ? 'Active' : 'Inactive'} />
+              </FormField>
+            </div>
+            <div className="mt-3">
+              <FormField label="Description">
+                <input type="text" className="form-input" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Optional description of this rule's purpose" />
+              </FormField>
+            </div>
+          </div>
+
+          {/* Match Conditions */}
+          <div>
+            <h4 className="text-xs font-semibold text-semantic-text-subtle uppercase tracking-wider mb-1">Match Conditions</h4>
+            <p className="text-xs text-semantic-text-faint mb-3">All non-empty conditions must match (AND logic). Leave all empty for a catch-all rule.</p>
+            <div className="grid grid-cols-2 gap-4">
+              <FormField label="Recipient (exact)">
+                <input type="text" className="form-input" value={form.matchRecipient} onChange={e => setForm({ ...form, matchRecipient: e.target.value })} placeholder="po@company.com" />
+              </FormField>
+              <FormField label="Recipient (pattern)">
+                <input type="text" className="form-input" value={form.matchRecipientPattern} onChange={e => setForm({ ...form, matchRecipientPattern: e.target.value })} placeholder="*-po@company.com" />
+              </FormField>
+              <FormField label="Subject (contains / *glob*)">
+                <input type="text" className="form-input" value={form.matchSubjectPattern} onChange={e => setForm({ ...form, matchSubjectPattern: e.target.value })} placeholder="*quote*" />
+              </FormField>
+              <FormField label="Sender Domain">
+                <input type="text" className="form-input" value={form.matchSenderDomain} onChange={e => setForm({ ...form, matchSenderDomain: e.target.value })} placeholder="supplier.com" />
+              </FormField>
+              <FormField label="Sender Address (exact)">
+                <input type="text" className="form-input" value={form.matchSenderAddress} onChange={e => setForm({ ...form, matchSenderAddress: e.target.value })} placeholder="orders@supplier.com" />
+              </FormField>
+            </div>
+          </div>
+
+          {/* Workflow */}
+          <div>
+            <h4 className="text-xs font-semibold text-semantic-text-subtle uppercase tracking-wider mb-3">Workflow</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <FormField label="Workflow" required>
+                <select className="form-input" value={form.workflowCode} onChange={e => setForm({ ...form, workflowCode: e.target.value })} title="Workflow">
+                  {workflows.map(w => <option key={w} value={w}>{w}</option>)}
+                  {workflows.length === 0 && <option value="DOCUMENT_CAPTURE">DOCUMENT_CAPTURE</option>}
+                </select>
+              </FormField>
+            </div>
           </div>
         </div>
       </Modal>
@@ -571,5 +661,35 @@ function SecurityTab({ providerId }: { providerId: string }) {
         />
       </TableCard>
     </div>
+  );
+}
+
+// ===== Form Helpers (matches PulpIT pattern) =====
+
+function FormField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="block text-xs font-medium text-semantic-text-subtle mb-1">
+        {label}{required && <span className="text-danger ml-0.5">*</span>}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+function ToggleField({ checked, onChange, label }: { checked: boolean; onChange: (val: boolean) => void; label: string }) {
+  return (
+    <label className="flex items-center gap-2 cursor-pointer py-1">
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${checked ? 'bg-primary' : 'bg-dark-200'}`}
+      >
+        <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${checked ? 'translate-x-[18px]' : 'translate-x-[3px]'}`} />
+      </button>
+      <span className="text-sm text-semantic-text-secondary">{label}</span>
+    </label>
   );
 }
