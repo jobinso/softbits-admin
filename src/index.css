@@ -18,9 +18,9 @@
   --surface-sunken: #020617;
   --surface-subtle: #334155;
   --text-default: #F1F5F9;
-  --text-secondary: #e2e8f0;
+  --text-secondary: #cbd5e1;
   --text-subtle: #94A3B8;
-  --text-faint: #94a3b8;
+  --text-faint: #64748b;
   --text-disabled: #475569;
   --text-on-primary: #111827;
   --text-accent: #00d4aa;
@@ -96,7 +96,7 @@
   --text-on-primary: #FFFFFF;
   --text-accent: #009a7a;
   --border-default: #E2E8F0;
-  --border-subtle: #F1F5F9;
+  --border-subtle: #E2E8F0;
   --border-bold: #CBD5E1;
   --border-accent: #00d4aa;
   --accent-primary: #009a7a;
@@ -185,6 +185,7 @@ body {
   min-height: 100vh;
   background: var(--surface-base);
   color: var(--text-default);
+  transition: background-color 200ms ease, color 200ms ease;
 }
 
 /* Custom scrollbar */
