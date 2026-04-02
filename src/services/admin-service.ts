@@ -1,7 +1,7 @@
 import { api, getAuthToken, setAuthToken } from './api';
 import axios from 'axios';
 import { STORAGE_KEYS } from '../utils/constants';
-import type { ApiResponse, User, AdminRole, Device, SystemHealth, SystemSetting, ProjectType, ProjectTypeStatus, ProjectTypeField, Currency, ExchangeRateProvider, ExchangeRate, OptionSet, OptionSetItem, Warehouse, WarehouseErpLink, ErpWarehouseBrowse, Patch, PatchLevel, PatchHistoryEntry, ComplianceData, ConnectSyncStatus, ConnectSyncHistoryEntry, Territory, SalesRep, Pipeline, Stage, RateCard, BillingRole, PosTerminal, GpsSalesData, GpsTerminalFilter, InfuseTestResult, McpTestConnectionResult, DocumentStats, StorageProvider, StagedDocument, RetentionPolicy, ExpiringDocument, RetentionLogEntry, ApprovalWorkflow, DocumentTypeConfig, Provider, ProviderType, InternalServicesResponse, InfuseDashboardData } from '../types';
+import type { ApiResponse, User, AdminRole, Device, SystemHealth, SystemSetting, ProjectType, ProjectTypeStatus, ProjectTypeField, Currency, ExchangeRateProvider, ExchangeRate, OptionSet, OptionSetItem, Warehouse, WarehouseErpLink, ErpWarehouseBrowse, Patch, PatchLevel, PatchHistoryEntry, ComplianceData, ConnectSyncStatus, ConnectSyncHistoryEntry, Territory, SalesRep, Pipeline, Stage, CaseType, CaseTypeStep, RateCard, BillingRole, PosTerminal, GpsSalesData, GpsTerminalFilter, InfuseTestResult, McpTestConnectionResult, DocumentStats, StorageProvider, StagedDocument, RetentionPolicy, ExpiringDocument, RetentionLogEntry, ApprovalWorkflow, DocumentTypeConfig, Provider, ProviderType, InternalServicesResponse, InfuseDashboardData, EditVanProvider, EditTradingPartner, EditTransaction, EditDocumentStage, EditErrorLog, EditTransactionType, EditFormatSpec, EditFormatSpecField, EditWorkflowProviderConfig, EditDashboardSummary, EditDashboardStats } from '../types';
 
 // Raw API for routes mounted at /admin/* (without /api prefix)
 const rawApi = axios.create({ headers: { 'Content-Type': 'application/json' } });
@@ -1192,6 +1192,50 @@ export async function deleteStage(id: string) {
   return response.data;
 }
 
+// ── Case Types ──────────────────────────────────────────────────────
+
+export async function getCaseTypes(params?: { includeInactive?: boolean }) {
+  const response = await api.get('/connect/case-types', { params });
+  return response.data;
+}
+
+export async function createCaseType(data: Partial<CaseType>) {
+  const response = await api.post('/connect/case-types', data);
+  return response.data;
+}
+
+export async function updateCaseType(id: string, data: Partial<CaseType>) {
+  const response = await api.put(`/connect/case-types/${id}`, data);
+  return response.data;
+}
+
+export async function deleteCaseType(id: string) {
+  const response = await api.delete(`/connect/case-types/${id}`);
+  return response.data;
+}
+
+// ── Case Type Steps ─────────────────────────────────────────────────
+
+export async function getCaseTypeSteps(params?: { caseTypeId?: string; includeInactive?: boolean }) {
+  const response = await api.get('/connect/case-type-steps', { params });
+  return response.data;
+}
+
+export async function createCaseTypeStep(data: Partial<CaseTypeStep>) {
+  const response = await api.post('/connect/case-type-steps', data);
+  return response.data;
+}
+
+export async function updateCaseTypeStep(id: string, data: Partial<CaseTypeStep>) {
+  const response = await api.put(`/connect/case-type-steps/${id}`, data);
+  return response.data;
+}
+
+export async function deleteCaseTypeStep(id: string) {
+  const response = await api.delete(`/connect/case-type-steps/${id}`);
+  return response.data;
+}
+
 export async function getRateCards(): Promise<ApiResponse<RateCard[]>> {
   const response = await api.get('/connect/rate-cards');
   return response.data;
@@ -1252,20 +1296,6 @@ export async function getBillingRoles(): Promise<ApiResponse<BillingRole[]>> {
   return response.data;
 }
 
-export async function createBillingRole(data: Partial<BillingRole>) {
-  const response = await api.post('/connect/billing-roles', data);
-  return response.data;
-}
-
-export async function updateBillingRole(id: string, data: Partial<BillingRole>) {
-  const response = await api.put(`/connect/billing-roles/${id}`, data);
-  return response.data;
-}
-
-export async function deleteBillingRole(id: string) {
-  const response = await api.delete(`/connect/billing-roles/${id}`);
-  return response.data;
-}
 
 export async function getConnectMappings(entity?: string) {
   const url = entity ? `/connect/config/mappings/${entity}` : '/connect/config/mappings';
@@ -1283,8 +1313,10 @@ export async function getConnectSysproFields(entityType: string, subEntity?: str
   return response.data;
 }
 
-export async function getConnectFields(entityType: string) {
-  const response = await api.get(`/connect/config/mappings/fields/connect/${entityType}`);
+export async function getConnectFields(entityType: string, subEntity?: string) {
+  const response = await api.get(`/connect/config/mappings/fields/connect/${entityType}`, {
+    params: subEntity ? { subEntity } : undefined
+  });
   return response.data;
 }
 
@@ -1803,4 +1835,190 @@ export async function triggerEmailPoll(providerId?: string) {
     : '/admin/email-poller/trigger';
   const response = await api.post(url);
   return response.data;
+}
+
+export async function getEmailPollerPollerStatus(): Promise<{ running: boolean }> {
+  const response = await api.get('/admin/email-poller/poller-status');
+  return response.data?.data ?? response.data;
+}
+
+// ===== EdIT (EDI Integration) Admin =====
+
+export async function getEditHealth() {
+  const response = await api.get('/admin/edit/health');
+  return response.data?.data ?? response.data;
+}
+
+// Dashboard
+export async function getEditDashboardSummary(): Promise<EditDashboardSummary> {
+  const response = await api.get('/admin/edit/dashboard/summary');
+  return response.data?.data ?? response.data;
+}
+
+export async function getEditDashboardStats(): Promise<EditDashboardStats> {
+  const response = await api.get('/admin/edit/dashboard/stats');
+  return response.data?.data ?? response.data;
+}
+
+export async function getEditRecentErrors(limit = 10): Promise<EditErrorLog[]> {
+  const response = await api.get('/admin/edit/errors', { params: { limit, unresolved: true } });
+  return response.data?.data ?? response.data;
+}
+
+// VAN Providers
+export async function getEditVanProviders(): Promise<EditVanProvider[]> {
+  const response = await api.get('/admin/edit/vans');
+  return response.data?.data ?? response.data;
+}
+
+export async function createEditVanProvider(data: Record<string, unknown>) {
+  const response = await api.post('/admin/edit/vans', data);
+  return response.data?.data ?? response.data;
+}
+
+export async function updateEditVanProvider(id: string, data: Record<string, unknown>) {
+  const response = await api.put(`/admin/edit/vans/${id}`, data);
+  return response.data?.data ?? response.data;
+}
+
+export async function deleteEditVanProvider(id: string) {
+  const response = await api.delete(`/admin/edit/vans/${id}`);
+  return response.data?.data ?? response.data;
+}
+
+export async function testEditVanProvider(id: string) {
+  const response = await api.post(`/admin/edit/vans/${id}/test`);
+  return response.data?.data ?? response.data;
+}
+
+export async function pollEditVanProvider(id: string) {
+  const response = await api.post(`/admin/edit/vans/${id}/poll`);
+  return response.data?.data ?? response.data;
+}
+
+// VAN & Partner Health
+export async function getEditVanHealth() {
+  const response = await api.get('/admin/edit/vans/health');
+  return response.data?.data ?? response.data;
+}
+
+export async function getEditPartnerHealth() {
+  const response = await api.get('/admin/edit/partners/health');
+  return response.data?.data ?? response.data;
+}
+
+// Trading Partners
+export async function getEditTradingPartners(): Promise<EditTradingPartner[]> {
+  const response = await api.get('/admin/edit/partners');
+  return response.data?.data ?? response.data;
+}
+
+export async function createEditTradingPartner(data: Record<string, unknown>) {
+  const response = await api.post('/admin/edit/partners', data);
+  return response.data?.data ?? response.data;
+}
+
+export async function updateEditTradingPartner(id: string, data: Record<string, unknown>) {
+  const response = await api.put(`/admin/edit/partners/${id}`, data);
+  return response.data?.data ?? response.data;
+}
+
+export async function deleteEditTradingPartner(id: string) {
+  const response = await api.delete(`/admin/edit/partners/${id}`);
+  return response.data?.data ?? response.data;
+}
+
+// Transactions
+export async function getEditTransactions(params?: Record<string, string>): Promise<EditTransaction[]> {
+  const response = await api.get('/admin/edit/transactions', { params });
+  return response.data?.data ?? response.data;
+}
+
+export async function getEditTransaction(id: number): Promise<EditTransaction> {
+  const response = await api.get(`/admin/edit/transactions/${id}`);
+  return response.data?.data ?? response.data;
+}
+
+export async function getEditTransactionFlow(id: number): Promise<EditDocumentStage[]> {
+  const response = await api.get(`/admin/edit/transactions/${id}/flow`);
+  return response.data?.data ?? response.data;
+}
+
+export async function retryEditTransaction(id: number) {
+  const response = await api.post(`/admin/edit/transactions/${id}/retry`);
+  return response.data?.data ?? response.data;
+}
+
+export async function reprocessEditTransaction(id: number) {
+  const response = await api.post(`/admin/edit/transactions/${id}/reprocess`);
+  return response.data?.data ?? response.data;
+}
+
+// Transaction Types
+export async function getEditTransactionTypes(): Promise<EditTransactionType[]> {
+  const response = await api.get('/admin/edit/transaction-types');
+  return response.data?.data ?? response.data;
+}
+
+// Format Specs
+export async function getEditFormatSpecs(): Promise<EditFormatSpec[]> {
+  const response = await api.get('/admin/edit/format-specs');
+  return response.data?.data ?? response.data;
+}
+
+export async function getEditFormatSpecFields(specId: string): Promise<EditFormatSpecField[]> {
+  const response = await api.get(`/admin/edit/format-specs/${specId}/fields`);
+  return response.data?.data ?? response.data;
+}
+
+export async function importEditFormatSpec(data: { fileName: string; fileContent: string; partnerCode?: string; typeCode?: string }) {
+  const response = await api.post('/admin/edit/format-specs/import', data);
+  return response.data?.data ?? response.data;
+}
+
+export async function autoMapEditFormatSpec(specId: string) {
+  const response = await api.post(`/admin/edit/format-specs/${specId}/auto-map`);
+  return response.data?.data ?? response.data;
+}
+
+export async function generateEditFieldMaps(specId: string) {
+  const response = await api.post(`/admin/edit/format-specs/${specId}/generate-maps`);
+  return response.data?.data ?? response.data;
+}
+
+export async function deleteEditFormatSpec(specId: string) {
+  const response = await api.delete(`/admin/edit/format-specs/${specId}`);
+  return response.data?.data ?? response.data;
+}
+
+// Workflow Providers
+export async function getEditWorkflowProviders(): Promise<EditWorkflowProviderConfig[]> {
+  const response = await api.get('/admin/edit/workflow-providers');
+  return response.data?.data ?? response.data;
+}
+
+export async function testEditWorkflowProvider(id: string) {
+  const response = await api.post(`/admin/edit/workflow-providers/${id}/test`);
+  return response.data?.data ?? response.data;
+}
+
+// ===== EdIT (EDI Integration) API =====
+
+async function editApiFetch(endpoint: string, options?: { method?: string; data?: unknown }) {
+  const method = options?.method || 'GET';
+  try {
+    let response;
+    switch (method) {
+      case 'POST': response = await rawApi.post(`/edit${endpoint}`, options?.data); break;
+      case 'PUT': response = await rawApi.put(`/edit${endpoint}`, options?.data); break;
+      case 'DELETE': response = await rawApi.delete(`/edit${endpoint}`); break;
+      default: response = await rawApi.get(`/edit${endpoint}`);
+    }
+    const body = response.data;
+    return body?.data ?? body;
+  } catch (err: any) {
+    const serverMessage = err?.response?.data?.error?.message;
+    if (serverMessage) throw new Error(serverMessage);
+    throw err;
+  }
 }

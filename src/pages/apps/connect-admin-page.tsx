@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FieldMappingEditor } from '@/components/field-mapping-editor';
 import {
@@ -13,11 +13,11 @@ import {
   MapPin,
   GitBranch,
   CreditCard,
-  Briefcase,
   Map,
   FolderTree,
   ChevronLeft,
   Settings,
+  Shield,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -69,11 +69,16 @@ import {
   updateRateCardLineItem,
   deleteRateCardLineItem,
   getBillingRoles,
-  createBillingRole,
-  updateBillingRole,
-  deleteBillingRole as deleteBillingRoleApi,
   getCurrencies,
   getConnectMappings,
+  getCaseTypes,
+  createCaseType,
+  updateCaseType,
+  deleteCaseType as deleteCaseTypeApi,
+  getCaseTypeSteps,
+  createCaseTypeStep,
+  updateCaseTypeStep,
+  deleteCaseTypeStep as deleteCaseTypeStepApi,
 } from '@/services/admin-service';
 import { useModal } from '@shared/hooks';
 import { ProjectTypesPage } from '@/pages/config';
@@ -89,6 +94,8 @@ import type {
   RateCardLineItem,
   BillingRole,
   Currency,
+  CaseType,
+  CaseTypeStep,
 } from '@/types';
 
 // ---------------------------------------------------------------------------
@@ -101,19 +108,19 @@ const CONNECT_TABS: TabItem[] = [
   { id: 'teams', label: 'Teams', icon: <Users className="w-4 h-4" /> },
   { id: 'salescycles', label: 'Sales Cycles', icon: <GitBranch className="w-4 h-4" /> },
   { id: 'rates', label: 'Rate Cards', icon: <CreditCard className="w-4 h-4" /> },
-  { id: 'roles', label: 'Billing Roles', icon: <Briefcase className="w-4 h-4" /> },
   { id: 'mappings', label: 'Mappings', icon: <Map className="w-4 h-4" /> },
   { id: 'project-types', label: 'Project Types', icon: <FolderTree className="w-4 h-4" /> },
+  { id: 'casetypes', label: 'Case Types', icon: <Shield className="w-4 h-4" /> },
 ];
 
 const SYNC_ENTITIES = [
-  { key: 'salesreps', label: 'Sales Reps' },
-  { key: 'suppliers', label: 'Suppliers' },
-  { key: 'customers', label: 'Customers' },
-  { key: 'accounts', label: 'Accounts' },
-  { key: 'addresses', label: 'Addresses' },
-  { key: 'contacts', label: 'Contacts' },
-  { key: 'activities', label: 'Activities' },
+  { key: 'salesreps',  label: 'Sales Reps'   },
+  { key: 'suppliers',  label: 'Suppliers'    },
+  { key: 'customers',  label: 'Customers'    },
+  { key: 'accounts',   label: 'Accounts'     },
+  { key: 'addresses',  label: 'Addresses'    },
+  { key: 'contacts',   label: 'Contacts'     },
+  { key: 'activities', label: 'Activities'   },
 ];
 
 const SYNC_DIRECTIONS = [
@@ -188,13 +195,6 @@ interface RateCardForm {
   notes: string;
 }
 
-interface BillingRoleForm {
-  code: string;
-  name: string;
-  description: string;
-  status: string;
-}
-
 interface LineItemForm {
   roleId: string;
   currencyId: string;
@@ -203,12 +203,60 @@ interface LineItemForm {
   notes: string;
 }
 
+interface CaseTypeForm {
+  code: string;
+  name: string;
+  description: string;
+  prefix: string;
+  iconName: string;
+  color: string;
+  requiresRootCause: boolean;
+  requiresContainment: boolean;
+  requiresVerification: boolean;
+  requiresApproval: boolean;
+  defaultPriority: string;
+  defaultSlaResponseHours: number | '';
+  defaultSlaResolutionHours: number | '';
+  isPortalCreatable: boolean;
+  isCustomerFacing: boolean;
+  isActive: boolean;
+}
+
+interface CaseTypeStepForm {
+  caseTypeId: string;
+  name: string;
+  statusCode: string;
+  displayOrder: number;
+  color: string;
+  isTerminal: boolean;
+  isResolved: boolean;
+  requiresApproval: boolean;
+  isActive: boolean;
+}
+
+const INITIAL_CASE_TYPE: CaseTypeForm = { code: '', name: '', description: '', prefix: '', iconName: '', color: '#3B82F6', requiresRootCause: false, requiresContainment: false, requiresVerification: false, requiresApproval: false, defaultPriority: 'Medium', defaultSlaResponseHours: '', defaultSlaResolutionHours: '', isPortalCreatable: false, isCustomerFacing: true, isActive: true };
+
+const INITIAL_CASE_TYPE_STEP: CaseTypeStepForm = { caseTypeId: '', name: '', statusCode: '', displayOrder: 0, color: '#3B82F6', isTerminal: false, isResolved: false, requiresApproval: false, isActive: true };
+
+const CASE_STATUS_CODES = [
+  { value: 'NEW', label: 'New' },
+  { value: 'TRIAGED', label: 'Triaged' },
+  { value: 'IN_PROGRESS', label: 'In Progress' },
+  { value: 'PENDING', label: 'Pending' },
+  { value: 'ON_HOLD', label: 'On Hold' },
+  { value: 'ESCALATED', label: 'Escalated' },
+  { value: 'RESOLVED', label: 'Resolved' },
+  { value: 'VERIFIED', label: 'Verified' },
+  { value: 'CLOSED', label: 'Closed' },
+  { value: 'CANCELLED', label: 'Cancelled' },
+  { value: 'REOPENED', label: 'Reopened' },
+];
+
 const INITIAL_TERRITORY: TerritoryForm = { name: '', code: '', sysproBranch: '', description: '', isActive: true };
 const INITIAL_SALESREP: SalesRepForm = { name: '', email: '', phone: '', sysproSalesperson: '', salesTarget: 0, defaultPipelineId: '', isActive: true };
 const INITIAL_PIPELINE: PipelineForm = { name: '', description: '', isDefault: false, isActive: true };
 const INITIAL_STAGE: StageForm = { pipelineId: '', name: '', displayOrder: 0, probability: 0, colour: '#3B82F6', isClosed: false, isWon: false, isActive: true };
 const INITIAL_RATECARD: RateCardForm = { name: '', description: '', status: 'Draft', notes: '' };
-const INITIAL_BILLINGROLE: BillingRoleForm = { code: '', name: '', description: '', status: 'Active' };
 const INITIAL_LINEITEM: LineItemForm = { roleId: '', currencyId: '', rate: 0, unit: 'Hour', notes: '' };
 
 // ---------------------------------------------------------------------------
@@ -230,10 +278,12 @@ export default function ConnectAdminPage() {
   const deleteStageModal = useModal<Stage>();
   const rateCardModal = useModal<RateCard>();
   const deleteRateCardModal = useModal<RateCard>();
-  const billingRoleModal = useModal<BillingRole>();
-  const deleteBillingRoleModal = useModal<BillingRole>();
   const lineItemModal = useModal<RateCardLineItem>();
   const syncDetailModal = useModal<ConnectSyncHistoryEntry>();
+  const caseTypeModal = useModal<CaseType>();
+  const deleteCaseTypeModal = useModal<CaseType>();
+  const caseTypeStepModal = useModal<CaseTypeStep>();
+  const deleteCaseTypeStepModal = useModal<CaseTypeStep>();
 
   // ---- Form state ----
   const [territoryForm, setTerritoryForm] = useState<TerritoryForm>(INITIAL_TERRITORY);
@@ -246,16 +296,22 @@ export default function ConnectAdminPage() {
   const [isEditStage, setIsEditStage] = useState(false);
   const [rateCardForm, setRateCardForm] = useState<RateCardForm>(INITIAL_RATECARD);
   const [isEditRateCard, setIsEditRateCard] = useState(false);
-  const [billingRoleForm, setBillingRoleForm] = useState<BillingRoleForm>(INITIAL_BILLINGROLE);
-  const [isEditBillingRole, setIsEditBillingRole] = useState(false);
   const [lineItemForm, setLineItemForm] = useState<LineItemForm>(INITIAL_LINEITEM);
   const [isEditLineItem, setIsEditLineItem] = useState(false);
+  const [selectedCaseType, setSelectedCaseType] = useState<CaseType | null>(null);
+  const [caseTypeForm, setCaseTypeForm] = useState<CaseTypeForm>(INITIAL_CASE_TYPE);
+  const [isEditCaseType, setIsEditCaseType] = useState(false);
+  const [caseTypeStepForm, setCaseTypeStepForm] = useState<CaseTypeStepForm>(INITIAL_CASE_TYPE_STEP);
+  const [isEditCaseTypeStep, setIsEditCaseTypeStep] = useState(false);
 
   // ---- Selection state ----
   const [selectedPipeline, setSelectedPipeline] = useState<Pipeline | null>(null);
   const [selectedRateCard, setSelectedRateCard] = useState<RateCard | null>(null);
   const [selectedVersion, setSelectedVersion] = useState<RateCardVersion | null>(null);
   const [selectedMappingType, setSelectedMappingType] = useState<string | null>(null);
+
+  // ---- Sync config local edits (controlled form state) ----
+  const [syncEdits, setSyncEdits] = useState<Record<string, { enabled: boolean; direction: string }>>({});
 
   // ==== Queries ====
 
@@ -277,6 +333,20 @@ export default function ConnectAdminPage() {
     queryFn: getConnectConfig,
     enabled: activeTab === 'sync',
   });
+
+  // Initialize sync edits from fetched config
+  useEffect(() => {
+    const configs = syncConfig?.data?.configs ?? [];
+    const initial: Record<string, { enabled: boolean; direction: string }> = {};
+    for (const entity of SYNC_ENTITIES) {
+      const cfg = configs.find((c: { EntityType: string }) => c.EntityType?.toLowerCase() === entity.key);
+      initial[entity.key] = {
+        enabled: cfg?.SyncEnabled ?? true,
+        direction: cfg?.SyncDirection || 'from_syspro',
+      };
+    }
+    setSyncEdits(initial);
+  }, [syncConfig?.data]);
 
   const { data: territoriesRes } = useQuery({
     queryKey: ['connect', 'territories'],
@@ -344,7 +414,21 @@ export default function ConnectAdminPage() {
     enabled: activeTab === 'mappings' && !!selectedMappingType,
   });
 
+  const { data: caseTypesRes } = useQuery({
+    queryKey: ['connect', 'case-types'],
+    queryFn: () => getCaseTypes(),
+    enabled: activeTab === 'casetypes',
+  });
+
+  const { data: caseTypeStepsRes } = useQuery({
+    queryKey: ['connect', 'case-type-steps', selectedCaseType?.Id],
+    queryFn: () => getCaseTypeSteps({ caseTypeId: selectedCaseType?.Id }),
+    enabled: activeTab === 'casetypes' && !!selectedCaseType,
+  });
+
   // Derived data
+  const caseTypes: CaseType[] = caseTypesRes?.data ?? [];
+  const caseTypeSteps: CaseTypeStep[] = caseTypeStepsRes?.data ?? [];
   const territories: Territory[] = territoriesRes?.data ?? [];
   const salesReps: SalesRep[] = salesRepsRes?.data ?? [];
   const pipelines: Pipeline[] = pipelinesRes?.data ?? [];
@@ -563,26 +647,52 @@ export default function ConnectAdminPage() {
     onError: (err: Error) => toast.error(err.message || 'Failed to remove line item'),
   });
 
-  // Billing Role mutations
-  const saveBillingRoleMut = useMutation({
-    mutationFn: (args: { id?: string; data: Partial<BillingRole> }) =>
-      args.id ? updateBillingRole(args.id, args.data) : createBillingRole(args.data),
+  // Case Type mutations
+  const saveCaseTypeMut = useMutation({
+    mutationFn: (args: { id?: string; data: Partial<CaseType> }) =>
+      args.id ? updateCaseType(args.id, args.data) : createCaseType(args.data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['connect', 'billing-roles'] });
-      billingRoleModal.close();
-      toast.success(isEditBillingRole ? 'Billing role updated' : 'Billing role created');
+      queryClient.invalidateQueries({ queryKey: ['connect', 'case-types'] });
+      caseTypeModal.close();
+      toast.success(isEditCaseType ? 'Case type updated' : 'Case type created');
     },
-    onError: (err: Error) => toast.error(err.message || 'Failed to save billing role'),
+    onError: (err: Error) => toast.error(err.message || 'Failed to save case type'),
   });
 
-  const removeBillingRoleMut = useMutation({
-    mutationFn: (id: string) => deleteBillingRoleApi(id),
+  const removeCaseTypeMut = useMutation({
+    mutationFn: (id: string) => deleteCaseTypeApi(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['connect', 'billing-roles'] });
-      deleteBillingRoleModal.close();
-      toast.success('Billing role deleted');
+      queryClient.invalidateQueries({ queryKey: ['connect', 'case-types'] });
+      queryClient.invalidateQueries({ queryKey: ['connect', 'case-type-steps'] });
+      deleteCaseTypeModal.close();
+      setSelectedCaseType(null);
+      toast.success('Case type deleted');
     },
-    onError: (err: Error) => toast.error(err.message || 'Failed to delete billing role'),
+    onError: (err: Error) => toast.error(err.message || 'Failed to delete case type'),
+  });
+
+  // Case Type Step mutations
+  const saveCaseTypeStepMut = useMutation({
+    mutationFn: (args: { id?: string; data: Partial<CaseTypeStep> }) =>
+      args.id ? updateCaseTypeStep(args.id, args.data) : createCaseTypeStep(args.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['connect', 'case-type-steps'] });
+      queryClient.invalidateQueries({ queryKey: ['connect', 'case-types'] });
+      caseTypeStepModal.close();
+      toast.success(isEditCaseTypeStep ? 'Step updated' : 'Step created');
+    },
+    onError: (err: Error) => toast.error(err.message || 'Failed to save step'),
+  });
+
+  const removeCaseTypeStepMut = useMutation({
+    mutationFn: (id: string) => deleteCaseTypeStepApi(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['connect', 'case-type-steps'] });
+      queryClient.invalidateQueries({ queryKey: ['connect', 'case-types'] });
+      deleteCaseTypeStepModal.close();
+      toast.success('Step deleted');
+    },
+    onError: (err: Error) => toast.error(err.message || 'Failed to delete step'),
   });
 
   // ==== Handlers ====
@@ -686,25 +796,6 @@ export default function ConnectAdminPage() {
     });
   }
 
-  function openCreateBillingRole() {
-    setBillingRoleForm(INITIAL_BILLINGROLE);
-    setIsEditBillingRole(false);
-    billingRoleModal.open();
-  }
-  function openEditBillingRole(r: BillingRole) {
-    setBillingRoleForm({ code: r.Code, name: r.Name, description: r.Description || '', status: r.Status });
-    setIsEditBillingRole(true);
-    billingRoleModal.open(r);
-  }
-  function handleSaveBillingRole() {
-    if (!billingRoleForm.name.trim()) { toast.error('Name is required'); return; }
-    if (!billingRoleForm.code.trim()) { toast.error('Code is required'); return; }
-    saveBillingRoleMut.mutate({
-      id: isEditBillingRole ? billingRoleModal.data?.Id : undefined,
-      data: billingRoleForm,
-    });
-  }
-
   function openCreateLineItem() {
     setLineItemForm(INITIAL_LINEITEM);
     setIsEditLineItem(false);
@@ -726,6 +817,58 @@ export default function ConnectAdminPage() {
       versionId: selectedVersion.Id,
       lineId: isEditLineItem ? lineItemModal.data?.Id : undefined,
       data: lineItemForm,
+    });
+  }
+
+  function openCreateCaseType() {
+    setCaseTypeForm(INITIAL_CASE_TYPE);
+    setIsEditCaseType(false);
+    caseTypeModal.open();
+  }
+  function openEditCaseType(ct: CaseType) {
+    setCaseTypeForm({
+      code: ct.Code, name: ct.Name, description: ct.Description || '', prefix: ct.Prefix || '',
+      iconName: ct.IconName || '', color: ct.Color || '#3B82F6',
+      requiresRootCause: ct.RequiresRootCause, requiresContainment: ct.RequiresContainment,
+      requiresVerification: ct.RequiresVerification, requiresApproval: ct.RequiresApproval,
+      defaultPriority: ct.DefaultPriority || 'Medium',
+      defaultSlaResponseHours: ct.DefaultSlaResponseHours ?? '',
+      defaultSlaResolutionHours: ct.DefaultSlaResolutionHours ?? '',
+      isPortalCreatable: ct.IsPortalCreatable, isCustomerFacing: ct.IsCustomerFacing, isActive: ct.IsActive,
+    });
+    setIsEditCaseType(true);
+    caseTypeModal.open(ct);
+  }
+  function handleSaveCaseType() {
+    if (!caseTypeForm.code.trim()) { toast.error('Code is required'); return; }
+    if (!caseTypeForm.name.trim()) { toast.error('Name is required'); return; }
+    saveCaseTypeMut.mutate({
+      id: isEditCaseType ? caseTypeModal.data?.Id : undefined,
+      data: caseTypeForm,
+    });
+  }
+
+  function openCreateCaseTypeStep() {
+    setCaseTypeStepForm({ ...INITIAL_CASE_TYPE_STEP, caseTypeId: selectedCaseType?.Id || '' });
+    setIsEditCaseTypeStep(false);
+    caseTypeStepModal.open();
+  }
+  function openEditCaseTypeStep(step: CaseTypeStep) {
+    setCaseTypeStepForm({
+      caseTypeId: step.CaseTypeId, name: step.Name, statusCode: step.StatusCode || '',
+      displayOrder: step.DisplayOrder || 0, color: step.Color || '#3B82F6',
+      isTerminal: step.IsTerminal, isResolved: step.IsResolved,
+      requiresApproval: step.RequiresApproval, isActive: step.IsActive,
+    });
+    setIsEditCaseTypeStep(true);
+    caseTypeStepModal.open(step);
+  }
+  function handleSaveCaseTypeStep() {
+    if (!caseTypeStepForm.caseTypeId) { toast.error('Case type is required'); return; }
+    if (!caseTypeStepForm.name.trim()) { toast.error('Name is required'); return; }
+    saveCaseTypeStepMut.mutate({
+      id: isEditCaseTypeStep ? caseTypeStepModal.data?.Id : undefined,
+      data: caseTypeStepForm,
     });
   }
 
@@ -796,17 +939,32 @@ export default function ConnectAdminPage() {
     },
   ];
 
-  const billingRoleColumns: ColumnDef<BillingRole>[] = [
-    { key: 'Code', label: 'Code', width: 120, sortable: true, render: (v) => <code className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">{v}</code> },
+  const caseTypeStepColumns: ColumnDef<CaseTypeStep>[] = [
+    { key: 'DisplayOrder', label: '#', width: 50, sortable: true },
     { key: 'Name', label: 'Name', sortable: true, render: (v) => <span className="font-medium text-semantic-text-default">{v}</span> },
-    { key: 'Description', label: 'Description', sortable: false, render: (v) => v || '-' },
-    { key: 'Status', label: 'Status', width: 90, sortable: true, render: (v) => <StatusBadge status={v === 'Active' ? 'success' : 'neutral'} label={v || 'Active'} size="sm" /> },
+    {
+      key: 'StatusCode', label: 'Status Code', width: 120, sortable: true,
+      render: (v) => v ? <code className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">{v}</code> : <span className="text-semantic-text-faint">-</span>,
+    },
+    {
+      key: 'Color', label: 'Color', width: 70, sortable: false,
+      render: (v) => <span className="inline-block w-4 h-4 rounded-full border border-border" style={{ backgroundColor: v || '#3B82F6' }} />,
+    },
+    {
+      key: 'IsTerminal', label: 'Terminal', width: 80, sortable: true,
+      render: (v) => v ? <StatusBadge status="warning" label="Yes" size="sm" /> : <span className="text-semantic-text-faint">-</span>,
+    },
+    {
+      key: 'IsResolved', label: 'Resolved', width: 80, sortable: true,
+      render: (v) => v ? <StatusBadge status="success" label="Yes" size="sm" /> : <span className="text-semantic-text-faint">-</span>,
+    },
+    { key: 'IsActive', label: 'Active', width: 70, sortable: true, render: (v) => <StatusBadge status={v ? 'success' : 'neutral'} label={v ? 'Yes' : 'No'} size="sm" /> },
     {
       key: 'Id', label: 'Actions', width: 100, sortable: false, noTruncate: true,
       render: (_v, row) => (
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={(e) => { e.stopPropagation(); openEditBillingRole(row); }} className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover" title="Edit"><Edit className="w-4 h-4" /></button>
-          <button type="button" onClick={(e) => { e.stopPropagation(); deleteBillingRoleModal.open(row); }} className="p-1.5 text-semantic-text-faint hover:text-danger rounded hover:bg-interactive-hover" title="Delete"><Trash2 className="w-4 h-4" /></button>
+          <button type="button" onClick={(e) => { e.stopPropagation(); openEditCaseTypeStep(row); }} className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover" title="Edit"><Edit className="w-4 h-4" /></button>
+          <button type="button" onClick={(e) => { e.stopPropagation(); deleteCaseTypeStepModal.open(row); }} className="p-1.5 text-semantic-text-faint hover:text-danger rounded hover:bg-interactive-hover" title="Delete"><Trash2 className="w-4 h-4" /></button>
         </div>
       ),
     },
@@ -946,9 +1104,11 @@ export default function ConnectAdminPage() {
                 onClick={() => {
                   const config: Record<string, unknown> = {};
                   for (const entity of SYNC_ENTITIES) {
-                    const enabled = (document.getElementById(`sync-${entity.key}`) as HTMLInputElement)?.checked ?? true;
-                    const direction = (document.getElementById(`dir-${entity.key}`) as HTMLSelectElement)?.value || 'from_syspro';
-                    config[entity.key] = { enabled, direction };
+                    const edit = syncEdits[entity.key];
+                    config[entity.key] = {
+                      enabled: edit?.enabled ?? true,
+                      direction: edit?.direction || 'from_syspro',
+                    };
                   }
                   saveConfigMut.mutate(config);
                 }}
@@ -960,18 +1120,22 @@ export default function ConnectAdminPage() {
           >
             <div className="divide-y divide-border">
               {SYNC_ENTITIES.map((entity) => {
-                const configs = syncConfig?.data?.configs ?? [];
-                const cfg = configs.find((c: { EntityType: string }) => c.EntityType?.toLowerCase() === entity.key);
+                const edit = syncEdits[entity.key];
                 return (
                   <div key={entity.key} className="flex items-center justify-between px-5 py-3">
                     <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" defaultChecked={cfg?.SyncEnabled ?? true} className="w-4 h-4 rounded border-border text-primary" id={`sync-${entity.key}`} />
+                      <input
+                        type="checkbox"
+                        checked={edit?.enabled ?? true}
+                        onChange={(e) => setSyncEdits(prev => ({ ...prev, [entity.key]: { ...prev[entity.key], enabled: e.target.checked } }))}
+                        className="w-4 h-4 rounded border-border text-primary"
+                      />
                       <span className="text-sm text-semantic-text-default font-medium">{entity.label}</span>
                     </label>
                     <select
-                      defaultValue={cfg?.SyncDirection || 'from_syspro'}
+                      value={edit?.direction || 'from_syspro'}
+                      onChange={(e) => setSyncEdits(prev => ({ ...prev, [entity.key]: { ...prev[entity.key], direction: e.target.value } }))}
                       className="form-input text-sm w-40"
-                      id={`dir-${entity.key}`}
                     >
                       {SYNC_DIRECTIONS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
                     </select>
@@ -1265,29 +1429,6 @@ export default function ConnectAdminPage() {
         </div>
       )}
 
-      {/* ===== Billing Roles Tab ===== */}
-      {activeTab === 'roles' && (
-        <TableCard
-          title="Billing Roles"
-          icon={<Briefcase className="w-4 h-4" />}
-          count={billingRoles.length}
-          headerActions={
-            <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={openCreateBillingRole}>Add Role</Button>
-          }
-        >
-          <DataTable<BillingRole>
-            id="connect-billing-roles"
-            columns={billingRoleColumns}
-            data={billingRoles}
-            rowKey={(row) => row.Id}
-            onRowClick={openEditBillingRole}
-            emptyMessage="No billing roles. Click Add Role to create one."
-            embedded
-            showColumnPicker={false}
-          />
-        </TableCard>
-      )}
-
       {/* ===== Mappings Tab ===== */}
       {activeTab === 'mappings' && (
         <div className="space-y-4">
@@ -1353,6 +1494,82 @@ export default function ConnectAdminPage() {
 
       {/* Tab: Project Types */}
       {activeTab === 'project-types' && <ProjectTypesPage />}
+
+      {/* ===== Case Types Tab ===== */}
+      {activeTab === 'casetypes' && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Case Types List */}
+            <div className="lg:col-span-1">
+              <div className="rounded-lg border border-border bg-surface-raised overflow-hidden">
+                <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                  <h2 className="text-sm font-medium text-semantic-text-secondary">Case Types ({caseTypes.length})</h2>
+                  <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={openCreateCaseType}>Add</Button>
+                </div>
+                <div className="divide-y divide-border max-h-[500px] overflow-y-auto">
+                  {caseTypes.length === 0 ? (
+                    <div className="p-6 text-center text-semantic-text-faint text-sm">No case types</div>
+                  ) : caseTypes.map((ct) => (
+                    <div
+                      key={ct.Id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSelectedCaseType(ct)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedCaseType(ct); } }}
+                      className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors cursor-pointer ${
+                        selectedCaseType?.Id === ct.Id ? 'bg-primary/10 border-l-2 border-primary' : 'hover:bg-interactive-hover'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="inline-block w-3 h-3 rounded-full border border-border" style={{ backgroundColor: ct.Color || '#3B82F6' }} />
+                        <div>
+                          <div className={`text-sm font-medium ${selectedCaseType?.Id === ct.Id ? 'text-primary' : 'text-semantic-text-secondary'}`}>
+                            {ct.Name}
+                          </div>
+                          <div className="text-xs text-semantic-text-faint">{ct.CaseCount ?? 0} cases</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button type="button" onClick={(e) => { e.stopPropagation(); openEditCaseType(ct); }} className="p-1 text-semantic-text-faint hover:text-primary"><Edit className="w-3.5 h-3.5" /></button>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); deleteCaseTypeModal.open(ct); }} className="p-1 text-semantic-text-faint hover:text-danger"><Trash2 className="w-3.5 h-3.5" /></button>
+                        <ChevronRight className="w-4 h-4 text-semantic-text-faint" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Flow Steps */}
+            <div className="lg:col-span-2">
+              {!selectedCaseType ? (
+                <div className="rounded-lg border border-border bg-surface-raised p-12 text-center">
+                  <Shield className="w-12 h-12 text-semantic-text-disabled mx-auto mb-3" />
+                  <p className="text-semantic-text-faint">Select a case type to view its flow steps.</p>
+                </div>
+              ) : (
+                <TableCard
+                  title={`Steps in "${selectedCaseType.Name}"`}
+                  icon={<Shield className="w-4 h-4" />}
+                  count={caseTypeSteps.length}
+                  headerActions={<Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={openCreateCaseTypeStep}>Add Step</Button>}
+                >
+                  <DataTable<CaseTypeStep>
+                    id="connect-case-type-steps"
+                    columns={caseTypeStepColumns}
+                    data={caseTypeSteps}
+                    rowKey={(row) => row.Id}
+                    onRowClick={openEditCaseTypeStep}
+                    emptyMessage="No steps. Click Add Step to create one."
+                    embedded
+                    showColumnPicker={false}
+                  />
+                </TableCard>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ===== Modals ===== */}
 
@@ -1490,32 +1707,6 @@ export default function ConnectAdminPage() {
         <p className="text-sm text-semantic-text-subtle">Delete <strong className="text-semantic-text-default">{deleteRateCardModal.data?.Name}</strong> and all versions?</p>
       </Modal>
 
-      {/* Billing Role Modal */}
-      <Modal isOpen={billingRoleModal.isOpen} onClose={billingRoleModal.close} title={isEditBillingRole ? 'Edit Billing Role' : 'Add Billing Role'} size="sm" footer={
-        <><Button variant="secondary" onClick={billingRoleModal.close}>Cancel</Button>
-        <Button onClick={handleSaveBillingRole} loading={saveBillingRoleMut.isPending}>{isEditBillingRole ? 'Save Changes' : 'Create'}</Button></>
-      }>
-        <div className="space-y-4">
-          <FormField label="Code" required><input type="text" value={billingRoleForm.code} onChange={(e) => setBillingRoleForm({ ...billingRoleForm, code: e.target.value })} className="form-input" placeholder="e.g. DEV-SR" disabled={isEditBillingRole} /></FormField>
-          <FormField label="Name" required><input type="text" value={billingRoleForm.name} onChange={(e) => setBillingRoleForm({ ...billingRoleForm, name: e.target.value })} className="form-input" placeholder="e.g. Senior Developer" /></FormField>
-          <FormField label="Description"><textarea value={billingRoleForm.description} onChange={(e) => setBillingRoleForm({ ...billingRoleForm, description: e.target.value })} className="form-input" rows={2} /></FormField>
-          <FormField label="Status">
-            <select value={billingRoleForm.status} onChange={(e) => setBillingRoleForm({ ...billingRoleForm, status: e.target.value })} className="form-input">
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-            </select>
-          </FormField>
-        </div>
-      </Modal>
-
-      {/* Delete Billing Role Modal */}
-      <Modal isOpen={deleteBillingRoleModal.isOpen} onClose={deleteBillingRoleModal.close} title="Delete Billing Role" size="sm" footer={
-        <><Button variant="secondary" onClick={deleteBillingRoleModal.close}>Cancel</Button>
-        <Button variant="danger" onClick={() => deleteBillingRoleModal.data && removeBillingRoleMut.mutate(deleteBillingRoleModal.data.Id)} loading={removeBillingRoleMut.isPending}>Delete</Button></>
-      }>
-        <p className="text-sm text-semantic-text-subtle">Delete billing role <strong className="text-semantic-text-default">{deleteBillingRoleModal.data?.Name}</strong>?</p>
-      </Modal>
-
       {/* Line Item Modal */}
       <Modal isOpen={lineItemModal.isOpen} onClose={lineItemModal.close} title={isEditLineItem ? 'Edit Line Item' : 'Add Line Item'} size="sm" footer={
         <><Button variant="secondary" onClick={lineItemModal.close}>Cancel</Button>
@@ -1546,6 +1737,95 @@ export default function ConnectAdminPage() {
           </div>
           <FormField label="Notes"><textarea value={lineItemForm.notes} onChange={(e) => setLineItemForm({ ...lineItemForm, notes: e.target.value })} className="form-input" rows={2} /></FormField>
         </div>
+      </Modal>
+
+      {/* Case Type Modal */}
+      <Modal isOpen={caseTypeModal.isOpen} onClose={caseTypeModal.close} title={isEditCaseType ? 'Edit Case Type' : 'Add Case Type'} size="md" footer={
+        <><Button variant="secondary" onClick={caseTypeModal.close}>Cancel</Button>
+        <Button onClick={handleSaveCaseType} loading={saveCaseTypeMut.isPending}>{isEditCaseType ? 'Save Changes' : 'Create'}</Button></>
+      }>
+        <div className="space-y-4">
+          <div className="grid grid-cols-3 gap-4">
+            <FormField label="Code" required><input type="text" value={caseTypeForm.code} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, code: e.target.value })} className="form-input" placeholder="e.g. NCR" disabled={isEditCaseType} /></FormField>
+            <FormField label="Name" required><input type="text" value={caseTypeForm.name} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, name: e.target.value })} className="form-input" placeholder="e.g. Non-Conformance" /></FormField>
+            <FormField label="Prefix"><input type="text" value={caseTypeForm.prefix} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, prefix: e.target.value })} className="form-input" placeholder="e.g. NCR-" /></FormField>
+          </div>
+          <FormField label="Description"><textarea value={caseTypeForm.description} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, description: e.target.value })} className="form-input" rows={2} /></FormField>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="Color">
+              <div className="flex items-center gap-2">
+                <input type="color" value={caseTypeForm.color} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, color: e.target.value })} className="w-8 h-8 rounded border border-border cursor-pointer" />
+                <input type="text" value={caseTypeForm.color} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, color: e.target.value })} className="form-input flex-1" />
+              </div>
+            </FormField>
+            <FormField label="Default Priority">
+              <select value={caseTypeForm.defaultPriority} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, defaultPriority: e.target.value })} className="form-input">
+                <option value="Critical">Critical</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
+            </FormField>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="SLA Response Hours"><input type="number" value={caseTypeForm.defaultSlaResponseHours} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, defaultSlaResponseHours: e.target.value === '' ? '' : parseFloat(e.target.value) || 0 })} className="form-input" min={0} /></FormField>
+            <FormField label="SLA Resolution Hours"><input type="number" value={caseTypeForm.defaultSlaResolutionHours} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, defaultSlaResolutionHours: e.target.value === '' ? '' : parseFloat(e.target.value) || 0 })} className="form-input" min={0} /></FormField>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeForm.requiresRootCause} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, requiresRootCause: e.target.checked })} className="w-4 h-4 rounded border-border" />Requires Root Cause</label>
+            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeForm.requiresContainment} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, requiresContainment: e.target.checked })} className="w-4 h-4 rounded border-border" />Requires Containment</label>
+            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeForm.requiresVerification} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, requiresVerification: e.target.checked })} className="w-4 h-4 rounded border-border" />Requires Verification</label>
+            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeForm.requiresApproval} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, requiresApproval: e.target.checked })} className="w-4 h-4 rounded border-border" />Requires Approval</label>
+            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeForm.isPortalCreatable} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, isPortalCreatable: e.target.checked })} className="w-4 h-4 rounded border-border" />Portal Creatable</label>
+            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeForm.isCustomerFacing} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, isCustomerFacing: e.target.checked })} className="w-4 h-4 rounded border-border" />Customer Facing</label>
+            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeForm.isActive} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, isActive: e.target.checked })} className="w-4 h-4 rounded border-border" />Active</label>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Case Type Modal */}
+      <Modal isOpen={deleteCaseTypeModal.isOpen} onClose={deleteCaseTypeModal.close} title="Delete Case Type" size="sm" footer={
+        <><Button variant="secondary" onClick={deleteCaseTypeModal.close}>Cancel</Button>
+        <Button variant="danger" onClick={() => deleteCaseTypeModal.data && removeCaseTypeMut.mutate(deleteCaseTypeModal.data.Id)} loading={removeCaseTypeMut.isPending}>Delete</Button></>
+      }>
+        <p className="text-sm text-semantic-text-subtle">Delete <strong className="text-semantic-text-default">{deleteCaseTypeModal.data?.Name}</strong> and all its steps?</p>
+      </Modal>
+
+      {/* Case Type Step Modal */}
+      <Modal isOpen={caseTypeStepModal.isOpen} onClose={caseTypeStepModal.close} title={isEditCaseTypeStep ? 'Edit Step' : 'Add Step'} size="sm" footer={
+        <><Button variant="secondary" onClick={caseTypeStepModal.close}>Cancel</Button>
+        <Button onClick={handleSaveCaseTypeStep} loading={saveCaseTypeStepMut.isPending}>{isEditCaseTypeStep ? 'Save Changes' : 'Create'}</Button></>
+      }>
+        <div className="space-y-4">
+          <FormField label="Name" required><input type="text" value={caseTypeStepForm.name} onChange={(e) => setCaseTypeStepForm({ ...caseTypeStepForm, name: e.target.value })} className="form-input" /></FormField>
+          <FormField label="Status Code">
+            <select value={caseTypeStepForm.statusCode} onChange={(e) => setCaseTypeStepForm({ ...caseTypeStepForm, statusCode: e.target.value })} className="form-input">
+              <option value="">Select Status Code</option>
+              {CASE_STATUS_CODES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          </FormField>
+          <FormField label="Display Order"><input type="number" value={caseTypeStepForm.displayOrder} onChange={(e) => setCaseTypeStepForm({ ...caseTypeStepForm, displayOrder: parseInt(e.target.value) || 0 })} className="form-input" /></FormField>
+          <FormField label="Color">
+            <div className="flex items-center gap-2">
+              <input type="color" value={caseTypeStepForm.color} onChange={(e) => setCaseTypeStepForm({ ...caseTypeStepForm, color: e.target.value })} className="w-8 h-8 rounded border border-border cursor-pointer" />
+              <input type="text" value={caseTypeStepForm.color} onChange={(e) => setCaseTypeStepForm({ ...caseTypeStepForm, color: e.target.value })} className="form-input flex-1" />
+            </div>
+          </FormField>
+          <div className="flex items-center gap-6">
+            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeStepForm.isTerminal} onChange={(e) => setCaseTypeStepForm({ ...caseTypeStepForm, isTerminal: e.target.checked })} className="w-4 h-4 rounded border-border" />Terminal</label>
+            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeStepForm.isResolved} onChange={(e) => setCaseTypeStepForm({ ...caseTypeStepForm, isResolved: e.target.checked })} className="w-4 h-4 rounded border-border" />Resolved</label>
+            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeStepForm.requiresApproval} onChange={(e) => setCaseTypeStepForm({ ...caseTypeStepForm, requiresApproval: e.target.checked })} className="w-4 h-4 rounded border-border" />Requires Approval</label>
+            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeStepForm.isActive} onChange={(e) => setCaseTypeStepForm({ ...caseTypeStepForm, isActive: e.target.checked })} className="w-4 h-4 rounded border-border" />Active</label>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Case Type Step Modal */}
+      <Modal isOpen={deleteCaseTypeStepModal.isOpen} onClose={deleteCaseTypeStepModal.close} title="Delete Step" size="sm" footer={
+        <><Button variant="secondary" onClick={deleteCaseTypeStepModal.close}>Cancel</Button>
+        <Button variant="danger" onClick={() => deleteCaseTypeStepModal.data && removeCaseTypeStepMut.mutate(deleteCaseTypeStepModal.data.Id)} loading={removeCaseTypeStepMut.isPending}>Delete</Button></>
+      }>
+        <p className="text-sm text-semantic-text-subtle">Delete step <strong className="text-semantic-text-default">{deleteCaseTypeStepModal.data?.Name}</strong>?</p>
       </Modal>
 
       {/* Sync Detail Modal */}

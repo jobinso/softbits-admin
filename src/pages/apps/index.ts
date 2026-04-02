@@ -7,3 +7,4 @@ export { default as ShopAdminPage } from './shop-admin-page';
 export { default as InfuseAdminPage } from './infuse-admin-page';
 export { default as WorkAdminPage } from './work-admin-page';
 export { default as PulpAdminPage } from './pulp-admin-page';
+export { default as EditAdminPage } from './edit-admin-page';

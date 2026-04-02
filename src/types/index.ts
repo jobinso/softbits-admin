@@ -583,6 +583,45 @@ export interface Stage {
   IsActive: boolean;
 }
 
+export interface CaseType {
+  Id: string;
+  Code: string;
+  Name: string;
+  Description?: string;
+  IconName?: string;
+  Color?: string;
+  Prefix: string;
+  RequiresRootCause: boolean;
+  RequiresContainment: boolean;
+  RequiresVerification: boolean;
+  RequiresApproval: boolean;
+  DefaultPriority?: string;
+  DefaultSlaResponseHours?: number;
+  DefaultSlaResolutionHours?: number;
+  DefaultAssignedTeamId?: string;
+  IsPortalCreatable: boolean;
+  IsCustomerFacing: boolean;
+  SortOrder: number;
+  IsActive: boolean;
+  SubTypeCount?: number;
+  CaseCount?: number;
+  StepCount?: number;
+}
+
+export interface CaseTypeStep {
+  Id: string;
+  CaseTypeId: string;
+  CaseTypeName?: string;
+  Name: string;
+  StatusCode?: string;
+  DisplayOrder: number;
+  Color?: string;
+  IsTerminal: boolean;
+  IsResolved: boolean;
+  RequiresApproval: boolean;
+  IsActive: boolean;
+}
+
 export interface RateCard {
   Id: string;
   Name: string;
@@ -1275,6 +1314,228 @@ export interface DocumentTypeConfig {
   UpdatedBy: string | null;
 }
 
+// ===== EdIT (EDI Integration) Types =====
+
+export interface EditVanProvider {
+  VanId: number;
+  VanCode: string;
+  VanName: string;
+  VanType: string;
+  BaseUrl?: string;
+  ApiVersion?: string;
+  AuthType: string;
+  AuthConfig?: string;
+  PollIntervalMs: number;
+  PollEnabled: boolean;
+  PollLastRun?: string;
+  PollLastStatus?: string;
+  DocumentFormat: string;
+  SandboxMode: boolean;
+  SandboxConfig?: string;
+  IsActive: boolean;
+  Notes?: string;
+  CreatedAt?: string;
+  UpdatedAt?: string;
+  CreatedBy?: string;
+  // Computed
+  partnerCount?: number;
+}
+
+export interface EditTradingPartner {
+  PartnerId: number;
+  PartnerCode: string;
+  CompanyName: string;
+  VanId?: number;
+  VanPartnerId?: string;
+  VanCode?: string;
+  VanName?: string;
+  QualifierId?: string;
+  InterchangeId?: string;
+  ABN?: string;
+  GLN?: string;
+  SysproCustomer?: string;
+  SysproSupplier?: string;
+  DirectCommProtocol?: string;
+  DirectCommConfig?: string;
+  DefaultFormat: string;
+  DefaultVersion?: string;
+  WorkflowProvider: string;
+  IsActive: boolean;
+  Notes?: string;
+  CreatedAt?: string;
+  UpdatedAt?: string;
+}
+
+export interface EditTransaction {
+  TransactionId: number;
+  TransactionGuid: string;
+  PartnerId: number;
+  PartnerCode?: string;
+  CompanyName?: string;
+  VanId?: number;
+  VanCode?: string;
+  TypeId: number;
+  TypeCode?: string;
+  TypeName?: string;
+  Direction: string;
+  ControlNumber?: string;
+  DocumentRef?: string;
+  VanDocumentId?: string;
+  Status: string;
+  SourceFormat?: string;
+  SysproDocNumber?: string;
+  ErrorMessage?: string;
+  WorkflowProvider?: string;
+  RetryCount: number;
+  MaxRetries: number;
+  ReceivedAt?: string;
+  CompletedAt?: string;
+  DurationMs?: number;
+  CreatedAt?: string;
+  // Attached on detail view
+  stages?: EditDocumentStage[];
+}
+
+export interface EditDocumentStage {
+  StageId: number;
+  TransactionId: number;
+  StageName: string;
+  StageOrder: number;
+  Status: string;
+  StartedAt?: string;
+  CompletedAt?: string;
+  DurationMs?: number;
+  InputData?: string;
+  OutputData?: string;
+  ErrorMessage?: string;
+  ErrorDetails?: string;
+}
+
+export interface EditErrorLog {
+  ErrorId: number;
+  TransactionId?: number;
+  PartnerId?: number;
+  PartnerCode?: string;
+  CompanyName?: string;
+  VanId?: number;
+  StageName?: string;
+  ErrorCode?: string;
+  ErrorMessage: string;
+  ErrorDetails?: string;
+  Severity: string;
+  IsResolved: boolean;
+  ResolvedAt?: string;
+  ResolvedBy?: string;
+  ResolutionNotes?: string;
+  CreatedAt?: string;
+  DocumentRef?: string;
+}
+
+export interface EditTransactionType {
+  TypeId: number;
+  TypeCode: string;
+  EdifactCode?: string;
+  RsxDocType?: string;
+  Name: string;
+  Direction: string;
+  SysproBO?: string;
+  Description?: string;
+  IsActive: boolean;
+}
+
+export interface EditFormatSpec {
+  SpecId: number;
+  PartnerId?: number;
+  PartnerCode?: string;
+  TypeId?: number;
+  TypeCode?: string;
+  VanId?: number;
+  VanCode?: string;
+  SpecName: string;
+  SpecVersion?: string;
+  ImportedFrom?: string;
+  ImportedFileName?: string;
+  FieldCount: number;
+  RequiredFieldCount: number;
+  MappingStatus: string;
+  GeneratedMapsCount: number;
+  Notes?: string;
+  ImportedAt?: string;
+  ImportedBy?: string;
+  IsActive: boolean;
+}
+
+export interface EditFormatSpecField {
+  FieldId: number;
+  SpecId: number;
+  FieldPosition: number;
+  SegmentId?: string;
+  ElementId?: string;
+  FieldName?: string;
+  DataType?: string;
+  MinLength?: number;
+  MaxLength?: number;
+  IsRequired: boolean;
+  IsMapped: boolean;
+  MappedToXPath?: string;
+  SampleValue?: string;
+  Notes?: string;
+}
+
+export interface EditWorkflowProviderConfig {
+  ProviderId: number;
+  ProviderCode: string;
+  ProviderName: string;
+  IsEnabled: boolean;
+  Configuration?: string;
+  CreatedAt?: string;
+  UpdatedAt?: string;
+}
+
+export interface EditDashboardSummary {
+  byStatus: Array<{ Status: string; count: number }>;
+  byType: Array<{ TypeCode: string; count: number }>;
+  byVan: Array<{ VanCode: string; count: number }>;
+}
+
+export interface EditDashboardStats {
+  today: number;
+  week: number;
+  month: number;
+  successRate: number;
+  avgDurationMs: number;
+}
+
+export interface EditFieldMap {
+  MapId: number;
+  TypeId: number;
+  PartnerId?: number;
+  SourcePath: string;
+  TargetXPath: string;
+  TransformRule: string;
+  TransformConfig?: string;
+  IsRequired: boolean;
+  DefaultValue?: string;
+  Description?: string;
+  SortOrder: number;
+}
+
+export interface EditPartnerTransactionConfig {
+  ConfigId: number;
+  PartnerId: number;
+  TypeId: number;
+  TypeCode?: string;
+  TypeName?: string;
+  IsEnabled: boolean;
+  WorkflowProvider?: string;
+  WorkflowId?: string;
+  ValidationRules?: string;
+  FieldMapOverrides?: string;
+  PostingConfig?: string;
+  AckRequired: boolean;
+  AutoProcess: boolean;
+}
+
 // ===== ERP Config Types =====
 
 export type ErpConfigFolder = 'query' | 'build' | 'fieldmap' | 'warmer';
@@ -1461,6 +1722,139 @@ export interface InfuseDashboardData {
     work: { pendingExecutions: number; database: { status: string }; n8n: { status: string; connected: boolean } } | null;
     chat: InfuseChatStats | null;
   } | null;
+}
+
+// ===== EdIT (EDI) Types =====
+
+export interface EditVanProvider {
+  VanId: string;
+  VanCode: string;
+  VanName: string;
+  VanType: string;
+  ConnectionConfig: Record<string, unknown> | null;
+  DocumentFormat: string;
+  PollEnabled: boolean;
+  PollIntervalMinutes: number;
+  PollLastRun: string | null;
+  PollLastStatus: string | null;
+  PollLastError: string | null;
+  IsActive: boolean;
+  CreatedAt: string;
+  UpdatedAt: string | null;
+}
+
+export interface EditTradingPartner {
+  PartnerId: string;
+  PartnerCode: string;
+  CompanyName: string;
+  VanId: string | null;
+  VanName: string | null;
+  DefaultFormat: string;
+  WorkflowProvider: string | null;
+  ContactEmail: string | null;
+  ContactPhone: string | null;
+  Notes: string | null;
+  IsActive: boolean;
+  CreatedAt: string;
+  UpdatedAt: string | null;
+}
+
+export interface EditTransaction {
+  TransactionId: number;
+  PartnerCode: string;
+  CompanyName: string | null;
+  TypeCode: string;
+  TypeName: string | null;
+  Direction: string;
+  DocumentRef: string | null;
+  Status: string;
+  ReceivedAt: string;
+  CompletedAt: string | null;
+  DurationMs: number | null;
+  ErrorMessage: string | null;
+}
+
+export interface EditDocumentStage {
+  StageId: number;
+  TransactionId: number;
+  StageName: string;
+  StageOrder: number;
+  Status: string;
+  StartedAt: string | null;
+  CompletedAt: string | null;
+  DurationMs: number | null;
+  ErrorMessage: string | null;
+  ErrorDetails: string | null;
+}
+
+export interface EditErrorLog {
+  ErrorId: number;
+  TransactionId: number | null;
+  StageName: string | null;
+  Severity: string;
+  ErrorMessage: string;
+  ErrorDetails: string | null;
+  PartnerCode: string | null;
+  IsResolved: boolean;
+  ResolvedBy: string | null;
+  ResolvedAt: string | null;
+  CreatedAt: string;
+}
+
+export interface EditTransactionType {
+  TypeCode: string;
+  TypeName: string;
+  Direction: string;
+  Description: string | null;
+  IsActive: boolean;
+}
+
+export interface EditFormatSpec {
+  SpecId: string;
+  SpecName: string;
+  PartnerCode: string | null;
+  TypeCode: string | null;
+  ImportedFrom: string | null;
+  FieldCount: number;
+  MappingStatus: string;
+  ImportedAt: string;
+  UpdatedAt: string | null;
+}
+
+export interface EditFormatSpecField {
+  FieldId: string;
+  SpecId: string;
+  FieldName: string;
+  FieldPosition: number;
+  DataType: string | null;
+  MaxLength: number | null;
+  IsRequired: boolean;
+  MappedTo: string | null;
+  MappingStatus: string;
+}
+
+export interface EditWorkflowProviderConfig {
+  ProviderId: string;
+  ProviderName: string;
+  ProviderType: string;
+  BaseUrl: string | null;
+  IsActive: boolean;
+  LastTestStatus: string | null;
+  LastTestedAt: string | null;
+}
+
+export interface EditDashboardSummary {
+  totalTransactionsToday: number;
+  successRate: number;
+  activeVans: number;
+  activePartners: number;
+  recentErrors: number;
+}
+
+export interface EditDashboardStats {
+  byStatus: Array<{ Status: string; Count: number }>;
+  byPartner: Array<{ PartnerCode: string; Count: number }>;
+  byType: Array<{ TypeCode: string; Count: number }>;
 }
 
 // ===== About Types =====

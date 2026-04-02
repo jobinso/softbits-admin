@@ -33,7 +33,7 @@ import InternalServicesPanel from './components/internal-services-panel';
 // Constants
 // ---------------------------------------------------------------------------
 
-const CATEGORIES = ['EMAIL', 'LABEL', 'STORAGE', 'EXCHANGE_RATE', 'AI', 'AUTOMATION', 'OAUTH', 'INTERNAL'] as const;
+const CATEGORIES = ['EMAIL', 'LABEL', 'STORAGE', 'EXCHANGE_RATE', 'AI', 'AUTOMATION', 'OAUTH', 'ECOMMERCE', 'MARKETING', 'INTERNAL'] as const;
 type Category = typeof CATEGORIES[number];
 
 const CATEGORY_LABELS: Record<Category, string> = {
@@ -44,6 +44,8 @@ const CATEGORY_LABELS: Record<Category, string> = {
   AI: 'AI',
   AUTOMATION: 'Automation',
   OAUTH: 'OAuth',
+  ECOMMERCE: 'E-Commerce',
+  MARKETING: 'Marketing',
   INTERNAL: 'Internal',
 };
 

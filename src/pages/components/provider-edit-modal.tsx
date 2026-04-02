@@ -131,6 +131,41 @@ const PROVIDER_EXAMPLES: Record<string, { config: string; credentials: string; h
     credentials: '{\n  "apiKey": "n8n-api-key"\n}',
     hint: 'N8N workflow automation platform for event processing.',
   },
+  AUTOMATION_SYSPRO_SWS: {
+    config: '{\n  "baseUrl": "http://syspro-server:30001",\n  "company": "S",\n  "timeout": 30000\n}',
+    credentials: '{\n  "operator": "ADMIN",\n  "operatorPassword": "password"\n}',
+    hint: 'SYSPRO Workflow Services engine accessed via SOAP/XML business objects (SWSTSW, SWSTMG).',
+  },
+  SHOPIT_SHOPIFY: {
+    config: '{\n  "hostname": "your-store.myshopify.com",\n  "apiVersion": "2024-01",\n  "webhookSecret": "your-webhook-secret"\n}',
+    credentials: '{\n  "accessToken": "shpat_...",\n  "refreshToken": "",\n  "tokenExpiresAt": null\n}',
+    hint: 'Shopify store via OAuth 2.0. Access token obtained through the Shopify partner app install flow.',
+  },
+  SHOPIT_WOOCOMMERCE: {
+    config: '{\n  "storeUrl": "https://yourstore.com",\n  "apiVersion": "v3",\n  "webhookSecret": "your-webhook-secret"\n}',
+    credentials: '{\n  "apiKey": "ck_...",\n  "apiSecret": "cs_..."\n}',
+    hint: 'WooCommerce REST API using consumer key and secret generated in WooCommerce → Settings → Advanced → REST API.',
+  },
+  SHOPIT_MAGENTO: {
+    config: '{\n  "storeUrl": "https://yourstore.com",\n  "apiVersion": "2.4",\n  "storeCode": "default"\n}',
+    credentials: '{\n  "accessToken": "your-integration-token"\n}',
+    hint: 'Magento 2 / Adobe Commerce via integration bearer token. Create under System → Integrations.',
+  },
+  SHOPIT_BIGCOMMERCE: {
+    config: '{\n  "storeHash": "abc123",\n  "apiVersion": "v3"\n}',
+    credentials: '{\n  "accessToken": "your-access-token"\n}',
+    hint: 'BigCommerce store API. Access token and store hash found under Advanced Settings → API Accounts.',
+  },
+  MARKIT_BREVO: {
+    config: '{\n  "apiUrl": "https://api.brevo.com/v3",\n  "senderName": "Your Company",\n  "senderEmail": "noreply@company.com"\n}',
+    credentials: '{\n  "apiKey": "xkeysib-..."\n}',
+    hint: 'Brevo (Sendinblue) for email, SMS, and WhatsApp marketing. API key found in Brevo → Account → SMTP & API.',
+  },
+  MARKIT_MAILCHIMP: {
+    config: '{\n  "apiUrl": "https://us1.api.mailchimp.com/3.0",\n  "audienceId": "your-default-list-id"\n}',
+    credentials: '{\n  "apiKey": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-us1"\n}',
+    hint: 'Mailchimp email marketing. API key found in Account → Extras → API Keys. Datacenter (e.g. us1) is the suffix of the key — use it in apiUrl.',
+  },
   INTERNAL_INFUSE_MCP: {
     config: '{\n  "serviceHost": "infuse-mcp",\n  "servicePort": 3900,\n  "healthEndpoint": "/health",\n  "oauth": {\n    "enabled": true,\n    "scopes": ["mcp:call_tool", "mcp:read_resource"],\n    "resourceUri": "https://mcp.greenbitshome.com"\n  },\n  "ipWhitelist": []\n}',
     credentials: '{}',
@@ -177,6 +212,13 @@ const PROVIDER_TYPE_LABELS: Record<string, string> = {
   ERP_SYSPRO: 'SYSPRO ERP',
   ERP_ACUMATICA: 'Acumatica ERP',
   AUTOMATION_N8N: 'N8N Automation',
+  AUTOMATION_SYSPRO_SWS: 'SYSPRO Workflow Services',
+  SHOPIT_SHOPIFY: 'Shopify',
+  SHOPIT_WOOCOMMERCE: 'WooCommerce',
+  SHOPIT_MAGENTO: 'Magento / Adobe Commerce',
+  SHOPIT_BIGCOMMERCE: 'BigCommerce',
+  MARKIT_BREVO: 'Brevo',
+  MARKIT_MAILCHIMP: 'Mailchimp',
   OAUTH_SERVER: 'OAuth 2.1 Server',
 };
 

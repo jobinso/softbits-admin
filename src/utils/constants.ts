@@ -21,6 +21,7 @@ export const ADMIN_TABS = {
     { id: 'workit', label: 'WorkIT', icon: 'Briefcase', app: 'work' },
     { id: 'pulpit', label: 'PulpIT', icon: 'FileText', app: 'pulp' },
     { id: 'email-poller', label: 'PollIT', icon: 'Mail', app: 'email-poller' },
+    { id: 'edit', label: 'EdIT', icon: 'FileCode', app: 'edit' },
   ],
 } as const;
 

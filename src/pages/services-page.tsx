@@ -31,38 +31,54 @@ import { EndpointsPage, ProvidersPage } from '@/pages/services';
 
 const SERVICE_NAMES: Record<string, string> = {
   'softbits-bridge': 'SoftBITS Bridge',
+  'softbits-sync': 'Bridge Sync',
+  'softbits-poller': 'Bridge Poller',
   'softbits-connect': 'SoftBITS Connect',
   'connect-sync': 'Connect Sync Engine',
   'softbits-flip': 'SoftBITS Flip',
   'softbits-stack': 'SoftBITS Stack',
-  'softbits-shop': 'SoftBITS Shop',
   'softbits-floor': 'SoftBITS Floor',
+  'softbits-pulp': 'SoftBITS Pulp',
+  'softbits-service': 'SoftBITS Service',
+  'softbits-shop': 'SoftBITS Shop',
+  'softbits-lic': 'SoftBITS Lic',
+  'softbits-admin': 'SoftBITS Admin',
+  'softbits-frame': 'SoftBITS Frame',
   'infuse-mcp': 'Infuse MCP',
+  'infuse-app': 'Infuse App',
   'infuse-http': 'Infuse HTTP',
   'infuse-work': 'Infuse Work',
-  'softbits-pulp': 'SoftBITS Pulp',
 };
 
 const APP_SERVICES = [
-  { key: 'flip', name: 'FlipIT', description: 'Mobile Point of Sale for truck sales', envVar: 'SOFTBITS_FLIP_ENABLED' },
   { key: 'connect', name: 'ConnectIT', description: 'CRM synchronization and integration', envVar: 'SOFTBITS_CONNECT_ENABLED' },
-  { key: 'stack', name: 'StackIT', description: 'Warehouse Management System', envVar: 'SOFTBITS_STACK_ENABLED' },
+  { key: 'flip', name: 'FlipIT', description: 'Mobile Point of Sale for truck sales', envVar: 'SOFTBITS_FLIP_ENABLED' },
   { key: 'floor', name: 'FloorIT', description: 'Shop Floor Labor Capture', envVar: 'SOFTBITS_FLOOR_ENABLED' },
-  { key: 'infuse', name: 'InfuseIT - MCP', description: 'AI/MCP integration services', envVar: 'SOFTBITS_INFUSE_ENABLED' },
+  { key: 'stack', name: 'StackIT', description: 'Warehouse Management System', envVar: 'SOFTBITS_STACK_ENABLED' },
+  { key: 'pulp', name: 'PulpIT', description: 'Document Management System', envVar: 'SOFTBITS_PULP_ENABLED' },
+  { key: 'service', name: 'ServiceIT', description: 'Field Service Management', envVar: 'SOFTBITS_SERVICE_ENABLED' },
+  { key: 'shop', name: 'ShopIT', description: 'E-commerce and ordering system', envVar: 'SOFTBITS_SHOP_ENABLED' },
+  { key: 'infuse', name: 'InfuseIT', description: 'AI/MCP integration services', envVar: 'SOFTBITS_INFUSE_ENABLED' },
 ];
 
 const LOG_SERVICES = [
   { value: 'softbits-bridge', label: 'Bridge' },
+  { value: 'softbits-sync', label: 'Bridge Sync' },
+  { value: 'softbits-poller', label: 'Bridge Poller' },
   { value: 'softbits-connect', label: 'Connect' },
   { value: 'connect-sync', label: 'Connect Sync' },
   { value: 'softbits-flip', label: 'Flip' },
-  { value: 'softbits-stack', label: 'Stack' },
-  { value: 'softbits-shop', label: 'Shop' },
   { value: 'softbits-floor', label: 'Floor' },
+  { value: 'softbits-stack', label: 'Stack' },
+  { value: 'softbits-pulp', label: 'Pulp' },
+  { value: 'softbits-service', label: 'Service' },
+  { value: 'softbits-shop', label: 'Shop' },
+  { value: 'softbits-lic', label: 'Lic' },
+  { value: 'softbits-admin', label: 'Admin' },
   { value: 'infuse-mcp', label: 'Infuse MCP' },
+  { value: 'infuse-app', label: 'Infuse App' },
   { value: 'infuse-http', label: 'Infuse HTTP' },
   { value: 'infuse-work', label: 'Infuse Work' },
-  { value: 'softbits-pulp', label: 'Pulp' },
 ];
 
 const tabs: TabItem[] = [

@@ -28,6 +28,7 @@ export default function AdminLayout() {
     { id: 'nav-pulp', label: 'PulpIT Admin', group: 'Apps', onSelect: () => navigate('/apps/pulp') },
     { id: 'nav-labels', label: 'Labels Admin', group: 'Apps', onSelect: () => navigate('/apps/labels') },
     { id: 'nav-work', label: 'WorkIT Admin', group: 'Apps', onSelect: () => navigate('/apps/work') },
+    { id: 'nav-edit', label: 'EdIT Admin', group: 'Apps', onSelect: () => navigate('/apps/edit') },
   ], [navigate])();
 
   return (

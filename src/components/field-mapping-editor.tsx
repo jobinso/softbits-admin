@@ -777,10 +777,12 @@ export function FieldMappingEditor({ entityType, baseMapping, customOverrides }:
     enabled: !!activeEntity,
   });
 
-  // Fetch Connect fields for current entity type
+  // Fetch Connect fields for current entity type and active sub-entity.
+  // When multiple sub-entities exist (e.g. activity: standard/opportunity/case/project),
+  // pass activeEntity so the endpoint returns fields from the correct source table.
   const { data: connectFieldsRes } = useQuery({
-    queryKey: ['connect', 'connect-fields', entityType],
-    queryFn: () => getConnectFields(entityType),
+    queryKey: ['connect', 'connect-fields', entityType, activeEntity],
+    queryFn: () => getConnectFields(entityType, activeEntity || undefined),
     enabled: !!entityType,
   });
 

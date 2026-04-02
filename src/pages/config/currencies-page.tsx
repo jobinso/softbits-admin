@@ -8,7 +8,6 @@ import {
   Modal,
   StatusBadge,
   LoadingSpinner,
-  PageHeader,
   TableCard,
 } from '@/components/shared';
 import type { ColumnDef } from '@/components/shared';
@@ -202,11 +201,6 @@ export default function CurrenciesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Currencies"
-        description="Manage currency settings"
-      />
-
       <TableCard
         title="All Currencies"
         icon={<Coins className="w-4 h-4" />}

@@ -18,6 +18,7 @@ import type { TabItem, ColumnDef } from '@/components/shared';
 import { useModal } from '@shared/hooks';
 import {
   getEmailPollerStatus,
+  getEmailPollerPollerStatus,
   getEmailPollerRoutingRules,
   createEmailPollerRoutingRule,
   updateEmailPollerRoutingRule,
@@ -122,6 +123,15 @@ export default function EmailPollerAdminPage() {
     refetchInterval: 30000,
   });
 
+  // Poller container reachability (only relevant in api/split mode)
+  const { data: pollerStatusData } = useQuery({
+    queryKey: ['email-poller-poller-status'],
+    queryFn: () => getEmailPollerPollerStatus(),
+    refetchInterval: 10000,
+    retry: false,
+  });
+  const pollerRunning = pollerStatusData?.running !== false;
+
   const status = statusData?.data;
   const providers: ProviderStatus[] = status?.providers || [];
 
@@ -134,17 +144,18 @@ export default function EmailPollerAdminPage() {
     <div className="space-y-6">
       <PageHeader
         title="PollIT"
-        subtitle="O365 mailbox polling, routing rules, and security monitoring"
+        description="O365 mailbox polling, routing rules, and security monitoring"
         icon={<Mail className="w-6 h-6" />}
       />
 
       <PageStatusBar items={[
-        { label: 'Service', value: status?.isRunning ? 'Running' : 'Stopped', variant: status?.isRunning ? 'success' : 'error' },
-        { label: 'Providers', value: String(status?.providerCount || 0) },
-        { label: 'ClamAV', value: status?.clamav?.status === 'connected' ? 'Connected' : status?.clamav?.enabled ? 'Unavailable' : 'Disabled', variant: status?.clamav?.status === 'connected' ? 'success' : status?.clamav?.enabled ? 'warning' : 'neutral' },
-        { label: 'Virus Scan', value: status?.security?.scanVirus ? 'On' : 'Off', variant: status?.security?.scanVirus ? 'success' : 'neutral' },
-        { label: 'Block Macros', value: status?.security?.blockMacros ? 'On' : 'Off', variant: status?.security?.blockMacros ? 'success' : 'neutral' },
-        { label: 'Max Attachment', value: `${status?.security?.maxAttachmentSizeMB || 25} MB` },
+        { type: 'badge', label: 'Poller', status: pollerRunning ? 'success' : 'danger', badgeLabel: pollerRunning ? 'Running' : 'Offline' },
+        { type: 'badge', label: 'Service', status: status?.isRunning ? 'success' : 'danger', badgeLabel: status?.isRunning ? 'Running' : 'Stopped' },
+        { type: 'text', label: 'Providers', value: String(status?.providerCount || 0) },
+        { type: 'badge', label: 'ClamAV', status: status?.clamav?.status === 'connected' ? 'success' : status?.clamav?.enabled ? 'warning' : 'neutral', badgeLabel: status?.clamav?.status === 'connected' ? 'Connected' : status?.clamav?.enabled ? 'Unavailable' : 'Disabled' },
+        { type: 'badge', label: 'Virus Scan', status: status?.security?.scanVirus ? 'success' : 'neutral', badgeLabel: status?.security?.scanVirus ? 'On' : 'Off' },
+        { type: 'badge', label: 'Block Macros', status: status?.security?.blockMacros ? 'success' : 'neutral', badgeLabel: status?.security?.blockMacros ? 'On' : 'Off' },
+        { type: 'text', label: 'Max Attachment', value: `${status?.security?.maxAttachmentSizeMB || 25} MB` },
       ]} />
 
       {providers.length > 1 && (
@@ -164,7 +175,7 @@ export default function EmailPollerAdminPage() {
 
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
-      {activeTab === 'status' && <StatusTab providers={providers} circuitBreakers={status?.circuitBreakers || []} clamav={status?.clamav} />}
+      {activeTab === 'status' && <StatusTab providers={providers} circuitBreakers={status?.circuitBreakers || []} clamav={status?.clamav} pollerRunning={pollerRunning} />}
       {activeTab === 'routing' && selectedProvider && <RoutingTab providerId={selectedProvider} />}
       {activeTab === 'security' && <SecurityTab providerId={selectedProvider} />}
     </div>
@@ -180,7 +191,7 @@ interface ClamAvStatus {
   port: number | null;
 }
 
-function StatusTab({ providers, circuitBreakers, clamav }: { providers: ProviderStatus[]; circuitBreakers: CircuitBreakerStatus[]; clamav?: ClamAvStatus }) {
+function StatusTab({ providers, circuitBreakers, clamav, pollerRunning }: { providers: ProviderStatus[]; circuitBreakers: CircuitBreakerStatus[]; clamav?: ClamAvStatus; pollerRunning: boolean }) {
   const queryClient = useQueryClient();
 
   const triggerMutation = useMutation({
@@ -189,7 +200,7 @@ function StatusTab({ providers, circuitBreakers, clamav }: { providers: Provider
       toast.success('Poll triggered');
       queryClient.invalidateQueries({ queryKey: ['email-poller-status'] });
     },
-    onError: (err: Error) => toast.error(`Trigger failed: ${err.message}`),
+    onError: (err: any) => toast.error(`Trigger failed: ${err?.response?.data?.error?.message || err.message}`),
   });
 
   const providerColumns: ColumnDef<ProviderStatus>[] = [
@@ -235,8 +246,9 @@ function StatusTab({ providers, circuitBreakers, clamav }: { providers: Provider
           <button
             type="button"
             onClick={() => triggerMutation.mutate(row.providerId)}
-            className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors"
-            title="Trigger Poll Now"
+            disabled={!pollerRunning || triggerMutation.isPending}
+            className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-semantic-text-faint disabled:hover:bg-transparent"
+            title={pollerRunning ? 'Trigger Poll Now' : 'Poller service is offline'}
           >
             <RefreshCw className="w-4 h-4" />
           </button>
