@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FieldMappingEditor } from '@/components/field-mapping-editor';
 import {
@@ -30,9 +30,10 @@ import {
   Card,
   PageHeader,
   TableCard,
+  TableData,
   PageStatusBar,
 } from '@/components/shared';
-import type { ColumnDef, TabItem } from '@/components/shared';
+import type { ColumnDef, TabItem, TableFilterField } from '@/components/shared';
 import {
   getConnectSyncStatus,
   triggerConnectSync,
@@ -114,19 +115,36 @@ const CONNECT_TABS: TabItem[] = [
 ];
 
 const SYNC_ENTITIES = [
-  { key: 'salesreps',  label: 'Sales Reps'   },
-  { key: 'suppliers',  label: 'Suppliers'    },
-  { key: 'customers',  label: 'Customers'    },
-  { key: 'accounts',   label: 'Accounts'     },
-  { key: 'addresses',  label: 'Addresses'    },
-  { key: 'contacts',   label: 'Contacts'     },
-  { key: 'activities', label: 'Activities'   },
+  { key: 'salesreps',     label: 'Sales Reps'    },
+  { key: 'suppliers',     label: 'Suppliers'     },
+  { key: 'customers',     label: 'Customers'     },
+  { key: 'accounts',      label: 'Accounts'      },
+  { key: 'addresses',     label: 'Addresses'     },
+  { key: 'contacts',      label: 'Contacts'      },
+  { key: 'activities',    label: 'Activities'    },
 ];
 
 const SYNC_DIRECTIONS = [
-  { value: 'from_syspro', label: 'ERP to CRM' },
-  { value: 'to_syspro', label: 'CRM to ERP' },
-  { value: 'bidirectional', label: 'Bidirectional' },
+  { value: 'from_syspro',  label: 'ERP → CRM'       },
+  { value: 'to_syspro',    label: 'CRM → ERP'       },
+  { value: 'bidirectional', label: 'Bidirectional'  },
+];
+
+const CONFLICT_STRATEGIES = [
+  { value: 'syspro_wins',  label: 'ERP wins'       },
+  { value: 'connect_wins', label: 'CRM wins'       },
+  { value: 'newest_wins',  label: 'Newest wins'    },
+  { value: 'manual',       label: 'Manual review'  },
+
+];
+
+const FREQUENCY_OPTIONS = [
+  { value: 0,    label: 'Manual only'  },
+  { value: 15,   label: 'Every 15 min' },
+  { value: 30,   label: 'Every 30 min' },
+  { value: 60,   label: 'Every hour'   },
+  { value: 240,  label: 'Every 4 hrs'  },
+  { value: 1440, label: 'Once daily'   },
 ];
 
 // ---------------------------------------------------------------------------
@@ -153,90 +171,90 @@ function formatTimeAgo(dateInput?: string | null): string {
 // ---------------------------------------------------------------------------
 
 interface TerritoryForm {
-  name: string;
-  code: string;
-  sysproBranch: string;
-  description: string;
-  isActive: boolean;
+  Name: string;
+  Code: string;
+  SysproBranch: string;
+  Description: string;
+  IsActive: boolean;
 }
 
 interface SalesRepForm {
-  name: string;
-  email: string;
-  phone: string;
-  sysproSalesperson: string;
-  salesTarget: number;
-  defaultPipelineId: string;
-  isActive: boolean;
+  Name: string;
+  Email: string;
+  Phone: string;
+  SysproSalesperson: string;
+  SalesTarget: number;
+  DefaultPipelineId: string;
+  IsActive: boolean;
 }
 
 interface PipelineForm {
-  name: string;
-  description: string;
-  isDefault: boolean;
-  isActive: boolean;
+  Name: string;
+  Description: string;
+  IsDefault: boolean;
+  IsActive: boolean;
 }
 
 interface StageForm {
-  pipelineId: string;
-  name: string;
-  displayOrder: number;
-  probability: number;
-  colour: string;
-  isClosed: boolean;
-  isWon: boolean;
-  isActive: boolean;
+  PipelineId: string;
+  Name: string;
+  DisplayOrder: number;
+  Probability: number;
+  Colour: string;
+  IsClosed: boolean;
+  IsWon: boolean;
+  IsActive: boolean;
 }
 
 interface RateCardForm {
-  name: string;
-  description: string;
-  status: string;
-  notes: string;
+  Name: string;
+  Description: string;
+  Status: string;
+  Notes: string;
 }
 
 interface LineItemForm {
-  roleId: string;
-  currencyId: string;
-  rate: number;
-  unit: string;
-  notes: string;
+  RoleId: string;
+  CurrencyId: string;
+  Rate: number;
+  Unit: string;
+  Notes: string;
 }
 
 interface CaseTypeForm {
-  code: string;
-  name: string;
-  description: string;
-  prefix: string;
-  iconName: string;
-  color: string;
-  requiresRootCause: boolean;
-  requiresContainment: boolean;
-  requiresVerification: boolean;
-  requiresApproval: boolean;
-  defaultPriority: string;
-  defaultSlaResponseHours: number | '';
-  defaultSlaResolutionHours: number | '';
-  isPortalCreatable: boolean;
-  isCustomerFacing: boolean;
-  isActive: boolean;
+  Code: string;
+  Name: string;
+  Description: string;
+  Prefix: string;
+  IconName: string;
+  Color: string;
+  RequiresRootCause: boolean;
+  RequiresContainment: boolean;
+  RequiresVerification: boolean;
+  RequiresApproval: boolean;
+  DefaultPriority: string;
+  DefaultSlaResponseHours: number | '';
+  DefaultSlaResolutionHours: number | '';
+  IsPortalCreatable: boolean;
+  IsCustomerFacing: boolean;
+  IsActive: boolean;
 }
 
 interface CaseTypeStepForm {
-  caseTypeId: string;
-  name: string;
-  statusCode: string;
-  displayOrder: number;
-  color: string;
-  isTerminal: boolean;
-  isResolved: boolean;
-  requiresApproval: boolean;
-  isActive: boolean;
+  CaseTypeId: string;
+  Name: string;
+  StatusCode: string;
+  DisplayOrder: number;
+  Color: string;
+  IsTerminal: boolean;
+  IsResolved: boolean;
+  RequiresApproval: boolean;
+  IsActive: boolean;
 }
 
-const INITIAL_CASE_TYPE: CaseTypeForm = { code: '', name: '', description: '', prefix: '', iconName: '', color: '#3B82F6', requiresRootCause: false, requiresContainment: false, requiresVerification: false, requiresApproval: false, defaultPriority: 'Medium', defaultSlaResponseHours: '', defaultSlaResolutionHours: '', isPortalCreatable: false, isCustomerFacing: true, isActive: true };
+const INITIAL_CASE_TYPE: CaseTypeForm = { Code: '', Name: '', Description: '', Prefix: '', IconName: '', Color: '#3B82F6', RequiresRootCause: false, RequiresContainment: false, RequiresVerification: false, RequiresApproval: false, DefaultPriority: 'Medium', DefaultSlaResponseHours: '', DefaultSlaResolutionHours: '', IsPortalCreatable: false, IsCustomerFacing: true, IsActive: true };
 
-const INITIAL_CASE_TYPE_STEP: CaseTypeStepForm = { caseTypeId: '', name: '', statusCode: '', displayOrder: 0, color: '#3B82F6', isTerminal: false, isResolved: false, requiresApproval: false, isActive: true };
+const INITIAL_CASE_TYPE_STEP: CaseTypeStepForm = { CaseTypeId: '', Name: '', StatusCode: '', DisplayOrder: 0, Color: '#3B82F6', IsTerminal: false, IsResolved: false, RequiresApproval: false, IsActive: true };
 
 const CASE_STATUS_CODES = [
   { value: 'NEW', label: 'New' },
@@ -252,12 +270,12 @@ const CASE_STATUS_CODES = [
   { value: 'REOPENED', label: 'Reopened' },
 ];
 
-const INITIAL_TERRITORY: TerritoryForm = { name: '', code: '', sysproBranch: '', description: '', isActive: true };
-const INITIAL_SALESREP: SalesRepForm = { name: '', email: '', phone: '', sysproSalesperson: '', salesTarget: 0, defaultPipelineId: '', isActive: true };
-const INITIAL_PIPELINE: PipelineForm = { name: '', description: '', isDefault: false, isActive: true };
-const INITIAL_STAGE: StageForm = { pipelineId: '', name: '', displayOrder: 0, probability: 0, colour: '#3B82F6', isClosed: false, isWon: false, isActive: true };
-const INITIAL_RATECARD: RateCardForm = { name: '', description: '', status: 'Draft', notes: '' };
-const INITIAL_LINEITEM: LineItemForm = { roleId: '', currencyId: '', rate: 0, unit: 'Hour', notes: '' };
+const INITIAL_TERRITORY: TerritoryForm = { Name: '', Code: '', SysproBranch: '', Description: '', IsActive: true };
+const INITIAL_SALESREP: SalesRepForm = { Name: '', Email: '', Phone: '', SysproSalesperson: '', SalesTarget: 0, DefaultPipelineId: '', IsActive: true };
+const INITIAL_PIPELINE: PipelineForm = { Name: '', Description: '', IsDefault: false, IsActive: true };
+const INITIAL_STAGE: StageForm = { PipelineId: '', Name: '', DisplayOrder: 0, Probability: 0, Colour: '#3B82F6', IsClosed: false, IsWon: false, IsActive: true };
+const INITIAL_RATECARD: RateCardForm = { Name: '', Description: '', Status: 'Draft', Notes: '' };
+const INITIAL_LINEITEM: LineItemForm = { RoleId: '', CurrencyId: '', Rate: 0, Unit: 'Hour', Notes: '' };
 
 // ---------------------------------------------------------------------------
 // Component
@@ -311,7 +329,16 @@ export default function ConnectAdminPage() {
   const [selectedMappingType, setSelectedMappingType] = useState<string | null>(null);
 
   // ---- Sync config local edits (controlled form state) ----
-  const [syncEdits, setSyncEdits] = useState<Record<string, { enabled: boolean; direction: string }>>({});
+  const [syncEdits, setSyncEdits] = useState<Record<string, {
+    enabled: boolean;
+    direction: string;
+    frequency: number;
+    conflictResolution: string;
+  }>>({});
+
+  // ---- Sync history search + filters ----
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyFilters, setHistoryFilters] = useState<Record<string, string>>({});
 
   // ==== Queries ====
 
@@ -337,12 +364,14 @@ export default function ConnectAdminPage() {
   // Initialize sync edits from fetched config
   useEffect(() => {
     const configs = syncConfig?.data?.configs ?? [];
-    const initial: Record<string, { enabled: boolean; direction: string }> = {};
+    const initial: Record<string, { enabled: boolean; direction: string; frequency: number; conflictResolution: string }> = {};
     for (const entity of SYNC_ENTITIES) {
       const cfg = configs.find((c: { EntityType: string }) => c.EntityType?.toLowerCase() === entity.key);
       initial[entity.key] = {
         enabled: cfg?.SyncEnabled ?? true,
         direction: cfg?.SyncDirection || 'from_syspro',
+        frequency: cfg?.SyncFrequencyMinutes ?? 0,
+        conflictResolution: cfg?.ConflictResolution || 'syspro_wins',
       };
     }
     setSyncEdits(initial);
@@ -436,7 +465,7 @@ export default function ConnectAdminPage() {
   const rateCards: RateCard[] = rateCardsRes?.data ?? [];
   const billingRoles: BillingRole[] = billingRolesRes?.data ?? [];
   const currencies: Currency[] = currenciesRes?.data ?? [];
-  const history: ConnectSyncHistoryEntry[] = syncHistory?.data ?? syncHistory?.history ?? [];
+  const history: ConnectSyncHistoryEntry[] = syncHistory?.data ?? [];
   const currentRateCard: RateCard | null = rateCardDetail?.data ?? selectedRateCard;
   const currentVersionRoles: RateCardLineItem[] = versionDetail?.data?.Roles ?? [];
   const currentVersionStatus: string = versionDetail?.data?.Status ?? selectedVersion?.Status ?? '';
@@ -578,8 +607,8 @@ export default function ConnectAdminPage() {
 
   // Rate Card mutations
   const saveRateCardMut = useMutation({
-    mutationFn: (args: { id?: string; data: { name: string; description?: string; status?: string; notes?: string } }) =>
-      args.id ? updateRateCard(args.id, args.data as Partial<RateCard>) : createRateCard(args.data),
+    mutationFn: (args: { id?: string; data: Partial<RateCard> }) =>
+      args.id ? updateRateCard(args.id, args.data) : createRateCard(args.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['connect', 'rate-cards'] });
       rateCardModal.close();
@@ -627,7 +656,7 @@ export default function ConnectAdminPage() {
       const { cardId, versionId, lineId, data } = args;
       return lineId
         ? updateRateCardLineItem(cardId, versionId, lineId, data)
-        : addRateCardLineItem(cardId, versionId, { roleId: data.roleId, currencyId: data.currencyId, rate: data.rate, unit: data.unit, notes: data.notes || undefined });
+        : addRateCardLineItem(cardId, versionId, { RoleId: data.RoleId, CurrencyId: data.CurrencyId, Rate: data.Rate, Unit: data.Unit, Notes: data.Notes || undefined });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['connect', 'rate-card-version'] });
@@ -703,12 +732,12 @@ export default function ConnectAdminPage() {
     territoryModal.open();
   }
   function openEditTerritory(t: Territory) {
-    setTerritoryForm({ name: t.Name, code: t.Code || '', sysproBranch: t.SysproBranch || '', description: t.Description || '', isActive: t.IsActive });
+    setTerritoryForm({ Name: t.Name, Code: t.Code || '', SysproBranch: t.SysproBranch || '', Description: t.Description || '', IsActive: t.IsActive });
     setIsEditTerritory(true);
     territoryModal.open(t);
   }
   function handleSaveTerritory() {
-    if (!territoryForm.name.trim()) { toast.error('Name is required'); return; }
+    if (!territoryForm.Name.trim()) { toast.error('Name is required'); return; }
     saveTerritoryMut.mutate({
       id: isEditTerritory ? territoryModal.data?.Id : undefined,
       data: territoryForm,
@@ -722,15 +751,15 @@ export default function ConnectAdminPage() {
   }
   function openEditSalesRep(r: SalesRep) {
     setSalesRepForm({
-      name: r.Name, email: r.Email || '', phone: r.Phone || '',
-      sysproSalesperson: r.SysproSalesperson || '', salesTarget: r.SalesTarget || 0,
-      defaultPipelineId: r.DefaultPipelineId || '', isActive: r.IsActive,
+      Name: r.Name, Email: r.Email || '', Phone: r.Phone || '',
+      SysproSalesperson: r.SysproSalesperson || '', SalesTarget: r.SalesTarget || 0,
+      DefaultPipelineId: r.DefaultPipelineId || '', IsActive: r.IsActive,
     });
     setIsEditSalesRep(true);
     salesRepModal.open(r);
   }
   function handleSaveSalesRep() {
-    if (!salesRepForm.name.trim()) { toast.error('Name is required'); return; }
+    if (!salesRepForm.Name.trim()) { toast.error('Name is required'); return; }
     saveSalesRepMut.mutate({
       id: isEditSalesRep ? salesRepModal.data?.Id : undefined,
       data: salesRepForm,
@@ -743,12 +772,12 @@ export default function ConnectAdminPage() {
     pipelineModal.open();
   }
   function openEditPipeline(p: Pipeline) {
-    setPipelineForm({ name: p.Name, description: p.Description || '', isDefault: p.IsDefault, isActive: p.IsActive });
+    setPipelineForm({ Name: p.Name, Description: p.Description || '', IsDefault: p.IsDefault, IsActive: p.IsActive });
     setIsEditPipeline(true);
     pipelineModal.open(p);
   }
   function handleSavePipeline() {
-    if (!pipelineForm.name.trim()) { toast.error('Name is required'); return; }
+    if (!pipelineForm.Name.trim()) { toast.error('Name is required'); return; }
     savePipelineMut.mutate({
       id: isEditPipeline ? pipelineModal.data?.Id : undefined,
       data: pipelineForm,
@@ -756,22 +785,22 @@ export default function ConnectAdminPage() {
   }
 
   function openCreateStage() {
-    setStageForm({ ...INITIAL_STAGE, pipelineId: selectedPipeline?.Id || '' });
+    setStageForm({ ...INITIAL_STAGE, PipelineId: selectedPipeline?.Id || '' });
     setIsEditStage(false);
     stageModal.open();
   }
   function openEditStage(s: Stage) {
     setStageForm({
-      pipelineId: s.PipelineId, name: s.Name, displayOrder: s.DisplayOrder || 0,
-      probability: s.Probability || 0, colour: s.Colour || '#3B82F6',
-      isClosed: s.IsClosed, isWon: s.IsWon, isActive: s.IsActive,
+      PipelineId: s.PipelineId, Name: s.Name, DisplayOrder: s.DisplayOrder || 0,
+      Probability: s.Probability || 0, Colour: s.Colour || '#3B82F6',
+      IsClosed: s.IsClosed, IsWon: s.IsWon, IsActive: s.IsActive,
     });
     setIsEditStage(true);
     stageModal.open(s);
   }
   function handleSaveStage() {
-    if (!stageForm.pipelineId) { toast.error('Pipeline is required'); return; }
-    if (!stageForm.name.trim()) { toast.error('Name is required'); return; }
+    if (!stageForm.PipelineId) { toast.error('Pipeline is required'); return; }
+    if (!stageForm.Name.trim()) { toast.error('Name is required'); return; }
     saveStageMut.mutate({
       id: isEditStage ? stageModal.data?.Id : undefined,
       data: stageForm,
@@ -784,12 +813,12 @@ export default function ConnectAdminPage() {
     rateCardModal.open();
   }
   function openEditRateCard(rc: RateCard) {
-    setRateCardForm({ name: rc.Name, description: rc.Description || '', status: rc.Status, notes: rc.Notes || '' });
+    setRateCardForm({ Name: rc.Name, Description: rc.Description || '', Status: rc.Status, Notes: rc.Notes || '' });
     setIsEditRateCard(true);
     rateCardModal.open(rc);
   }
   function handleSaveRateCard() {
-    if (!rateCardForm.name.trim()) { toast.error('Name is required'); return; }
+    if (!rateCardForm.Name.trim()) { toast.error('Name is required'); return; }
     saveRateCardMut.mutate({
       id: isEditRateCard ? rateCardModal.data?.Id : undefined,
       data: rateCardForm,
@@ -803,15 +832,15 @@ export default function ConnectAdminPage() {
   }
   function openEditLineItem(item: RateCardLineItem) {
     setLineItemForm({
-      roleId: item.RoleId || '', currencyId: item.CurrencyId || '',
-      rate: item.Rate, unit: item.Unit, notes: item.Notes || '',
+      RoleId: item.RoleId || '', CurrencyId: item.CurrencyId || '',
+      Rate: item.Rate, Unit: item.Unit, Notes: item.Notes || '',
     });
     setIsEditLineItem(true);
     lineItemModal.open(item);
   }
   function handleSaveLineItem() {
     if (!selectedRateCard || !selectedVersion) return;
-    if (!lineItemForm.roleId) { toast.error('Role is required'); return; }
+    if (!lineItemForm.RoleId) { toast.error('Role is required'); return; }
     saveLineItemMut.mutate({
       cardId: selectedRateCard.Id,
       versionId: selectedVersion.Id,
@@ -827,45 +856,49 @@ export default function ConnectAdminPage() {
   }
   function openEditCaseType(ct: CaseType) {
     setCaseTypeForm({
-      code: ct.Code, name: ct.Name, description: ct.Description || '', prefix: ct.Prefix || '',
-      iconName: ct.IconName || '', color: ct.Color || '#3B82F6',
-      requiresRootCause: ct.RequiresRootCause, requiresContainment: ct.RequiresContainment,
-      requiresVerification: ct.RequiresVerification, requiresApproval: ct.RequiresApproval,
-      defaultPriority: ct.DefaultPriority || 'Medium',
-      defaultSlaResponseHours: ct.DefaultSlaResponseHours ?? '',
-      defaultSlaResolutionHours: ct.DefaultSlaResolutionHours ?? '',
-      isPortalCreatable: ct.IsPortalCreatable, isCustomerFacing: ct.IsCustomerFacing, isActive: ct.IsActive,
+      Code: ct.Code, Name: ct.Name, Description: ct.Description || '', Prefix: ct.Prefix || '',
+      IconName: ct.IconName || '', Color: ct.Color || '#3B82F6',
+      RequiresRootCause: ct.RequiresRootCause, RequiresContainment: ct.RequiresContainment,
+      RequiresVerification: ct.RequiresVerification, RequiresApproval: ct.RequiresApproval,
+      DefaultPriority: ct.DefaultPriority || 'Medium',
+      DefaultSlaResponseHours: ct.DefaultSlaResponseHours ?? '',
+      DefaultSlaResolutionHours: ct.DefaultSlaResolutionHours ?? '',
+      IsPortalCreatable: ct.IsPortalCreatable, IsCustomerFacing: ct.IsCustomerFacing, IsActive: ct.IsActive,
     });
     setIsEditCaseType(true);
     caseTypeModal.open(ct);
   }
   function handleSaveCaseType() {
-    if (!caseTypeForm.code.trim()) { toast.error('Code is required'); return; }
-    if (!caseTypeForm.name.trim()) { toast.error('Name is required'); return; }
+    if (!caseTypeForm.Code.trim()) { toast.error('Code is required'); return; }
+    if (!caseTypeForm.Name.trim()) { toast.error('Name is required'); return; }
     saveCaseTypeMut.mutate({
       id: isEditCaseType ? caseTypeModal.data?.Id : undefined,
-      data: caseTypeForm,
+      data: {
+        ...caseTypeForm,
+        DefaultSlaResponseHours: caseTypeForm.DefaultSlaResponseHours === '' ? undefined : caseTypeForm.DefaultSlaResponseHours,
+        DefaultSlaResolutionHours: caseTypeForm.DefaultSlaResolutionHours === '' ? undefined : caseTypeForm.DefaultSlaResolutionHours,
+      },
     });
   }
 
   function openCreateCaseTypeStep() {
-    setCaseTypeStepForm({ ...INITIAL_CASE_TYPE_STEP, caseTypeId: selectedCaseType?.Id || '' });
+    setCaseTypeStepForm({ ...INITIAL_CASE_TYPE_STEP, CaseTypeId: selectedCaseType?.Id || '' });
     setIsEditCaseTypeStep(false);
     caseTypeStepModal.open();
   }
   function openEditCaseTypeStep(step: CaseTypeStep) {
     setCaseTypeStepForm({
-      caseTypeId: step.CaseTypeId, name: step.Name, statusCode: step.StatusCode || '',
-      displayOrder: step.DisplayOrder || 0, color: step.Color || '#3B82F6',
-      isTerminal: step.IsTerminal, isResolved: step.IsResolved,
-      requiresApproval: step.RequiresApproval, isActive: step.IsActive,
+      CaseTypeId: step.CaseTypeId, Name: step.Name, StatusCode: step.StatusCode || '',
+      DisplayOrder: step.DisplayOrder || 0, Color: step.Color || '#3B82F6',
+      IsTerminal: step.IsTerminal, IsResolved: step.IsResolved,
+      RequiresApproval: step.RequiresApproval, IsActive: step.IsActive,
     });
     setIsEditCaseTypeStep(true);
     caseTypeStepModal.open(step);
   }
   function handleSaveCaseTypeStep() {
-    if (!caseTypeStepForm.caseTypeId) { toast.error('Case type is required'); return; }
-    if (!caseTypeStepForm.name.trim()) { toast.error('Name is required'); return; }
+    if (!caseTypeStepForm.CaseTypeId) { toast.error('Case type is required'); return; }
+    if (!caseTypeStepForm.Name.trim()) { toast.error('Name is required'); return; }
     saveCaseTypeStepMut.mutate({
       id: isEditCaseTypeStep ? caseTypeStepModal.data?.Id : undefined,
       data: caseTypeStepForm,
@@ -970,34 +1003,94 @@ export default function ConnectAdminPage() {
     },
   ];
 
-  const historyColumns: ColumnDef<ConnectSyncHistoryEntry>[] = [
-    { key: 'SyncedAt', label: 'Time', width: 160, sortable: true, render: (v) => new Date(v).toLocaleString() },
+  // ---- Sync history filter fields ----
+  const historyFilterFields: TableFilterField[] = useMemo(() => [
     {
-      key: 'EntityType', label: 'Entity', width: 110, sortable: true,
-      filterable: true, filterType: 'select',
-      filterOptions: SYNC_ENTITIES.map(e => ({ value: e.key, label: e.label })),
+      key: 'EntityType', label: 'Entity', type: 'select',
+      options: SYNC_ENTITIES.map(e => ({ value: e.key, label: e.label })),
     },
-    { key: 'ErpId', label: 'ERP ID', width: 120, sortable: true, filterable: true },
-    { key: 'EntityId', label: 'Entity ID', width: 120, sortable: true, hidden: true },
+    { key: 'ErpId', label: 'ERP ID', type: 'text' },
     {
-      key: 'Operation', label: 'Operation', width: 90, sortable: true,
-      filterable: true, filterType: 'select',
-      filterOptions: [
+      key: 'Operation', label: 'Operation', type: 'select',
+      options: [
         { value: 'create', label: 'Create' },
         { value: 'update', label: 'Update' },
         { value: 'delete', label: 'Delete' },
         { value: 'skip', label: 'Skip' },
       ],
     },
-    { key: 'Direction', label: 'Direction', width: 100, sortable: true },
     {
-      key: 'Status', label: 'Status', width: 90, sortable: true,
-      filterable: true, filterType: 'select',
-      filterOptions: [
+      key: 'Status', label: 'Status', type: 'select',
+      options: [
         { value: 'success', label: 'Success' },
         { value: 'failed', label: 'Failed' },
         { value: 'skipped', label: 'Skipped' },
       ],
+    },
+    {
+      key: 'SyncedAt', label: 'Synced At', type: 'daterange',
+      presets: [
+        { label: 'Today', from: new Date().toISOString().split('T')[0], to: new Date().toISOString().split('T')[0] },
+        { label: 'Last 7 Days', from: new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0], to: new Date().toISOString().split('T')[0] },
+        { label: 'Last 30 Days', from: new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0], to: new Date().toISOString().split('T')[0] },
+      ],
+    },
+  ], []);
+
+  // ---- Sync history client-side filtering ----
+  const filteredHistory = useMemo(() => {
+    let result = history;
+
+    // Text search across key fields
+    if (historySearch) {
+      const q = historySearch.toLowerCase();
+      result = result.filter((row) =>
+        (row.EntityType ?? '').toLowerCase().includes(q) ||
+        (row.ErpId ?? '').toLowerCase().includes(q) ||
+        (row.Operation ?? '').toLowerCase().includes(q) ||
+        (row.Status ?? '').toLowerCase().includes(q) ||
+        (row.ErrorMessage ?? '').toLowerCase().includes(q)
+      );
+    }
+
+    // Apply dropdown/text/daterange filters
+    const activeFilters = Object.entries(historyFilters).filter(([, v]) => !!v);
+    if (activeFilters.length > 0) {
+      result = result.filter((row) =>
+        activeFilters.every(([key, value]) => {
+          // Daterange keys: SyncedAt_from / SyncedAt_to
+          if (key.endsWith('_from')) {
+            const baseKey = key.replace(/_from$/, '') as keyof ConnectSyncHistoryEntry;
+            const rowDate = row[baseKey] ? new Date(row[baseKey] as string).toISOString().split('T')[0] : '';
+            return rowDate >= value;
+          }
+          if (key.endsWith('_to')) {
+            const baseKey = key.replace(/_to$/, '') as keyof ConnectSyncHistoryEntry;
+            const rowDate = row[baseKey] ? new Date(row[baseKey] as string).toISOString().split('T')[0] : '';
+            return rowDate <= value;
+          }
+          // Select filters: exact match
+          const field = historyFilterFields.find((f) => f.key === key);
+          const rowVal = String((row as unknown as Record<string, unknown>)[key] ?? '');
+          if (field?.type === 'select') return rowVal === value;
+          // Text filters: substring match
+          return rowVal.toLowerCase().includes(value.toLowerCase());
+        })
+      );
+    }
+
+    return result;
+  }, [history, historySearch, historyFilters, historyFilterFields]);
+
+  const historyColumns: ColumnDef<ConnectSyncHistoryEntry>[] = [
+    { key: 'SyncedAt', label: 'Time', width: 160, sortable: true, render: (v) => new Date(v).toLocaleString() },
+    { key: 'EntityType', label: 'Entity', width: 110, sortable: true },
+    { key: 'ErpId', label: 'ERP ID', width: 120, sortable: true },
+    { key: 'EntityId', label: 'Entity ID', width: 120, sortable: true, hidden: true },
+    { key: 'Operation', label: 'Operation', width: 90, sortable: true },
+    { key: 'Direction', label: 'Direction', width: 100, sortable: true },
+    {
+      key: 'Status', label: 'Status', width: 90, sortable: true,
       render: (v) => <StatusBadge status={v === 'success' ? 'success' : v === 'failed' ? 'danger' : 'warning'} label={v} size="sm" />,
     },
     { key: 'RecordsAffected', label: 'Records', width: 80, sortable: true },
@@ -1041,36 +1134,41 @@ export default function ConnectAdminPage() {
       {/* ===== Status Tab ===== */}
       {activeTab === 'status' && (
         <div className="space-y-4">
-          <TableCard
+          <TableData<ConnectSyncHistoryEntry>
+            id="connect-sync-history"
             title="Sync History"
             icon={<RefreshCw className="w-4 h-4" />}
-            count={history.length}
+            count={filteredHistory.length}
+            search={{
+              value: historySearch,
+              onChange: setHistorySearch,
+              placeholder: 'Search history...',
+            }}
+            filterFields={historyFilterFields}
+            filterValues={historyFilters}
+            onFilterChange={(key, value) => setHistoryFilters((prev) => ({ ...prev, [key]: value }))}
+            onFilterClearAll={() => setHistoryFilters({})}
             headerActions={
               <Button variant="ghost" size="sm" onClick={() => { if (window.confirm('Clear all sync history?')) clearHistoryMut.mutate(); }} disabled={history.length === 0}>
                 Clear
               </Button>
             }
-          >
-            <DataTable<ConnectSyncHistoryEntry>
-              id="connect-sync-history"
-              columns={historyColumns}
-              data={history}
-              rowKey={(row) => row.Id || row.SyncedAt}
-              emptyMessage="No sync history"
-              embedded
-              showColumnPicker
-              showFilters
-              pageSize={25}
-              pageSizeOptions={[25, 50, 100]}
-              onRowClick={(row) => syncDetailModal.open(row)}
-            />
-          </TableCard>
+            showColumnPicker
+            columns={historyColumns}
+            data={filteredHistory}
+            rowKey={(row) => row.Id || row.SyncedAt}
+            emptyMessage="No sync history"
+            pageSize={25}
+            pageSizeOptions={[25, 50, 100]}
+            onRowClick={(row) => syncDetailModal.open(row)}
+          />
         </div>
       )}
 
       {/* ===== Sync Tab ===== */}
       {activeTab === 'sync' && (
         <div className="space-y-4">
+          {/* Controls */}
           <Card title="Sync Controls">
             <div className="flex items-center gap-3">
               <Button
@@ -1091,9 +1189,15 @@ export default function ConnectAdminPage() {
                   Stop
                 </Button>
               )}
+              {syncStatus?.lastSync && (
+                <span className="text-xs text-semantic-text-muted ml-2">
+                  Last sync: {formatTimeAgo(syncStatus.lastSync)}
+                </span>
+              )}
             </div>
           </Card>
 
+          {/* Entity configuration table */}
           <TableCard
             title="Entity Sync Configuration"
             icon={<Settings className="w-4 h-4" />}
@@ -1108,6 +1212,8 @@ export default function ConnectAdminPage() {
                     config[entity.key] = {
                       enabled: edit?.enabled ?? true,
                       direction: edit?.direction || 'from_syspro',
+                      SyncFrequencyMinutes: edit?.frequency ?? 0,
+                      ConflictResolution: edit?.conflictResolution || 'syspro_wins',
                     };
                   }
                   saveConfigMut.mutate(config);
@@ -1118,32 +1224,88 @@ export default function ConnectAdminPage() {
               </Button>
             }
           >
+            {/* Header row */}
+            <div className="grid grid-cols-[1fr_140px_130px_150px_160px] gap-3 px-5 py-2 border-b border-border bg-semantic-bg-subtle">
+              <span className="text-xs font-semibold text-semantic-text-muted uppercase tracking-wide">Entity</span>
+              <span className="text-xs font-semibold text-semantic-text-muted uppercase tracking-wide">Direction</span>
+              <span className="text-xs font-semibold text-semantic-text-muted uppercase tracking-wide">Frequency</span>
+              <span className="text-xs font-semibold text-semantic-text-muted uppercase tracking-wide">Conflict Rule</span>
+              <span className="text-xs font-semibold text-semantic-text-muted uppercase tracking-wide">Last Sync</span>
+            </div>
+
             <div className="divide-y divide-border">
               {SYNC_ENTITIES.map((entity) => {
                 const edit = syncEdits[entity.key];
+                const configs = syncConfig?.data?.configs ?? [];
+                const cfg = configs.find((c: { EntityType: string }) => c.EntityType?.toLowerCase() === entity.key);
+                const lastStatus: string = cfg?.LastSyncStatus || '';
+                const lastAt: string | null = cfg?.LastSyncAt ?? null;
+                const lastMsg: string | null = cfg?.LastSyncMessage ?? null;
+
                 return (
-                  <div key={entity.key} className="flex items-center justify-between px-5 py-3">
-                    <label className="flex items-center gap-2 cursor-pointer">
+                  <div
+                    key={entity.key}
+                    className={`grid grid-cols-[1fr_140px_130px_150px_160px] gap-3 items-center px-5 py-3 ${!edit?.enabled ? 'opacity-50' : ''}`}
+                  >
+                    {/* Entity name + enable toggle */}
+                    <label className="flex items-center gap-2.5 cursor-pointer min-w-0">
                       <input
                         type="checkbox"
                         checked={edit?.enabled ?? true}
                         onChange={(e) => setSyncEdits(prev => ({ ...prev, [entity.key]: { ...prev[entity.key], enabled: e.target.checked } }))}
-                        className="w-4 h-4 rounded border-border text-primary"
+                        className="w-4 h-4 shrink-0 rounded border-border text-primary"
                       />
-                      <span className="text-sm text-semantic-text-default font-medium">{entity.label}</span>
+                      <span className="text-sm text-semantic-text-default font-medium truncate">{entity.label}</span>
                     </label>
+
+                    {/* Direction */}
                     <select
                       value={edit?.direction || 'from_syspro'}
                       onChange={(e) => setSyncEdits(prev => ({ ...prev, [entity.key]: { ...prev[entity.key], direction: e.target.value } }))}
-                      className="form-input text-sm w-40"
+                      disabled={!edit?.enabled}
+                      className="form-input text-sm"
                     >
                       {SYNC_DIRECTIONS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
                     </select>
+
+                    {/* Frequency */}
+                    <select
+                      value={edit?.frequency ?? 0}
+                      onChange={(e) => setSyncEdits(prev => ({ ...prev, [entity.key]: { ...prev[entity.key], frequency: Number(e.target.value) } }))}
+                      disabled={!edit?.enabled}
+                      className="form-input text-sm"
+                    >
+                      {FREQUENCY_OPTIONS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+                    </select>
+
+                    {/* Conflict resolution */}
+                    <select
+                      value={edit?.conflictResolution || 'syspro_wins'}
+                      onChange={(e) => setSyncEdits(prev => ({ ...prev, [entity.key]: { ...prev[entity.key], conflictResolution: e.target.value } }))}
+                      disabled={!edit?.enabled}
+                      className="form-input text-sm"
+                    >
+                      {CONFLICT_STRATEGIES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                    </select>
+
+                    {/* Last sync status */}
+                    <div className="flex items-center gap-1.5 min-w-0" title={lastMsg || undefined}>
+                      {lastStatus === 'success' && <span className="w-2 h-2 rounded-full shrink-0 bg-green-500" />}
+                      {lastStatus === 'failed'  && <span className="w-2 h-2 rounded-full shrink-0 bg-red-500" />}
+                      {lastStatus === 'running' && <span className="w-2 h-2 rounded-full shrink-0 bg-blue-400 animate-pulse" />}
+                      {!lastStatus              && <span className="w-2 h-2 rounded-full shrink-0 bg-semantic-text-muted opacity-30" />}
+                      <span className="text-xs text-semantic-text-muted truncate">
+                        {lastAt ? formatTimeAgo(lastAt) : 'Never'}
+                        {lastStatus === 'failed' && lastMsg ? ` — ${lastMsg.slice(0, 40)}` : ''}
+                      </span>
+                    </div>
                   </div>
                 );
               })}
             </div>
           </TableCard>
+
+          {/* ERP Custom Form Writeback has been migrated to the Mappings tab — see FieldMappingEditor */}
         </div>
       )}
 
@@ -1485,6 +1647,7 @@ export default function ConnectAdminPage() {
                   entityType={selectedMappingType!}
                   baseMapping={mappingDetail.baseMapping}
                   customOverrides={mappingDetail.customOverrides}
+                  defaultWritebackByEntity={mappingDetail.defaultWritebackByEntity}
                 />
               )}
             </div>
@@ -1579,11 +1742,11 @@ export default function ConnectAdminPage() {
         <Button onClick={handleSaveTerritory} loading={saveTerritoryMut.isPending}>{isEditTerritory ? 'Save Changes' : 'Create'}</Button></>
       }>
         <div className="space-y-4">
-          <FormField label="Name" required><input type="text" value={territoryForm.name} onChange={(e) => setTerritoryForm({ ...territoryForm, name: e.target.value })} className="form-input" placeholder="e.g. Western Cape" /></FormField>
-          <FormField label="Code"><input type="text" value={territoryForm.code} onChange={(e) => setTerritoryForm({ ...territoryForm, code: e.target.value })} className="form-input" placeholder="e.g. WC" /></FormField>
-          <FormField label="ERP Branch"><input type="text" value={territoryForm.sysproBranch} onChange={(e) => setTerritoryForm({ ...territoryForm, sysproBranch: e.target.value })} className="form-input" /></FormField>
-          <FormField label="Description"><textarea value={territoryForm.description} onChange={(e) => setTerritoryForm({ ...territoryForm, description: e.target.value })} className="form-input" rows={2} /></FormField>
-          <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={territoryForm.isActive} onChange={(e) => setTerritoryForm({ ...territoryForm, isActive: e.target.checked })} className="w-4 h-4 rounded border-border" />Active</label>
+          <FormField label="Name" required><input type="text" value={territoryForm.Name} onChange={(e) => setTerritoryForm({ ...territoryForm, Name: e.target.value })} className="form-input" placeholder="e.g. Western Cape" /></FormField>
+          <FormField label="Code"><input type="text" value={territoryForm.Code} onChange={(e) => setTerritoryForm({ ...territoryForm, Code: e.target.value })} className="form-input" placeholder="e.g. WC" /></FormField>
+          <FormField label="ERP Branch"><input type="text" value={territoryForm.SysproBranch} onChange={(e) => setTerritoryForm({ ...territoryForm, SysproBranch: e.target.value })} className="form-input" /></FormField>
+          <FormField label="Description"><textarea value={territoryForm.Description} onChange={(e) => setTerritoryForm({ ...territoryForm, Description: e.target.value })} className="form-input" rows={2} /></FormField>
+          <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={territoryForm.IsActive} onChange={(e) => setTerritoryForm({ ...territoryForm, IsActive: e.target.checked })} className="w-4 h-4 rounded border-border" />Active</label>
         </div>
       </Modal>
 
@@ -1601,12 +1764,12 @@ export default function ConnectAdminPage() {
         <Button onClick={handleSaveSalesRep} loading={saveSalesRepMut.isPending}>{isEditSalesRep ? 'Save Changes' : 'Create'}</Button></>
       }>
         <div className="space-y-4">
-          <FormField label="Name" required><input type="text" value={salesRepForm.name} onChange={(e) => setSalesRepForm({ ...salesRepForm, name: e.target.value })} className="form-input" /></FormField>
-          <FormField label="Email"><input type="email" value={salesRepForm.email} onChange={(e) => setSalesRepForm({ ...salesRepForm, email: e.target.value })} className="form-input" /></FormField>
-          <FormField label="Phone"><input type="text" value={salesRepForm.phone} onChange={(e) => setSalesRepForm({ ...salesRepForm, phone: e.target.value })} className="form-input" /></FormField>
-          <FormField label="ERP Salesperson Code"><input type="text" value={salesRepForm.sysproSalesperson} onChange={(e) => setSalesRepForm({ ...salesRepForm, sysproSalesperson: e.target.value })} className="form-input" /></FormField>
-          <FormField label="Sales Target"><input type="number" value={salesRepForm.salesTarget} onChange={(e) => setSalesRepForm({ ...salesRepForm, salesTarget: parseFloat(e.target.value) || 0 })} className="form-input" /></FormField>
-          <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={salesRepForm.isActive} onChange={(e) => setSalesRepForm({ ...salesRepForm, isActive: e.target.checked })} className="w-4 h-4 rounded border-border" />Active</label>
+          <FormField label="Name" required><input type="text" value={salesRepForm.Name} onChange={(e) => setSalesRepForm({ ...salesRepForm, Name: e.target.value })} className="form-input" /></FormField>
+          <FormField label="Email"><input type="email" value={salesRepForm.Email} onChange={(e) => setSalesRepForm({ ...salesRepForm, Email: e.target.value })} className="form-input" /></FormField>
+          <FormField label="Phone"><input type="text" value={salesRepForm.Phone} onChange={(e) => setSalesRepForm({ ...salesRepForm, Phone: e.target.value })} className="form-input" /></FormField>
+          <FormField label="ERP Salesperson Code"><input type="text" value={salesRepForm.SysproSalesperson} onChange={(e) => setSalesRepForm({ ...salesRepForm, SysproSalesperson: e.target.value })} className="form-input" /></FormField>
+          <FormField label="Sales Target"><input type="number" value={salesRepForm.SalesTarget} onChange={(e) => setSalesRepForm({ ...salesRepForm, SalesTarget: parseFloat(e.target.value) || 0 })} className="form-input" /></FormField>
+          <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={salesRepForm.IsActive} onChange={(e) => setSalesRepForm({ ...salesRepForm, IsActive: e.target.checked })} className="w-4 h-4 rounded border-border" />Active</label>
         </div>
       </Modal>
 
@@ -1624,11 +1787,11 @@ export default function ConnectAdminPage() {
         <Button onClick={handleSavePipeline} loading={savePipelineMut.isPending}>{isEditPipeline ? 'Save Changes' : 'Create'}</Button></>
       }>
         <div className="space-y-4">
-          <FormField label="Name" required><input type="text" value={pipelineForm.name} onChange={(e) => setPipelineForm({ ...pipelineForm, name: e.target.value })} className="form-input" /></FormField>
-          <FormField label="Description"><textarea value={pipelineForm.description} onChange={(e) => setPipelineForm({ ...pipelineForm, description: e.target.value })} className="form-input" rows={2} /></FormField>
+          <FormField label="Name" required><input type="text" value={pipelineForm.Name} onChange={(e) => setPipelineForm({ ...pipelineForm, Name: e.target.value })} className="form-input" /></FormField>
+          <FormField label="Description"><textarea value={pipelineForm.Description} onChange={(e) => setPipelineForm({ ...pipelineForm, Description: e.target.value })} className="form-input" rows={2} /></FormField>
           <div className="flex items-center gap-6">
-            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={pipelineForm.isDefault} onChange={(e) => setPipelineForm({ ...pipelineForm, isDefault: e.target.checked })} className="w-4 h-4 rounded border-border" />Default</label>
-            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={pipelineForm.isActive} onChange={(e) => setPipelineForm({ ...pipelineForm, isActive: e.target.checked })} className="w-4 h-4 rounded border-border" />Active</label>
+            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={pipelineForm.IsDefault} onChange={(e) => setPipelineForm({ ...pipelineForm, IsDefault: e.target.checked })} className="w-4 h-4 rounded border-border" />Default</label>
+            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={pipelineForm.IsActive} onChange={(e) => setPipelineForm({ ...pipelineForm, IsActive: e.target.checked })} className="w-4 h-4 rounded border-border" />Active</label>
           </div>
         </div>
       </Modal>
@@ -1648,26 +1811,26 @@ export default function ConnectAdminPage() {
       }>
         <div className="space-y-4">
           <FormField label="Pipeline" required>
-            <select value={stageForm.pipelineId} onChange={(e) => setStageForm({ ...stageForm, pipelineId: e.target.value })} className="form-input" disabled={isEditStage}>
+            <select value={stageForm.PipelineId} onChange={(e) => setStageForm({ ...stageForm, PipelineId: e.target.value })} className="form-input" disabled={isEditStage}>
               <option value="">Select Pipeline</option>
               {pipelines.map((p) => <option key={p.Id} value={p.Id}>{p.Name}</option>)}
             </select>
           </FormField>
-          <FormField label="Name" required><input type="text" value={stageForm.name} onChange={(e) => setStageForm({ ...stageForm, name: e.target.value })} className="form-input" /></FormField>
+          <FormField label="Name" required><input type="text" value={stageForm.Name} onChange={(e) => setStageForm({ ...stageForm, Name: e.target.value })} className="form-input" /></FormField>
           <div className="grid grid-cols-2 gap-4">
-            <FormField label="Order"><input type="number" value={stageForm.displayOrder} onChange={(e) => setStageForm({ ...stageForm, displayOrder: parseInt(e.target.value) || 0 })} className="form-input" /></FormField>
-            <FormField label="Probability %"><input type="number" value={stageForm.probability} onChange={(e) => setStageForm({ ...stageForm, probability: parseFloat(e.target.value) || 0 })} className="form-input" min={0} max={100} /></FormField>
+            <FormField label="Order"><input type="number" value={stageForm.DisplayOrder} onChange={(e) => setStageForm({ ...stageForm, DisplayOrder: parseInt(e.target.value) || 0 })} className="form-input" /></FormField>
+            <FormField label="Probability %"><input type="number" value={stageForm.Probability} onChange={(e) => setStageForm({ ...stageForm, Probability: parseFloat(e.target.value) || 0 })} className="form-input" min={0} max={100} /></FormField>
           </div>
           <FormField label="Color">
             <div className="flex items-center gap-2">
-              <input type="color" value={stageForm.colour} onChange={(e) => setStageForm({ ...stageForm, colour: e.target.value })} className="w-8 h-8 rounded border border-border cursor-pointer" />
-              <input type="text" value={stageForm.colour} onChange={(e) => setStageForm({ ...stageForm, colour: e.target.value })} className="form-input flex-1" />
+              <input type="color" value={stageForm.Colour} onChange={(e) => setStageForm({ ...stageForm, Colour: e.target.value })} className="w-8 h-8 rounded border border-border cursor-pointer" />
+              <input type="text" value={stageForm.Colour} onChange={(e) => setStageForm({ ...stageForm, Colour: e.target.value })} className="form-input flex-1" />
             </div>
           </FormField>
           <div className="flex items-center gap-6">
-            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={stageForm.isClosed} onChange={(e) => setStageForm({ ...stageForm, isClosed: e.target.checked })} className="w-4 h-4 rounded border-border" />Closed</label>
-            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={stageForm.isWon} onChange={(e) => setStageForm({ ...stageForm, isWon: e.target.checked })} className="w-4 h-4 rounded border-border" />Won</label>
-            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={stageForm.isActive} onChange={(e) => setStageForm({ ...stageForm, isActive: e.target.checked })} className="w-4 h-4 rounded border-border" />Active</label>
+            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={stageForm.IsClosed} onChange={(e) => setStageForm({ ...stageForm, IsClosed: e.target.checked })} className="w-4 h-4 rounded border-border" />Closed</label>
+            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={stageForm.IsWon} onChange={(e) => setStageForm({ ...stageForm, IsWon: e.target.checked })} className="w-4 h-4 rounded border-border" />Won</label>
+            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={stageForm.IsActive} onChange={(e) => setStageForm({ ...stageForm, IsActive: e.target.checked })} className="w-4 h-4 rounded border-border" />Active</label>
           </div>
         </div>
       </Modal>
@@ -1686,16 +1849,16 @@ export default function ConnectAdminPage() {
         <Button onClick={handleSaveRateCard} loading={saveRateCardMut.isPending}>{isEditRateCard ? 'Save Changes' : 'Create'}</Button></>
       }>
         <div className="space-y-4">
-          <FormField label="Name" required><input type="text" value={rateCardForm.name} onChange={(e) => setRateCardForm({ ...rateCardForm, name: e.target.value })} className="form-input" /></FormField>
-          <FormField label="Description"><textarea value={rateCardForm.description} onChange={(e) => setRateCardForm({ ...rateCardForm, description: e.target.value })} className="form-input" rows={2} /></FormField>
+          <FormField label="Name" required><input type="text" value={rateCardForm.Name} onChange={(e) => setRateCardForm({ ...rateCardForm, Name: e.target.value })} className="form-input" /></FormField>
+          <FormField label="Description"><textarea value={rateCardForm.Description} onChange={(e) => setRateCardForm({ ...rateCardForm, Description: e.target.value })} className="form-input" rows={2} /></FormField>
           <FormField label="Status">
-            <select value={rateCardForm.status} onChange={(e) => setRateCardForm({ ...rateCardForm, status: e.target.value })} className="form-input">
+            <select value={rateCardForm.Status} onChange={(e) => setRateCardForm({ ...rateCardForm, Status: e.target.value })} className="form-input">
               <option value="Draft">Draft</option>
               <option value="Active">Active</option>
               <option value="Archived">Archived</option>
             </select>
           </FormField>
-          <FormField label="Notes"><textarea value={rateCardForm.notes} onChange={(e) => setRateCardForm({ ...rateCardForm, notes: e.target.value })} className="form-input" rows={2} /></FormField>
+          <FormField label="Notes"><textarea value={rateCardForm.Notes} onChange={(e) => setRateCardForm({ ...rateCardForm, Notes: e.target.value })} className="form-input" rows={2} /></FormField>
         </div>
       </Modal>
 
@@ -1714,28 +1877,28 @@ export default function ConnectAdminPage() {
       }>
         <div className="space-y-4">
           <FormField label="Billing Role" required>
-            <select value={lineItemForm.roleId} onChange={(e) => setLineItemForm({ ...lineItemForm, roleId: e.target.value })} className="form-input">
+            <select value={lineItemForm.RoleId} onChange={(e) => setLineItemForm({ ...lineItemForm, RoleId: e.target.value })} className="form-input">
               <option value="">Select a role...</option>
               {billingRoles.map((r) => <option key={r.Id} value={r.Id}>{r.Name} ({r.Code})</option>)}
             </select>
           </FormField>
           <FormField label="Currency">
-            <select value={lineItemForm.currencyId} onChange={(e) => setLineItemForm({ ...lineItemForm, currencyId: e.target.value })} className="form-input">
+            <select value={lineItemForm.CurrencyId} onChange={(e) => setLineItemForm({ ...lineItemForm, CurrencyId: e.target.value })} className="form-input">
               <option value="">Select currency...</option>
               {currencies.map((c) => <option key={c.Id} value={c.Id}>{c.Code} - {c.Name}</option>)}
             </select>
           </FormField>
           <div className="grid grid-cols-2 gap-4">
-            <FormField label="Rate" required><input type="number" value={lineItemForm.rate} onChange={(e) => setLineItemForm({ ...lineItemForm, rate: parseFloat(e.target.value) || 0 })} className="form-input" step="0.01" min={0} /></FormField>
+            <FormField label="Rate" required><input type="number" value={lineItemForm.Rate} onChange={(e) => setLineItemForm({ ...lineItemForm, Rate: parseFloat(e.target.value) || 0 })} className="form-input" step="0.01" min={0} /></FormField>
             <FormField label="Unit">
-              <select value={lineItemForm.unit} onChange={(e) => setLineItemForm({ ...lineItemForm, unit: e.target.value })} className="form-input">
+              <select value={lineItemForm.Unit} onChange={(e) => setLineItemForm({ ...lineItemForm, Unit: e.target.value })} className="form-input">
                 <option value="Hour">Hour</option>
                 <option value="Day">Day</option>
                 <option value="Fixed">Fixed</option>
               </select>
             </FormField>
           </div>
-          <FormField label="Notes"><textarea value={lineItemForm.notes} onChange={(e) => setLineItemForm({ ...lineItemForm, notes: e.target.value })} className="form-input" rows={2} /></FormField>
+          <FormField label="Notes"><textarea value={lineItemForm.Notes} onChange={(e) => setLineItemForm({ ...lineItemForm, Notes: e.target.value })} className="form-input" rows={2} /></FormField>
         </div>
       </Modal>
 
@@ -1746,20 +1909,20 @@ export default function ConnectAdminPage() {
       }>
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-4">
-            <FormField label="Code" required><input type="text" value={caseTypeForm.code} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, code: e.target.value })} className="form-input" placeholder="e.g. NCR" disabled={isEditCaseType} /></FormField>
-            <FormField label="Name" required><input type="text" value={caseTypeForm.name} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, name: e.target.value })} className="form-input" placeholder="e.g. Non-Conformance" /></FormField>
-            <FormField label="Prefix"><input type="text" value={caseTypeForm.prefix} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, prefix: e.target.value })} className="form-input" placeholder="e.g. NCR-" /></FormField>
+            <FormField label="Code" required><input type="text" value={caseTypeForm.Code} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, Code: e.target.value })} className="form-input" placeholder="e.g. NCR" disabled={isEditCaseType} /></FormField>
+            <FormField label="Name" required><input type="text" value={caseTypeForm.Name} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, Name: e.target.value })} className="form-input" placeholder="e.g. Non-Conformance" /></FormField>
+            <FormField label="Prefix"><input type="text" value={caseTypeForm.Prefix} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, Prefix: e.target.value })} className="form-input" placeholder="e.g. NCR-" /></FormField>
           </div>
-          <FormField label="Description"><textarea value={caseTypeForm.description} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, description: e.target.value })} className="form-input" rows={2} /></FormField>
+          <FormField label="Description"><textarea value={caseTypeForm.Description} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, Description: e.target.value })} className="form-input" rows={2} /></FormField>
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Color">
               <div className="flex items-center gap-2">
-                <input type="color" value={caseTypeForm.color} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, color: e.target.value })} className="w-8 h-8 rounded border border-border cursor-pointer" />
-                <input type="text" value={caseTypeForm.color} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, color: e.target.value })} className="form-input flex-1" />
+                <input type="color" value={caseTypeForm.Color} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, Color: e.target.value })} className="w-8 h-8 rounded border border-border cursor-pointer" />
+                <input type="text" value={caseTypeForm.Color} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, Color: e.target.value })} className="form-input flex-1" />
               </div>
             </FormField>
             <FormField label="Default Priority">
-              <select value={caseTypeForm.defaultPriority} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, defaultPriority: e.target.value })} className="form-input">
+              <select value={caseTypeForm.DefaultPriority} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, DefaultPriority: e.target.value })} className="form-input">
                 <option value="Critical">Critical</option>
                 <option value="High">High</option>
                 <option value="Medium">Medium</option>
@@ -1768,17 +1931,17 @@ export default function ConnectAdminPage() {
             </FormField>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <FormField label="SLA Response Hours"><input type="number" value={caseTypeForm.defaultSlaResponseHours} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, defaultSlaResponseHours: e.target.value === '' ? '' : parseFloat(e.target.value) || 0 })} className="form-input" min={0} /></FormField>
-            <FormField label="SLA Resolution Hours"><input type="number" value={caseTypeForm.defaultSlaResolutionHours} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, defaultSlaResolutionHours: e.target.value === '' ? '' : parseFloat(e.target.value) || 0 })} className="form-input" min={0} /></FormField>
+            <FormField label="SLA Response Hours"><input type="number" value={caseTypeForm.DefaultSlaResponseHours} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, DefaultSlaResponseHours: e.target.value === '' ? '' : parseFloat(e.target.value) || 0 })} className="form-input" min={0} /></FormField>
+            <FormField label="SLA Resolution Hours"><input type="number" value={caseTypeForm.DefaultSlaResolutionHours} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, DefaultSlaResolutionHours: e.target.value === '' ? '' : parseFloat(e.target.value) || 0 })} className="form-input" min={0} /></FormField>
           </div>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeForm.requiresRootCause} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, requiresRootCause: e.target.checked })} className="w-4 h-4 rounded border-border" />Requires Root Cause</label>
-            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeForm.requiresContainment} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, requiresContainment: e.target.checked })} className="w-4 h-4 rounded border-border" />Requires Containment</label>
-            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeForm.requiresVerification} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, requiresVerification: e.target.checked })} className="w-4 h-4 rounded border-border" />Requires Verification</label>
-            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeForm.requiresApproval} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, requiresApproval: e.target.checked })} className="w-4 h-4 rounded border-border" />Requires Approval</label>
-            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeForm.isPortalCreatable} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, isPortalCreatable: e.target.checked })} className="w-4 h-4 rounded border-border" />Portal Creatable</label>
-            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeForm.isCustomerFacing} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, isCustomerFacing: e.target.checked })} className="w-4 h-4 rounded border-border" />Customer Facing</label>
-            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeForm.isActive} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, isActive: e.target.checked })} className="w-4 h-4 rounded border-border" />Active</label>
+            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeForm.RequiresRootCause} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, RequiresRootCause: e.target.checked })} className="w-4 h-4 rounded border-border" />Requires Root Cause</label>
+            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeForm.RequiresContainment} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, RequiresContainment: e.target.checked })} className="w-4 h-4 rounded border-border" />Requires Containment</label>
+            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeForm.RequiresVerification} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, RequiresVerification: e.target.checked })} className="w-4 h-4 rounded border-border" />Requires Verification</label>
+            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeForm.RequiresApproval} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, RequiresApproval: e.target.checked })} className="w-4 h-4 rounded border-border" />Requires Approval</label>
+            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeForm.IsPortalCreatable} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, IsPortalCreatable: e.target.checked })} className="w-4 h-4 rounded border-border" />Portal Creatable</label>
+            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeForm.IsCustomerFacing} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, IsCustomerFacing: e.target.checked })} className="w-4 h-4 rounded border-border" />Customer Facing</label>
+            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeForm.IsActive} onChange={(e) => setCaseTypeForm({ ...caseTypeForm, IsActive: e.target.checked })} className="w-4 h-4 rounded border-border" />Active</label>
           </div>
         </div>
       </Modal>
@@ -1797,25 +1960,25 @@ export default function ConnectAdminPage() {
         <Button onClick={handleSaveCaseTypeStep} loading={saveCaseTypeStepMut.isPending}>{isEditCaseTypeStep ? 'Save Changes' : 'Create'}</Button></>
       }>
         <div className="space-y-4">
-          <FormField label="Name" required><input type="text" value={caseTypeStepForm.name} onChange={(e) => setCaseTypeStepForm({ ...caseTypeStepForm, name: e.target.value })} className="form-input" /></FormField>
+          <FormField label="Name" required><input type="text" value={caseTypeStepForm.Name} onChange={(e) => setCaseTypeStepForm({ ...caseTypeStepForm, Name: e.target.value })} className="form-input" /></FormField>
           <FormField label="Status Code">
-            <select value={caseTypeStepForm.statusCode} onChange={(e) => setCaseTypeStepForm({ ...caseTypeStepForm, statusCode: e.target.value })} className="form-input">
+            <select value={caseTypeStepForm.StatusCode} onChange={(e) => setCaseTypeStepForm({ ...caseTypeStepForm, StatusCode: e.target.value })} className="form-input">
               <option value="">Select Status Code</option>
               {CASE_STATUS_CODES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
           </FormField>
-          <FormField label="Display Order"><input type="number" value={caseTypeStepForm.displayOrder} onChange={(e) => setCaseTypeStepForm({ ...caseTypeStepForm, displayOrder: parseInt(e.target.value) || 0 })} className="form-input" /></FormField>
+          <FormField label="Display Order"><input type="number" value={caseTypeStepForm.DisplayOrder} onChange={(e) => setCaseTypeStepForm({ ...caseTypeStepForm, DisplayOrder: parseInt(e.target.value) || 0 })} className="form-input" /></FormField>
           <FormField label="Color">
             <div className="flex items-center gap-2">
-              <input type="color" value={caseTypeStepForm.color} onChange={(e) => setCaseTypeStepForm({ ...caseTypeStepForm, color: e.target.value })} className="w-8 h-8 rounded border border-border cursor-pointer" />
-              <input type="text" value={caseTypeStepForm.color} onChange={(e) => setCaseTypeStepForm({ ...caseTypeStepForm, color: e.target.value })} className="form-input flex-1" />
+              <input type="color" value={caseTypeStepForm.Color} onChange={(e) => setCaseTypeStepForm({ ...caseTypeStepForm, Color: e.target.value })} className="w-8 h-8 rounded border border-border cursor-pointer" />
+              <input type="text" value={caseTypeStepForm.Color} onChange={(e) => setCaseTypeStepForm({ ...caseTypeStepForm, Color: e.target.value })} className="form-input flex-1" />
             </div>
           </FormField>
           <div className="flex items-center gap-6">
-            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeStepForm.isTerminal} onChange={(e) => setCaseTypeStepForm({ ...caseTypeStepForm, isTerminal: e.target.checked })} className="w-4 h-4 rounded border-border" />Terminal</label>
-            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeStepForm.isResolved} onChange={(e) => setCaseTypeStepForm({ ...caseTypeStepForm, isResolved: e.target.checked })} className="w-4 h-4 rounded border-border" />Resolved</label>
-            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeStepForm.requiresApproval} onChange={(e) => setCaseTypeStepForm({ ...caseTypeStepForm, requiresApproval: e.target.checked })} className="w-4 h-4 rounded border-border" />Requires Approval</label>
-            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeStepForm.isActive} onChange={(e) => setCaseTypeStepForm({ ...caseTypeStepForm, isActive: e.target.checked })} className="w-4 h-4 rounded border-border" />Active</label>
+            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeStepForm.IsTerminal} onChange={(e) => setCaseTypeStepForm({ ...caseTypeStepForm, IsTerminal: e.target.checked })} className="w-4 h-4 rounded border-border" />Terminal</label>
+            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeStepForm.IsResolved} onChange={(e) => setCaseTypeStepForm({ ...caseTypeStepForm, IsResolved: e.target.checked })} className="w-4 h-4 rounded border-border" />Resolved</label>
+            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeStepForm.RequiresApproval} onChange={(e) => setCaseTypeStepForm({ ...caseTypeStepForm, RequiresApproval: e.target.checked })} className="w-4 h-4 rounded border-border" />Requires Approval</label>
+            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer"><input type="checkbox" checked={caseTypeStepForm.IsActive} onChange={(e) => setCaseTypeStepForm({ ...caseTypeStepForm, IsActive: e.target.checked })} className="w-4 h-4 rounded border-border" />Active</label>
           </div>
         </div>
       </Modal>

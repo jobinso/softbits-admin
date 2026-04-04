@@ -504,6 +504,10 @@ export interface ConnectSyncConfig {
   SyncEnabled: boolean;
   SyncDirection: string;
   SyncFrequencyMinutes?: number;
+  ConflictResolution?: string;
+  LastSyncAt?: string | null;
+  LastSyncStatus?: string | null;
+  LastSyncMessage?: string | null;
 }
 
 export interface ConnectSyncHistoryEntry {

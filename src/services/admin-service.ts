@@ -1,7 +1,7 @@
 import { api, getAuthToken, setAuthToken } from './api';
 import axios from 'axios';
 import { STORAGE_KEYS } from '../utils/constants';
-import type { ApiResponse, User, AdminRole, Device, SystemHealth, SystemSetting, ProjectType, ProjectTypeStatus, ProjectTypeField, Currency, ExchangeRateProvider, ExchangeRate, OptionSet, OptionSetItem, Warehouse, WarehouseErpLink, ErpWarehouseBrowse, Patch, PatchLevel, PatchHistoryEntry, ComplianceData, ConnectSyncStatus, ConnectSyncHistoryEntry, Territory, SalesRep, Pipeline, Stage, CaseType, CaseTypeStep, RateCard, BillingRole, PosTerminal, GpsSalesData, GpsTerminalFilter, InfuseTestResult, McpTestConnectionResult, DocumentStats, StorageProvider, StagedDocument, RetentionPolicy, ExpiringDocument, RetentionLogEntry, ApprovalWorkflow, DocumentTypeConfig, Provider, ProviderType, InternalServicesResponse, InfuseDashboardData, EditVanProvider, EditTradingPartner, EditTransaction, EditDocumentStage, EditErrorLog, EditTransactionType, EditFormatSpec, EditFormatSpecField, EditWorkflowProviderConfig, EditDashboardSummary, EditDashboardStats } from '../types';
+import type { ApiResponse, User, AdminRole, Device, SystemHealth, SystemSetting, ProjectType, ProjectTypeStatus, ProjectTypeField, Currency, ExchangeRateProvider, ExchangeRate, OptionSet, OptionSetItem, Warehouse, WarehouseErpLink, ErpWarehouseBrowse, Patch, PatchLevel, PatchHistoryEntry, ComplianceData, ConnectSyncStatus, ConnectSyncHistoryEntry, Territory, SalesRep, Pipeline, Stage, CaseType, CaseTypeStep, RateCard, RateCardLineItem, BillingRole, PosTerminal, GpsSalesData, GpsTerminalFilter, InfuseTestResult, McpTestConnectionResult, DocumentStats, StorageProvider, StagedDocument, RetentionPolicy, ExpiringDocument, RetentionLogEntry, ApprovalWorkflow, DocumentTypeConfig, Provider, ProviderType, InternalServicesResponse, InfuseDashboardData, EditVanProvider, EditTradingPartner, EditTransaction, EditDocumentStage, EditErrorLog, EditTransactionType, EditFormatSpec, EditFormatSpecField, EditWorkflowProviderConfig, EditDashboardSummary, EditDashboardStats } from '../types';
 
 // Raw API for routes mounted at /admin/* (without /api prefix)
 const rawApi = axios.create({ headers: { 'Content-Type': 'application/json' } });
@@ -1064,7 +1064,7 @@ export async function getErpWarehouseBrowse(filter?: string): Promise<ApiRespons
 
 export async function getConnectSyncStatus(): Promise<ConnectSyncStatus> {
   const response = await api.get('/connect/sync/status');
-  return response.data;
+  return response.data?.data ?? response.data;
 }
 
 export async function triggerConnectSync() {
@@ -1087,7 +1087,12 @@ export async function updateConnectConfig(data: Record<string, unknown>) {
   return response.data;
 }
 
-export async function getConnectSyncHistory(params?: { limit?: number; entityType?: string; status?: string; fromDate?: string; toDate?: string }): Promise<{ history: ConnectSyncHistoryEntry[] }> {
+export async function updateConnectEntityConfig(entityType: string, data: Record<string, unknown>) {
+  const response = await api.put(`/connect/config/${entityType}`, data);
+  return response.data;
+}
+
+export async function getConnectSyncHistory(params?: { limit?: number; entityType?: string; status?: string; fromDate?: string; toDate?: string }): Promise<{ data: ConnectSyncHistoryEntry[] }> {
   const response = await api.get('/connect/history', { params });
   return response.data;
 }
@@ -1246,7 +1251,7 @@ export async function getRateCard(id: string): Promise<ApiResponse<RateCard>> {
   return response.data;
 }
 
-export async function createRateCard(data: { name: string; description?: string; status?: string; notes?: string }) {
+export async function createRateCard(data: Partial<RateCard>) {
   const response = await api.post('/connect/rate-cards', data);
   return response.data;
 }
@@ -1276,12 +1281,12 @@ export async function activateRateCardVersion(cardId: string, versionId: string)
   return response.data;
 }
 
-export async function addRateCardLineItem(cardId: string, versionId: string, data: { roleId: string; currencyId: string; rate: number; unit: string; notes?: string }) {
+export async function addRateCardLineItem(cardId: string, versionId: string, data: { RoleId: string; CurrencyId: string; Rate: number; Unit: string; Notes?: string }) {
   const response = await api.post(`/connect/rate-cards/${cardId}/versions/${versionId}/roles`, data);
   return response.data;
 }
 
-export async function updateRateCardLineItem(cardId: string, versionId: string, lineId: string, data: { roleId?: string; currencyId?: string; rate?: number; unit?: string; notes?: string }) {
+export async function updateRateCardLineItem(cardId: string, versionId: string, lineId: string, data: Partial<RateCardLineItem>) {
   const response = await api.put(`/connect/rate-cards/${cardId}/versions/${versionId}/roles/${lineId}`, data);
   return response.data;
 }
@@ -1320,7 +1325,7 @@ export async function getConnectFields(entityType: string, subEntity?: string) {
   return response.data;
 }
 
-export async function saveConnectMappingOverrides(entityType: string, data: { overrides: Record<string, unknown>; disabled: string[]; custom: Record<string, unknown> }) {
+export async function saveConnectMappingOverrides(entityType: string, data: { overrides: Record<string, unknown>; disabled: string[]; custom: Record<string, unknown>; fieldDirections?: Record<string, string>; writebackFields?: Record<string, unknown> }) {
   const response = await api.put(`/connect/config/mappings/${entityType}`, data);
   return response.data;
 }
