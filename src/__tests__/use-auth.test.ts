@@ -22,6 +22,10 @@ jest.mock('../services/api', () => ({
       response: { use: jest.fn() },
     },
   },
+  setAuthToken: jest.fn(),
+  getAuthToken: jest.fn(() => null),
+  attachAuthInterceptor: jest.fn(),
+  attachTokenRefreshInterceptor: jest.fn(),
 }));
 
 // Mock localStorage for zustand persist
@@ -37,7 +41,7 @@ const localStorageMock = (() => {
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
 import { useAuth } from '../hooks/use-auth';
-import { api } from '../services/api';
+import { api, setAuthToken } from '../services/api';
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -107,10 +111,10 @@ describe('useAuth', () => {
       expect(state.isLoading).toBe(false);
     });
 
-    it('sets Authorization header on api after login', async () => {
+    it('sets auth token via setAuthToken after login', async () => {
       mockVerifyLogin.mockResolvedValue(loginResponse);
       await useAuth.getState().login('admin', 'password');
-      expect(api.defaults.headers.common['Authorization']).toBe('Bearer jwt-token-abc');
+      expect(setAuthToken).toHaveBeenCalledWith('jwt-token-abc');
     });
 
     it('calls verifyLogin with correct credentials', async () => {
@@ -253,10 +257,9 @@ describe('useAuth', () => {
       expect(state.tempToken).toBeNull();
     });
 
-    it('removes Authorization header from api', async () => {
-      api.defaults.headers.common['Authorization'] = 'Bearer old-token';
+    it('clears auth token via setAuthToken on logout', () => {
       useAuth.getState().logout();
-      expect(api.defaults.headers.common['Authorization']).toBeUndefined();
+      expect(setAuthToken).toHaveBeenCalledWith(null);
     });
   });
 

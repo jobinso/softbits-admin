@@ -1783,184 +1783,164 @@ export async function getEmailPollerPollerStatus(): Promise<{ running: boolean }
   return unwrapResponse<{ running: boolean }>(response);
 }
 
-// ===== EdIT (EDI Integration) Admin =====
+// ===== EdIT (EDI Integration) =====
+// Backend lives at softbits-bridge/src/apps/edi (mounted at /api/edi).
+// The `api` axios client has baseURL '/api', so we call '/edi/...' here.
 
 export async function getEditHealth() {
-  const response = await api.get('/admin/edit/health');
+  const response = await api.get('/edi/health');
   return unwrapResponse(response);
 }
 
 // Dashboard
 export async function getEditDashboardSummary(): Promise<EditDashboardSummary> {
-  const response = await api.get('/admin/edit/dashboard/summary');
+  const response = await api.get('/edi/dashboard/summary');
   return unwrapResponse<EditDashboardSummary>(response);
 }
 
 export async function getEditDashboardStats(): Promise<EditDashboardStats> {
-  const response = await api.get('/admin/edit/dashboard/stats');
+  const response = await api.get('/edi/dashboard/stats');
   return unwrapResponse<EditDashboardStats>(response);
 }
 
 export async function getEditRecentErrors(limit = 10): Promise<EditErrorLog[]> {
-  const response = await api.get('/admin/edit/errors', { params: { limit, unresolved: true } });
+  const response = await api.get('/edi/errors', { params: { limit, unresolved: true } });
   return unwrapResponse<EditErrorLog[]>(response);
 }
 
-// VAN Providers
+// VAN Providers (Bridge routes: /edi/van-providers/*)
 export async function getEditVanProviders(): Promise<EditVanProvider[]> {
-  const response = await api.get('/admin/edit/vans');
+  const response = await api.get('/edi/van-providers');
   return unwrapResponse(response);
 }
 
 export async function createEditVanProvider(data: Record<string, unknown>) {
-  const response = await api.post('/admin/edit/vans', data);
+  const response = await api.post('/edi/van-providers', data);
   return unwrapResponse(response);
 }
 
 export async function updateEditVanProvider(id: string, data: Record<string, unknown>) {
-  const response = await api.put(`/admin/edit/vans/${id}`, data);
+  const response = await api.put(`/edi/van-providers/${id}`, data);
   return unwrapResponse(response);
 }
 
 export async function deleteEditVanProvider(id: string) {
-  const response = await api.delete(`/admin/edit/vans/${id}`);
+  const response = await api.delete(`/edi/van-providers/${id}`);
   return unwrapResponse(response);
 }
 
 export async function testEditVanProvider(id: string) {
-  const response = await api.post(`/admin/edit/vans/${id}/test`);
+  const response = await api.post(`/edi/van-providers/${id}/test`);
   return unwrapResponse(response);
 }
 
 export async function pollEditVanProvider(id: string) {
-  const response = await api.post(`/admin/edit/vans/${id}/poll`);
+  const response = await api.post(`/edi/van-providers/${id}/poll`);
   return unwrapResponse(response);
 }
 
-// VAN & Partner Health
+// VAN & Partner Health (served by /edi/dashboard)
 export async function getEditVanHealth() {
-  const response = await api.get('/admin/edit/vans/health');
+  const response = await api.get('/edi/dashboard/van-health');
   return unwrapResponse(response);
 }
 
 export async function getEditPartnerHealth() {
-  const response = await api.get('/admin/edit/partners/health');
+  const response = await api.get('/edi/dashboard/partner-health');
   return unwrapResponse(response);
 }
 
-// Trading Partners
+// Trading Partners (Bridge routes: /edi/trading-partners/*)
 export async function getEditTradingPartners(): Promise<EditTradingPartner[]> {
-  const response = await api.get('/admin/edit/partners');
+  const response = await api.get('/edi/trading-partners');
   return unwrapResponse(response);
 }
 
 export async function createEditTradingPartner(data: Record<string, unknown>) {
-  const response = await api.post('/admin/edit/partners', data);
+  const response = await api.post('/edi/trading-partners', data);
   return unwrapResponse(response);
 }
 
 export async function updateEditTradingPartner(id: string, data: Record<string, unknown>) {
-  const response = await api.put(`/admin/edit/partners/${id}`, data);
+  const response = await api.put(`/edi/trading-partners/${id}`, data);
   return unwrapResponse(response);
 }
 
 export async function deleteEditTradingPartner(id: string) {
-  const response = await api.delete(`/admin/edit/partners/${id}`);
+  const response = await api.delete(`/edi/trading-partners/${id}`);
   return unwrapResponse(response);
 }
 
 // Transactions
 export async function getEditTransactions(params?: Record<string, string>): Promise<EditTransaction[]> {
-  const response = await api.get('/admin/edit/transactions', { params });
+  const response = await api.get('/edi/transactions', { params });
   return unwrapResponse(response);
 }
 
 export async function getEditTransaction(id: number): Promise<EditTransaction> {
-  const response = await api.get(`/admin/edit/transactions/${id}`);
+  const response = await api.get(`/edi/transactions/${id}`);
   return unwrapResponse(response);
 }
 
 export async function getEditTransactionFlow(id: number): Promise<EditDocumentStage[]> {
-  const response = await api.get(`/admin/edit/transactions/${id}/flow`);
+  const response = await api.get(`/edi/transactions/${id}/flow`);
   return unwrapResponse(response);
 }
 
 export async function retryEditTransaction(id: number) {
-  const response = await api.post(`/admin/edit/transactions/${id}/retry`);
+  const response = await api.post(`/edi/transactions/${id}/retry`);
   return unwrapResponse(response);
 }
 
 export async function reprocessEditTransaction(id: number) {
-  const response = await api.post(`/admin/edit/transactions/${id}/reprocess`);
+  const response = await api.post(`/edi/transactions/${id}/reprocess`);
   return unwrapResponse(response);
 }
 
-// Transaction Types
+// Transaction Types (Bridge: /edi/config/transaction-types)
 export async function getEditTransactionTypes(): Promise<EditTransactionType[]> {
-  const response = await api.get('/admin/edit/transaction-types');
+  const response = await api.get('/edi/config/transaction-types');
   return unwrapResponse(response);
 }
 
 // Format Specs
 export async function getEditFormatSpecs(): Promise<EditFormatSpec[]> {
-  const response = await api.get('/admin/edit/format-specs');
+  const response = await api.get('/edi/format-specs');
   return unwrapResponse(response);
 }
 
 export async function getEditFormatSpecFields(specId: string): Promise<EditFormatSpecField[]> {
-  const response = await api.get(`/admin/edit/format-specs/${specId}/fields`);
+  const response = await api.get(`/edi/format-specs/${specId}/fields`);
   return unwrapResponse(response);
 }
 
 export async function importEditFormatSpec(data: { fileName: string; fileContent: string; partnerCode?: string; typeCode?: string }) {
-  const response = await api.post('/admin/edit/format-specs/import', data);
+  const response = await api.post('/edi/format-specs/import', data);
   return unwrapResponse(response);
 }
 
 export async function autoMapEditFormatSpec(specId: string) {
-  const response = await api.post(`/admin/edit/format-specs/${specId}/auto-map`);
+  const response = await api.post(`/edi/format-specs/${specId}/auto-map`);
   return unwrapResponse(response);
 }
 
 export async function generateEditFieldMaps(specId: string) {
-  const response = await api.post(`/admin/edit/format-specs/${specId}/generate-maps`);
+  const response = await api.post(`/edi/format-specs/${specId}/generate-maps`);
   return unwrapResponse(response);
 }
 
 export async function deleteEditFormatSpec(specId: string) {
-  const response = await api.delete(`/admin/edit/format-specs/${specId}`);
+  const response = await api.delete(`/edi/format-specs/${specId}`);
   return unwrapResponse(response);
 }
 
-// Workflow Providers
+// Workflow Providers (Bridge: /edi/workflow-providers, keyed by :code not :id)
 export async function getEditWorkflowProviders(): Promise<EditWorkflowProviderConfig[]> {
-  const response = await api.get('/admin/edit/workflow-providers');
+  const response = await api.get('/edi/workflow-providers');
   return unwrapResponse(response);
 }
 
-export async function testEditWorkflowProvider(id: string) {
-  const response = await api.post(`/admin/edit/workflow-providers/${id}/test`);
+export async function testEditWorkflowProvider(code: string) {
+  const response = await api.post(`/edi/workflow-providers/${code}/test`);
   return unwrapResponse(response);
-}
-
-// ===== EdIT (EDI Integration) API =====
-
-async function editApiFetch(endpoint: string, options?: { method?: string; data?: unknown }) {
-  const method = options?.method || 'GET';
-  try {
-    let response;
-    switch (method) {
-      case 'POST': response = await rawApi.post(`/edit${endpoint}`, options?.data); break;
-      case 'PUT': response = await rawApi.put(`/edit${endpoint}`, options?.data); break;
-      case 'DELETE': response = await rawApi.delete(`/edit${endpoint}`); break;
-      default: response = await rawApi.get(`/edit${endpoint}`);
-    }
-    return unwrapResponse(response);
-  } catch (err: unknown) {
-    if (axios.isAxiosError(err)) {
-      const serverMessage = err.response?.data?.error?.message;
-      if (serverMessage) throw new Error(serverMessage);
-    }
-    throw err;
-  }
 }

@@ -63,7 +63,8 @@ export default function DashboardPage() {
     queryKey: ['health'],
     queryFn: async () => {
       const res = await getHealth();
-      return res as unknown as HealthResponse;
+      const body = (res as { data?: HealthResponse })?.data ?? res;
+      return body as HealthResponse;
     },
     refetchInterval: 30000,
   });
