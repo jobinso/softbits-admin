@@ -82,8 +82,7 @@ export default function HelpModal({ open, onClose, currentPath }: HelpModalProps
       onClick={onClose}
     >
       <div
-        className="bg-surface-raised border border-border rounded-xl shadow-2xl flex flex-col"
-        style={{ maxWidth: 900, width: '90vw', maxHeight: '85vh' }}
+        className="bg-surface-raised border border-border rounded-xl shadow-2xl flex flex-col max-w-[900px] w-[90vw] max-h-[85vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

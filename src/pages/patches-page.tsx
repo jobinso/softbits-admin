@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
+  Package,
   CheckCircle,
   History,
   AlertTriangle,
@@ -8,9 +9,9 @@ import {
   Play,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Button, Tabs, StatusBadge, LoadingSpinner, Modal, DataTable, PageHeader, TableCard, PageStatusBar } from '@/components/shared';
+import { Button, Card, Tabs, StatusBadge, LoadingSpinner, Modal, DataTable } from '@/components/shared';
 import type { TabItem, ColumnDef } from '@/components/shared';
-import type { Patch, PatchHistoryEntry } from '@/types';
+import type { Patch, PatchHistoryEntry, ApiError } from '@/types';
 import {
   getPatches,
   getPatchLevel,
@@ -109,7 +110,7 @@ export default function PatchesPage() {
       setConfirmAction(null);
       queryClient.invalidateQueries({ queryKey: ['admin', 'patches'] });
     },
-    onError: (error: any, patchCode) => {
+    onError: (error: ApiError, patchCode) => {
       toast.error(`Failed to apply patch ${patchCode}: ${error.response?.data?.error || error.message}`);
       setConfirmAction(null);
     },
@@ -122,7 +123,7 @@ export default function PatchesPage() {
       setConfirmAction(null);
       queryClient.invalidateQueries({ queryKey: ['admin', 'patches'] });
     },
-    onError: (error: any, patchCode) => {
+    onError: (error: ApiError, patchCode) => {
       toast.error(`Failed to roll back ${patchCode}: ${error.response?.data?.error || error.message}`);
       setConfirmAction(null);
     },
@@ -167,7 +168,7 @@ export default function PatchesPage() {
         { value: 'feature-update', label: 'Feature Update' },
         { value: 'security', label: 'Security' },
       ],
-      render: (val: string) => <span className="text-xs text-semantic-text-subtle bg-surface-overlay px-2 py-0.5 rounded">{val}</span>,
+      render: (val: string) => <span className="text-xs text-dark-500 bg-dark-100 px-2 py-0.5 rounded">{val}</span>,
     },
     {
       key: 'Severity',
@@ -184,20 +185,20 @@ export default function PatchesPage() {
       label: 'Applied',
       width: 180,
       sortable: true,
-      render: (val: string) => <span className="text-xs text-semantic-text-subtle">{formatDate(val)}</span>,
+      render: (val: string) => <span className="text-xs text-dark-500">{formatDate(val)}</span>,
     },
     {
       key: 'AppliedBy',
       label: 'By',
       width: 100,
-      render: (val: string) => <span className="text-xs text-semantic-text-subtle">{val || '-'}</span>,
+      render: (val: string) => <span className="text-xs text-dark-500">{val || '-'}</span>,
     },
     {
       key: 'ApplyDurationMs',
       label: 'Duration',
       width: 90,
       align: 'right',
-      render: (val: number) => <span className="text-xs text-semantic-text-subtle font-mono">{formatDuration(val)}</span>,
+      render: (val: number) => <span className="text-xs text-dark-500 font-mono">{formatDuration(val)}</span>,
     },
     {
       key: '_actions',
@@ -224,7 +225,7 @@ export default function PatchesPage() {
       label: 'Timestamp',
       width: 180,
       sortable: true,
-      render: (val: string) => <span className="text-xs text-semantic-text-subtle">{formatDate(val)}</span>,
+      render: (val: string) => <span className="text-xs text-dark-500">{formatDate(val)}</span>,
     },
     {
       key: 'PatchCode',
@@ -252,14 +253,14 @@ export default function PatchesPage() {
       key: 'AppliedBy',
       label: 'User',
       width: 100,
-      render: (val: string) => <span className="text-xs text-semantic-text-subtle">{val || '-'}</span>,
+      render: (val: string) => <span className="text-xs text-dark-500">{val || '-'}</span>,
     },
     {
       key: 'DurationMs',
       label: 'Duration',
       width: 90,
       align: 'right',
-      render: (val: number) => <span className="text-xs text-semantic-text-subtle font-mono">{formatDuration(val)}</span>,
+      render: (val: number) => <span className="text-xs text-dark-500 font-mono">{formatDuration(val)}</span>,
     },
     {
       key: 'ErrorMessage',
@@ -272,19 +273,29 @@ export default function PatchesPage() {
   // ===== Render =====
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Patches"
-        description="View and manage database migrations"
-      />
+    <div className="p-6 space-y-6 overflow-y-auto h-full">
+      <h1 className="text-lg font-semibold text-dark-700">Updates &amp; Patches</h1>
 
       {/* Status Bar */}
-      <PageStatusBar items={[
-        { type: 'text', label: 'Bridge Version', value: '2.1.0' },
-        { type: 'text', label: 'Patches Applied', value: level.TotalApplied ?? 0, colorClass: 'text-primary' },
-        { type: 'text', label: 'Latest Patch', value: level.LatestPatch || 'None' },
-        { type: 'text', label: 'Critical Pending', value: level.PendingCritical ?? 0, colorClass: 'text-danger', visible: (level.PendingCritical ?? 0) > 0 },
-      ]} />
+      <div className="flex flex-wrap items-center gap-6 p-4 bg-dark-50 border border-dark-200 rounded-xl">
+        <div>
+          <p className="text-xs text-dark-400 mb-1">Bridge Version</p>
+          <p className="text-sm font-semibold text-dark-700">2.1.0</p>
+        </div>
+        <div>
+          <p className="text-xs text-dark-400 mb-1">Patches Applied</p>
+          <p className="text-sm font-semibold text-primary">{level.TotalApplied ?? 0}</p>
+        </div>
+        <div>
+          <p className="text-xs text-dark-400 mb-1">Latest Patch</p>
+          <p className="text-sm font-medium text-dark-700 font-mono">{level.LatestPatch || 'None'}</p>
+        </div>
+        {(level.PendingCritical ?? 0) > 0 && (
+          <div className="px-3 py-1.5 bg-danger/10 border border-danger/20 rounded-lg">
+            <span className="text-sm font-semibold text-danger">{level.PendingCritical} critical pending</span>
+          </div>
+        )}
+      </div>
 
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
@@ -296,8 +307,8 @@ export default function PatchesPage() {
           ) : pendingPatches.length === 0 ? (
             <div className="text-center py-16">
               <CheckCircle className="w-12 h-12 text-primary mx-auto mb-4" />
-              <p className="text-sm font-semibold text-semantic-text-default mb-1">All up to date</p>
-              <p className="text-xs text-semantic-text-subtle">No pending patches to apply.</p>
+              <p className="text-sm font-semibold text-dark-700 mb-1">All up to date</p>
+              <p className="text-xs text-dark-400">No pending patches to apply.</p>
             </div>
           ) : (
             severityOrder.map((severity) => {
@@ -308,24 +319,24 @@ export default function PatchesPage() {
                 <div key={severity}>
                   <div className="flex items-center gap-2 mb-3">
                     <StatusBadge status={badge.status} label={badge.label} size="sm" />
-                    <span className="text-xs text-semantic-text-subtle">{items.length} patch{items.length > 1 ? 'es' : ''}</span>
+                    <span className="text-xs text-dark-400">{items.length} patch{items.length > 1 ? 'es' : ''}</span>
                   </div>
                   <div className="space-y-2">
                     {items.map((patch) => (
                       <div
                         key={patch.PatchCode}
-                        className="flex items-center justify-between p-4 bg-surface-raised border border-border rounded-lg hover:border-border-bold transition-colors"
+                        className="flex items-center justify-between p-4 bg-dark-50 border border-dark-200 rounded-lg hover:border-dark-300 transition-colors"
                       >
                         <div className="min-w-0 flex-1 mr-4">
                           <div className="flex items-center gap-2 mb-1">
                             <code className="text-primary font-mono text-sm font-semibold">{patch.PatchCode}</code>
-                            <span className="text-xs text-semantic-text-subtle bg-surface-overlay px-2 py-0.5 rounded">{patch.Category}</span>
+                            <span className="text-xs text-dark-500 bg-dark-100 px-2 py-0.5 rounded">{patch.Category}</span>
                           </div>
-                          <p className="text-sm font-medium text-semantic-text-default">{patch.Title}</p>
+                          <p className="text-sm font-medium text-dark-700">{patch.Title}</p>
                           {patch.Description && (
-                            <p className="text-xs text-semantic-text-subtle mt-1">{patch.Description}</p>
+                            <p className="text-xs text-dark-400 mt-1">{patch.Description}</p>
                           )}
-                          <p className="text-xs text-semantic-text-subtle mt-1">Released: {formatDate(patch.ReleasedAt)}</p>
+                          <p className="text-xs text-dark-400 mt-1">Released: {formatDate(patch.ReleasedAt)}</p>
                         </div>
                         <Button
                           size="sm"
@@ -350,23 +361,16 @@ export default function PatchesPage() {
           {installedLoading ? (
             <div className="text-center py-12"><LoadingSpinner size="md" /></div>
           ) : installedPatches.length === 0 ? (
-            <div className="text-center py-12 text-sm text-semantic-text-subtle">No patches installed yet.</div>
+            <div className="text-center py-12 text-sm text-dark-400">No patches installed yet.</div>
           ) : (
-            <TableCard
-              title="Installed Patches"
-              icon={<CheckCircle className="w-4 h-4" />}
-              count={installedPatches.length}
-            >
-              <DataTable
-                id="patches-installed"
-                columns={installedColumns}
-                data={installedPatches}
-                rowKey="PatchCode"
-                pageSize={25}
-                embedded
-                showColumnPicker={false}
-              />
-            </TableCard>
+            <DataTable
+              id="patches-installed"
+              columns={installedColumns}
+              data={installedPatches}
+              rowKey="PatchCode"
+              pageSize={25}
+              showColumnPicker={false}
+            />
           )}
         </div>
       )}
@@ -377,23 +381,16 @@ export default function PatchesPage() {
           {historyLoading ? (
             <div className="text-center py-12"><LoadingSpinner size="md" /></div>
           ) : historyEntries.length === 0 ? (
-            <div className="text-center py-12 text-sm text-semantic-text-subtle">No patch history yet.</div>
+            <div className="text-center py-12 text-sm text-dark-400">No patch history yet.</div>
           ) : (
-            <TableCard
-              title="Patch History"
-              icon={<History className="w-4 h-4" />}
-              count={historyEntries.length}
-            >
-              <DataTable
-                id="patches-history"
-                columns={historyColumns}
-                data={historyEntries}
-                rowKey={(row) => `${row.PatchCode}-${row.StartedAt}`}
-                pageSize={25}
-                embedded
-                showColumnPicker={false}
-              />
-            </TableCard>
+            <DataTable
+              id="patches-history"
+              columns={historyColumns}
+              data={historyEntries}
+              rowKey={(row) => `${row.PatchCode}-${row.StartedAt}`}
+              pageSize={25}
+              showColumnPicker={false}
+            />
           )}
         </div>
       )}
@@ -430,19 +427,19 @@ export default function PatchesPage() {
         <div className="space-y-3">
           {confirmAction?.type === 'apply' ? (
             <>
-              <p className="text-sm text-semantic-text-secondary">
+              <p className="text-sm text-dark-600">
                 Apply patch <code className="text-primary font-mono font-semibold">{confirmAction.patchCode}</code>?
               </p>
-              <p className="text-xs text-semantic-text-subtle">
+              <p className="text-xs text-dark-400">
                 This will execute the patch SQL against the database.
               </p>
             </>
           ) : (
             <>
-              <p className="text-sm text-semantic-text-secondary">
+              <p className="text-sm text-dark-600">
                 Roll back patch <code className="text-primary font-mono font-semibold">{confirmAction?.patchCode}</code>?
               </p>
-              <p className="text-xs text-semantic-text-subtle">
+              <p className="text-xs text-dark-400">
                 This will execute the rollback SQL and remove the patch.
               </p>
             </>

@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { type AxiosInstance } from 'axios';
 import { STORAGE_KEYS } from '../utils/constants';
 
 // ---- JWT expiry check ----
@@ -42,6 +42,117 @@ export function setAuthToken(token: string | null) {
   _authToken = token;
 }
 
+// ---- Shared token refresh state ----
+// Single refresh state shared across all axios instances so concurrent 401s
+// from different instances coordinate through one refresh cycle.
+let _isRefreshing = false;
+let _failedQueue: Array<{ resolve: (token: string) => void; reject: (error: unknown) => void }> = [];
+
+function processQueue(error: unknown, token: string | null = null) {
+  _failedQueue.forEach(({ resolve, reject }) => {
+    if (error) reject(error);
+    else resolve(token!);
+  });
+  _failedQueue = [];
+}
+
+const REFRESH_URL = '/api/auth/refresh';
+
+// ---- Reusable interceptor setup ----
+
+/** Attach request interceptor that injects the auth token header. */
+export function attachAuthInterceptor(instance: AxiosInstance): void {
+  instance.interceptors.request.use((config) => {
+    const token = getAuthToken();
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    return config;
+  });
+}
+
+/** Attach response interceptor that handles 401 → token refresh → retry. */
+export function attachTokenRefreshInterceptor(instance: AxiosInstance): void {
+  instance.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+      const originalRequest = error.config;
+      const url = originalRequest?.url || '';
+
+      // Don't intercept non-401s, already-retried requests, or auth/refresh routes
+      if (
+        error.response?.status !== 401 ||
+        originalRequest._retry ||
+        url === REFRESH_URL ||
+        url.includes('/auth/')
+      ) {
+        return Promise.reject(error);
+      }
+
+      // If already refreshing, queue this request
+      if (_isRefreshing) {
+        return new Promise<string>((resolve, reject) => {
+          _failedQueue.push({ resolve, reject });
+        }).then((token) => {
+          originalRequest.headers['Authorization'] = `Bearer ${token}`;
+          return instance(originalRequest);
+        });
+      }
+
+      originalRequest._retry = true;
+      _isRefreshing = true;
+
+      try {
+        let refreshToken: string | null = null;
+        try {
+          const stored = localStorage.getItem(STORAGE_KEYS.AUTH);
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            refreshToken = parsed.state?.refreshToken || null;
+          }
+        } catch { /* ignore */ }
+
+        if (!refreshToken) {
+          throw new Error('No refresh token available');
+        }
+
+        // Use a plain axios call so it doesn't trigger interceptors on either instance
+        const response = await axios.post(REFRESH_URL, { refreshToken }, {
+          headers: { 'Content-Type': 'application/json' },
+        });
+        const data = response.data?.data || response.data;
+        const { token, refreshToken: newRefreshToken } = data;
+
+        // Update module-level auth token
+        _authToken = token;
+
+        // Update localStorage so Zustand stays in sync
+        try {
+          const stored = localStorage.getItem(STORAGE_KEYS.AUTH);
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            parsed.state = { ...parsed.state, token, refreshToken: newRefreshToken };
+            localStorage.setItem(STORAGE_KEYS.AUTH, JSON.stringify(parsed));
+          }
+        } catch { /* ignore */ }
+
+        processQueue(null, token);
+
+        originalRequest.headers['Authorization'] = `Bearer ${token}`;
+        return instance(originalRequest);
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        localStorage.removeItem(STORAGE_KEYS.AUTH);
+        _authToken = null;
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      } finally {
+        _isRefreshing = false;
+      }
+    }
+  );
+}
+
 // ---- Axios instance ----
 export const api = axios.create({
   baseURL: '/api',
@@ -50,94 +161,7 @@ export const api = axios.create({
   },
 });
 
-// Inject auth token on every request from the shared module-level variable
-api.interceptors.request.use((config) => {
-  if (_authToken) {
-    config.headers['Authorization'] = `Bearer ${_authToken}`;
-  }
-  return config;
-});
-
-// Token refresh interceptor - handles 401s by refreshing the token
-let isRefreshing = false;
-let failedQueue: Array<{ resolve: (token: string) => void; reject: (error: unknown) => void }> = [];
-
-const processQueue = (error: unknown, token: string | null = null) => {
-  failedQueue.forEach(({ resolve, reject }) => {
-    if (error) {
-      reject(error);
-    } else {
-      resolve(token!);
-    }
-  });
-  failedQueue = [];
-};
-
-const REFRESH_URL = '/api/auth/refresh';
-
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-
-    if (error.response?.status !== 401 || originalRequest._retry || originalRequest.url === REFRESH_URL) {
-      return Promise.reject(error);
-    }
-
-    if (isRefreshing) {
-      return new Promise<string>((resolve, reject) => {
-        failedQueue.push({ resolve, reject });
-      }).then(token => {
-        originalRequest.headers['Authorization'] = `Bearer ${token}`;
-        return api(originalRequest);
-      });
-    }
-
-    originalRequest._retry = true;
-    isRefreshing = true;
-
-    try {
-      let refreshToken: string | null = null;
-      try {
-        const stored = localStorage.getItem(STORAGE_KEYS.AUTH);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          refreshToken = parsed.state?.refreshToken || null;
-        }
-      } catch { /* ignore */ }
-
-      if (!refreshToken) {
-        throw new Error('No refresh token available');
-      }
-
-      const response = await api.post(REFRESH_URL, { refreshToken });
-      const data = response.data.data || response.data;
-      const { token, refreshToken: newRefreshToken } = data;
-
-      try {
-        const stored = localStorage.getItem(STORAGE_KEYS.AUTH);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          parsed.state = { ...parsed.state, token, refreshToken: newRefreshToken };
-          localStorage.setItem(STORAGE_KEYS.AUTH, JSON.stringify(parsed));
-        }
-      } catch { /* ignore */ }
-
-      _authToken = token;
-      processQueue(null, token);
-
-      originalRequest.headers['Authorization'] = `Bearer ${token}`;
-      return api(originalRequest);
-    } catch (refreshError) {
-      processQueue(refreshError, null);
-      localStorage.removeItem(STORAGE_KEYS.AUTH);
-      _authToken = null;
-      window.location.href = '/login';
-      return Promise.reject(refreshError);
-    } finally {
-      isRefreshing = false;
-    }
-  }
-);
+attachAuthInterceptor(api);
+attachTokenRefreshInterceptor(api);
 
 export default api;

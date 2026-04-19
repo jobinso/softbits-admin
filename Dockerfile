@@ -9,11 +9,10 @@ FROM node:20-alpine AS client-builder
 
 WORKDIR /app/client
 
-# Copy shared tailwind tokens, components, hooks, and utils (referenced in tailwind.config.js, vite aliases, and help system)
+# Copy shared tailwind tokens, components, and hooks (referenced in tailwind.config.js and vite aliases)
 COPY softbits-shared/tailwind-tokens.js /app/softbits-shared/tailwind-tokens.js
 COPY softbits-shared/components/ /app/softbits-shared/components/
 COPY softbits-shared/hooks/ /app/softbits-shared/hooks/
-COPY softbits-shared/utils/ /app/softbits-shared/utils/
 
 # Copy client package files
 COPY softbits-admin/package*.json ./
@@ -24,7 +23,7 @@ RUN npm install
 # Copy client source
 COPY softbits-admin/src/ ./src/
 COPY softbits-admin/public/ ./public/
-COPY softbits-admin/index.html softbits-admin/vite.config.ts softbits-admin/tsconfig.json softbits-admin/tsconfig.node.json softbits-admin/tailwind.config.js softbits-admin/postcss.config.js softbits-admin/VERSION ./
+COPY softbits-admin/index.html softbits-admin/vite.config.ts softbits-admin/tsconfig.json softbits-admin/tsconfig.node.json softbits-admin/tailwind.config.js softbits-admin/postcss.config.js ./
 
 # Build the React application
 RUN npm run build

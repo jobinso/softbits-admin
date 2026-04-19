@@ -1,16 +1,12 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, AlertCircle, LoaderCircle } from 'lucide-react';
+import { ShieldCheck, AlertCircle } from 'lucide-react';
 import { useAuth } from '../hooks/use-auth';
-
-const PENDING_LICENSE_KEY = 'pending-license-xml';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [totpCode, setTotpCode] = useState('');
-  const [licenseMessage, setLicenseMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const { login, verifyTotp, isLoading, error, clearError, requiresTotp } = useAuth();
   const navigate = useNavigate();
 
@@ -43,61 +39,38 @@ export default function LoginPage() {
     useAuth.setState({ requiresTotp: false, tempToken: null });
   };
 
-  const handleLicenseFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.name.endsWith('.xml') && !file.name.endsWith('.lic')) {
-      setLicenseMessage({ type: 'error', text: 'Please select an XML or LIC license file' });
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result as string;
-      localStorage.setItem(PENDING_LICENSE_KEY, content);
-      setLicenseMessage({ type: 'success', text: `License file "${file.name}" staged. It will be uploaded after login.` });
-    };
-    reader.onerror = () => {
-      setLicenseMessage({ type: 'error', text: 'Failed to read license file' });
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-  };
-
   return (
-    <div className="min-h-screen bg-surface-base flex items-center justify-center px-4">
+    <div className="min-h-screen bg-dark flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        {/* Login Card */}
+        {/* Logo */}
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center mb-3">
+            <ShieldCheck className="w-7 h-7 text-dark" />
+          </div>
+          <h1 className="text-xl font-semibold text-dark-700">AdminIT</h1>
+          <p className="text-sm text-dark-400 mt-1">System Administration Console</p>
+        </div>
+
+        {/* Error Display */}
+        {error && (
+          <div className="flex items-center gap-2 px-3 py-2 mb-4 bg-danger-50 border border-danger/20 rounded-lg">
+            <AlertCircle className="w-4 h-4 text-danger flex-shrink-0" />
+            <p className="text-sm text-danger">{error}</p>
+            <button
+              type="button"
+              onClick={clearError}
+              className="ml-auto text-xs text-danger hover:underline"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {/* Login Form */}
         {!requiresTotp ? (
-          <form onSubmit={handleLogin} className="bg-surface-raised border border-border rounded-xl p-8 space-y-5">
-            {/* Logo & Branding */}
-            <div className="flex items-center gap-3 mb-2">
-              <LoaderCircle className="w-10 h-10 text-primary" strokeWidth={2.5} />
-              <div>
-                <h1 className="text-xl font-bold text-semantic-text-default">
-                  soft<span className="text-primary">BITS</span> AdminIT
-                </h1>
-                <p className="text-sm text-primary">Admin Console</p>
-              </div>
-            </div>
-
-            {/* Error Display */}
-            {error && (
-              <div className="flex items-center gap-2 px-3 py-2 bg-danger-50 border border-danger/20 rounded-lg">
-                <AlertCircle className="w-4 h-4 text-danger flex-shrink-0" />
-                <p className="text-sm text-danger">{error}</p>
-                <button
-                  type="button"
-                  onClick={clearError}
-                  className="ml-auto text-xs text-danger hover:underline"
-                >
-                  Dismiss
-                </button>
-              </div>
-            )}
-
-            {/* Username */}
+          <form onSubmit={handleLogin} className="bg-dark-50 border border-dark-200 rounded-xl p-6 space-y-4">
             <div>
-              <label htmlFor="username" className="block text-xs font-medium tracking-wider text-semantic-text-subtle mb-1.5 uppercase">
+              <label htmlFor="username" className="block text-sm text-dark-500 mb-1">
                 Username
               </label>
               <input
@@ -105,16 +78,14 @@ export default function LoginPage() {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter username"
                 autoComplete="username"
                 required
-                className="w-full px-3 py-2.5 bg-surface-overlay border border-border rounded-lg text-sm text-semantic-text-default placeholder:text-semantic-text-faint focus:outline-none focus:ring-2 focus:ring-interactive-focus-ring focus:border-accent-primary transition-colors"
+                className="w-full px-3 py-2.5 bg-dark-100 border border-dark-200 rounded-lg text-sm text-dark-700"
               />
             </div>
 
-            {/* Password */}
             <div>
-              <label htmlFor="password" className="block text-xs font-medium tracking-wider text-semantic-text-subtle mb-1.5 uppercase">
+              <label htmlFor="password" className="block text-sm text-dark-500 mb-1">
                 Password
               </label>
               <input
@@ -122,99 +93,30 @@ export default function LoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter password"
                 autoComplete="current-password"
                 required
-                className="w-full px-3 py-2.5 bg-surface-overlay border border-border rounded-lg text-sm text-semantic-text-default placeholder:text-semantic-text-faint focus:outline-none focus:ring-2 focus:ring-interactive-focus-ring focus:border-accent-primary transition-colors"
+                className="w-full px-3 py-2.5 bg-dark-100 border border-dark-200 rounded-lg text-sm text-dark-700"
               />
             </div>
 
-            {/* Login Button */}
             <button
               type="submit"
               disabled={isLoading || !username || !password}
-              className="w-full py-2.5 bg-gradient-to-r from-primary to-primary-400 text-semantic-text-on-primary font-medium rounded-lg disabled:opacity-50 transition-colors hover:brightness-110"
+              className="w-full py-2.5 bg-primary text-dark font-medium rounded-lg disabled:opacity-50 transition-colors"
             >
-              {isLoading ? 'Logging in...' : 'Login'}
+              {isLoading ? 'Signing in...' : 'Sign In'}
             </button>
-
-            {/* Divider */}
-            <div className="border-t border-border" />
-
-            {/* Load License */}
-            <div className="flex flex-col items-center gap-2">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full py-2.5 border border-border text-semantic-text-default rounded-lg flex items-center justify-center gap-2 hover:bg-surface-overlay transition-colors"
-              >
-                <ShieldCheck className="w-4 h-4" />
-                Load License
-              </button>
-              <p className="text-xs text-semantic-text-faint">Upload an offline license file</p>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xml,.lic"
-                onChange={handleLicenseFile}
-                className="hidden"
-              />
-            </div>
-
-            {/* License Message */}
-            {licenseMessage && (
-              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
-                licenseMessage.type === 'success'
-                  ? 'bg-success/10 border border-success/20 text-success'
-                  : 'bg-danger-50 border border-danger/20 text-danger'
-              }`}>
-                <p>{licenseMessage.text}</p>
-                <button
-                  type="button"
-                  onClick={() => setLicenseMessage(null)}
-                  className="ml-auto text-xs hover:underline"
-                >
-                  Dismiss
-                </button>
-              </div>
-            )}
           </form>
         ) : (
-          <form onSubmit={handleTotp} className="bg-surface-raised border border-border rounded-xl p-8 space-y-5">
-            {/* Logo & Branding */}
-            <div className="flex items-center gap-3 mb-2">
-              <LoaderCircle className="w-10 h-10 text-primary" strokeWidth={2.5} />
-              <div>
-                <h1 className="text-xl font-bold text-semantic-text-default">
-                  soft<span className="text-primary">BITS</span> AdminIT
-                </h1>
-                <p className="text-sm text-primary">Admin Console</p>
-              </div>
-            </div>
-
-            {/* Error Display */}
-            {error && (
-              <div className="flex items-center gap-2 px-3 py-2 bg-danger-50 border border-danger/20 rounded-lg">
-                <AlertCircle className="w-4 h-4 text-danger flex-shrink-0" />
-                <p className="text-sm text-danger">{error}</p>
-                <button
-                  type="button"
-                  onClick={clearError}
-                  className="ml-auto text-xs text-danger hover:underline"
-                >
-                  Dismiss
-                </button>
-              </div>
-            )}
-
+          <form onSubmit={handleTotp} className="bg-dark-50 border border-dark-200 rounded-xl p-6 space-y-4">
             <div className="text-center mb-2">
-              <p className="text-sm text-semantic-text-subtle">
+              <p className="text-sm text-dark-500">
                 Enter the 6-digit code from your authenticator app
               </p>
             </div>
 
             <div>
-              <label htmlFor="totpCode" className="block text-xs font-medium tracking-wider text-semantic-text-subtle mb-1.5 uppercase">
+              <label htmlFor="totpCode" className="block text-sm text-dark-500 mb-1">
                 Verification Code
               </label>
               <input
@@ -225,18 +127,17 @@ export default function LoginPage() {
                 maxLength={6}
                 value={totpCode}
                 onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
-                placeholder="000000"
                 autoComplete="one-time-code"
                 autoFocus
                 required
-                className="w-full px-3 py-2.5 bg-surface-overlay border border-border rounded-lg text-sm text-semantic-text-default text-center tracking-widest placeholder:text-semantic-text-faint focus:outline-none focus:ring-2 focus:ring-interactive-focus-ring focus:border-accent-primary transition-colors"
+                className="w-full px-3 py-2.5 bg-dark-100 border border-dark-200 rounded-lg text-sm text-dark-700 text-center tracking-widest"
               />
             </div>
 
             <button
               type="submit"
               disabled={isLoading || totpCode.length !== 6}
-              className="w-full py-2.5 bg-gradient-to-r from-primary to-primary-400 text-semantic-text-on-primary font-medium rounded-lg disabled:opacity-50 transition-colors hover:brightness-110"
+              className="w-full py-2.5 bg-primary text-dark font-medium rounded-lg disabled:opacity-50 transition-colors"
             >
               {isLoading ? 'Verifying...' : 'Verify'}
             </button>
@@ -244,12 +145,16 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={handleCancelTotp}
-              className="w-full py-2 text-sm text-semantic-text-faint hover:text-semantic-text-subtle transition-colors"
+              className="w-full py-2 text-sm text-dark-400 hover:text-dark-500 transition-colors"
             >
               Back to login
             </button>
           </form>
         )}
+
+        <p className="text-center text-xs text-dark-400 mt-6">
+          softBITS AdminIT
+        </p>
       </div>
     </div>
   );

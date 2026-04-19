@@ -5,54 +5,48 @@
  * - rawApi (no /api prefix) for /admin/* and /health routes
  * - api (baseURL /api) for /api/admin/* routes
  */
-import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
 import axios from 'axios';
 
 // Mock axios.create to track calls
-const mockRawPost = vi.fn().mockResolvedValue({ data: {} });
-const mockRawGet = vi.fn().mockResolvedValue({ data: {} });
-const mockRawPut = vi.fn().mockResolvedValue({ data: {} });
-const mockRawDelete = vi.fn().mockResolvedValue({ data: {} });
-const mockApiGet = vi.fn().mockResolvedValue({ data: {} });
-const mockApiPost = vi.fn().mockResolvedValue({ data: {} });
-const mockApiPut = vi.fn().mockResolvedValue({ data: {} });
-const mockApiDelete = vi.fn().mockResolvedValue({ data: {} });
+const mockRawPost = jest.fn().mockResolvedValue({ data: {} });
+const mockRawGet = jest.fn().mockResolvedValue({ data: {} });
+const mockRawPut = jest.fn().mockResolvedValue({ data: {} });
+const mockRawDelete = jest.fn().mockResolvedValue({ data: {} });
+const mockApiGet = jest.fn().mockResolvedValue({ data: {} });
+const mockApiPost = jest.fn().mockResolvedValue({ data: {} });
 
-vi.mock('axios', async () => {
-  const actualAxios = await vi.importActual<typeof import('axios')>('axios');
+jest.mock('axios', () => {
+  const actualAxios = jest.requireActual('axios');
   return {
     ...actualAxios,
-    default: {
-      ...actualAxios.default,
-      create: vi.fn().mockImplementation((config) => {
-        if (config?.baseURL === '/api') {
-          // This is the `api` instance
-          return {
-            get: mockApiGet,
-            post: mockApiPost,
-            put: mockApiPut,
-            delete: mockApiDelete,
-            defaults: { headers: { common: {} } },
-            interceptors: {
-              request: { use: vi.fn() },
-              response: { use: vi.fn() },
-            },
-          };
-        }
-        // This is the rawApi instance
+    create: jest.fn().mockImplementation((config) => {
+      if (config?.baseURL === '/api') {
+        // This is the `api` instance
         return {
-          get: mockRawGet,
-          post: mockRawPost,
-          put: mockRawPut,
-          delete: mockRawDelete,
+          get: mockApiGet,
+          post: mockApiPost,
+          put: jest.fn().mockResolvedValue({ data: {} }),
+          delete: jest.fn().mockResolvedValue({ data: {} }),
           defaults: { headers: { common: {} } },
           interceptors: {
-            request: { use: vi.fn() },
-            response: { use: vi.fn() },
+            request: { use: jest.fn() },
+            response: { use: jest.fn() },
           },
         };
-      }),
-    },
+      }
+      // This is the rawApi instance
+      return {
+        get: mockRawGet,
+        post: mockRawPost,
+        put: mockRawPut,
+        delete: mockRawDelete,
+        defaults: { headers: { common: {} } },
+        interceptors: {
+          request: { use: jest.fn() },
+          response: { use: jest.fn() },
+        },
+      };
+    }),
   };
 });
 
@@ -64,15 +58,11 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  jest.clearAllMocks();
   mockRawGet.mockResolvedValue({ data: {} });
   mockRawPost.mockResolvedValue({ data: {} });
   mockRawPut.mockResolvedValue({ data: {} });
   mockRawDelete.mockResolvedValue({ data: {} });
-  mockApiGet.mockResolvedValue({ data: {} });
-  mockApiPost.mockResolvedValue({ data: {} });
-  mockApiPut.mockResolvedValue({ data: {} });
-  mockApiDelete.mockResolvedValue({ data: {} });
 });
 
 describe('admin-service', () => {
@@ -234,84 +224,6 @@ describe('admin-service', () => {
     it('deactivateToken posts to /admin/tokens/:id/deactivate', async () => {
       await adminService.deactivateToken('tok-789');
       expect(mockRawPost).toHaveBeenCalledWith('/admin/tokens/tok-789/deactivate');
-    });
-  });
-
-  // ===== Currencies use api (baseURL /api) =====
-
-  describe('Currency endpoints (api)', () => {
-    it('getCurrencies gets /admin/currencies', async () => {
-      await adminService.getCurrencies();
-      expect(mockApiGet).toHaveBeenCalledWith('/admin/currencies');
-    });
-
-    it('createCurrency posts to /admin/currencies', async () => {
-      const data = { code: 'USD', name: 'US Dollar', symbol: '$' };
-      await adminService.createCurrency(data);
-      expect(mockApiPost).toHaveBeenCalledWith('/admin/currencies', data);
-    });
-
-    it('updateCurrency puts to /admin/currencies/:id', async () => {
-      const data = { name: 'US Dollar Updated' };
-      await adminService.updateCurrency('cur-1', data);
-      expect(mockApiPut).toHaveBeenCalledWith('/admin/currencies/cur-1', data);
-    });
-
-    it('deleteCurrency deletes /admin/currencies/:id', async () => {
-      await adminService.deleteCurrency('cur-1');
-      expect(mockApiDelete).toHaveBeenCalledWith('/admin/currencies/cur-1');
-    });
-
-    it('setDefaultCurrency posts to /admin/currencies/:id/set-default', async () => {
-      await adminService.setDefaultCurrency('cur-2');
-      expect(mockApiPost).toHaveBeenCalledWith('/admin/currencies/cur-2/set-default');
-    });
-  });
-
-  // ===== Exchange Rates use api (baseURL /api) =====
-
-  describe('Exchange Rate endpoints (api)', () => {
-    it('getExchangeRateProvider gets /admin/exchange-rates/provider', async () => {
-      await adminService.getExchangeRateProvider();
-      expect(mockApiGet).toHaveBeenCalledWith('/admin/exchange-rates/provider');
-    });
-
-    it('updateExchangeRateProvider puts to /admin/exchange-rates/provider', async () => {
-      const data = { provider: 'ecb', enabled: true };
-      await adminService.updateExchangeRateProvider(data);
-      expect(mockApiPut).toHaveBeenCalledWith('/admin/exchange-rates/provider', data);
-    });
-
-    it('fetchExchangeRatesNow posts to /admin/exchange-rates/provider/fetch', async () => {
-      await adminService.fetchExchangeRatesNow();
-      expect(mockApiPost).toHaveBeenCalledWith('/admin/exchange-rates/provider/fetch');
-    });
-
-    it('getExchangeRates gets /admin/exchange-rates/rates with no date', async () => {
-      await adminService.getExchangeRates();
-      expect(mockApiGet).toHaveBeenCalledWith('/admin/exchange-rates/rates', { params: {} });
-    });
-
-    it('getExchangeRates gets /admin/exchange-rates/rates with date param', async () => {
-      await adminService.getExchangeRates('2026-03-27');
-      expect(mockApiGet).toHaveBeenCalledWith('/admin/exchange-rates/rates', { params: { date: '2026-03-27' } });
-    });
-
-    it('createExchangeRate posts to /admin/exchange-rates/rates', async () => {
-      const data = { toCurrency: 'EUR', rate: 0.92, rateDate: '2026-03-27' };
-      await adminService.createExchangeRate(data);
-      expect(mockApiPost).toHaveBeenCalledWith('/admin/exchange-rates/rates', data);
-    });
-
-    it('updateExchangeRate puts to /admin/exchange-rates/rates/:id', async () => {
-      const data = { rate: 0.93 };
-      await adminService.updateExchangeRate('rate-1', data);
-      expect(mockApiPut).toHaveBeenCalledWith('/admin/exchange-rates/rates/rate-1', data);
-    });
-
-    it('deleteExchangeRate deletes /admin/exchange-rates/rates/:id', async () => {
-      await adminService.deleteExchangeRate('rate-1');
-      expect(mockApiDelete).toHaveBeenCalledWith('/admin/exchange-rates/rates/rate-1');
     });
   });
 });

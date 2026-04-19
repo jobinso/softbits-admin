@@ -14,7 +14,7 @@ import {
   TableColumnPicker,
 } from '@/components/shared';
 import type { ColumnDef, TableFilterField, TableColumnPickerColumn } from '@/components/shared';
-import type { ApiToken } from '@/types';
+import type { ApiToken, ApiError } from '@/types';
 import {
   getTokens,
   getUsers,
@@ -157,7 +157,7 @@ export default function TokensPage() {
       setCreatedTokenValue(data.token);
       toast.success('Token created successfully');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.error || 'Failed to create token');
     },
   });
@@ -169,7 +169,7 @@ export default function TokensPage() {
       toast.success('Token deactivated');
       setConfirmAction(null);
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.error || 'Failed to deactivate token');
     },
   });
@@ -181,7 +181,7 @@ export default function TokensPage() {
       toast.success('Token reactivated');
       setConfirmAction(null);
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.error || 'Failed to reactivate token');
     },
   });
@@ -193,7 +193,7 @@ export default function TokensPage() {
       toast.success('Token deleted');
       setConfirmAction(null);
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.error || 'Failed to delete token');
     },
   });

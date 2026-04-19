@@ -15,9 +15,9 @@ import {
   Save,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Button, Card, Modal, Tabs, StatusBadge, LoadingSpinner, PageHeader, PageStatusBar } from '@/components/shared';
+import { Button, Card, Modal, Tabs, StatusBadge, LoadingSpinner } from '@/components/shared';
 import type { TabItem } from '@/components/shared';
-import type { CacheStats, CacheTtlConfig, WarmerStatus, WarmerTarget } from '@/types';
+import type { CacheStats, CacheTtlConfig, WarmerStatus, WarmerTarget, ApiError } from '@/types';
 import {
   getSmartCacheStats,
   getCacheTtlConfig,
@@ -91,6 +91,15 @@ function formatDuration(ms: number): string {
 
 // ===== Sub-components =====
 
+function StatCard({ label, value, subtext }: { label: string; value: string | number; subtext?: string }) {
+  return (
+    <div className="bg-dark-50 border border-dark-200 rounded-xl p-4">
+      <p className="text-sm text-dark-400">{label}</p>
+      <p className="text-2xl font-bold text-dark-700">{value}</p>
+      {subtext && <p className="text-xs text-dark-400 mt-1">{subtext}</p>}
+    </div>
+  );
+}
 
 function WarmerTargetCard({
   target,
@@ -102,12 +111,12 @@ function WarmerTargetCard({
   isWarming: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between p-3 bg-interactive-hover border border-border rounded-lg">
+    <div className="flex items-center justify-between p-3 bg-dark-100/50 border border-dark-200 rounded-lg">
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-semantic-text-default">{target.name}</p>
-        <p className="text-xs text-semantic-text-faint">{target.description}</p>
+        <p className="text-sm font-medium text-dark-700">{target.name}</p>
+        <p className="text-xs text-dark-400">{target.description}</p>
       </div>
-      <div className="flex items-center gap-4 ml-4 text-xs text-semantic-text-faint">
+      <div className="flex items-center gap-4 ml-4 text-xs text-dark-400">
         <span>TTL: {formatTTL(target.ttl)}</span>
         <span>Variants: {target.variants}</span>
         {target.stats && (
@@ -145,15 +154,15 @@ function TTLCategory({
 }) {
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-semibold text-semantic-text-secondary">{CATEGORY_LABELS[category] || category}</h3>
+      <h3 className="text-sm font-semibold text-dark-600">{CATEGORY_LABELS[category] || category}</h3>
       {entries.map(([key]) => {
         const info = TTL_LABELS[key] || { label: key, description: '' };
         const value = values[key] ?? 0;
         return (
-          <div key={key} className="flex items-center gap-3 p-3 bg-interactive-hover border border-border rounded-lg">
+          <div key={key} className="flex items-center gap-3 p-3 bg-dark-100/50 border border-dark-200 rounded-lg">
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-semantic-text-default">{info.label}</p>
-              <p className="text-xs text-semantic-text-faint">{info.description}</p>
+              <p className="text-sm font-medium text-dark-700">{info.label}</p>
+              <p className="text-xs text-dark-400">{info.description}</p>
             </div>
             <input
               type="number"
@@ -161,10 +170,10 @@ function TTLCategory({
               max={86400}
               value={value}
               onChange={(e) => onChange(key, parseInt(e.target.value) || 0)}
-              className="w-20 px-2 py-1.5 text-sm text-right bg-surface-overlay border border-border rounded-lg text-semantic-text-default focus:outline-none focus:ring-2 focus:ring-interactive-focus-ring"
+              className="w-20 px-2 py-1.5 text-sm text-right bg-dark-100 border border-dark-200 rounded-lg text-dark-700 focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
-            <span className="text-xs text-semantic-text-faint w-8">sec</span>
-            <span className="text-xs text-semantic-text-faint w-14 text-right">({formatTTL(value)})</span>
+            <span className="text-xs text-dark-400 w-8">sec</span>
+            <span className="text-xs text-dark-400 w-14 text-right">({formatTTL(value)})</span>
           </div>
         );
       })}
@@ -223,7 +232,7 @@ export default function CachePage() {
       setClearPattern('');
       setShowClearAllModal(false);
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.error || 'Failed to clear cache');
     },
   });
@@ -234,7 +243,7 @@ export default function CachePage() {
       queryClient.invalidateQueries({ queryKey: ['cache', 'warmer-status'] });
       toast.success('Cache warmer started');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.error || 'Failed to start warmer');
     },
   });
@@ -245,7 +254,7 @@ export default function CachePage() {
       queryClient.invalidateQueries({ queryKey: ['cache', 'warmer-status'] });
       toast.success('Cache warmer stopped');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.error || 'Failed to stop warmer');
     },
   });
@@ -256,7 +265,7 @@ export default function CachePage() {
       queryClient.invalidateQueries({ queryKey: ['cache', 'warmer-status'] });
       toast.success('Cache warmer paused');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.error || 'Failed to pause warmer');
     },
   });
@@ -267,7 +276,7 @@ export default function CachePage() {
       queryClient.invalidateQueries({ queryKey: ['cache', 'warmer-status'] });
       toast.success('Cache warmer resumed');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.error || 'Failed to resume warmer');
     },
   });
@@ -280,7 +289,7 @@ export default function CachePage() {
         queryClient.invalidateQueries({ queryKey: ['cache', 'warmer-status'] });
       }, 2000);
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.error || 'Failed to trigger warming cycle');
     },
   });
@@ -292,7 +301,7 @@ export default function CachePage() {
       toast.success(`Target warmed in ${data.durationMs}ms`);
       setWarmingTarget(null);
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.error || 'Failed to warm target');
       setWarmingTarget(null);
     },
@@ -305,7 +314,7 @@ export default function CachePage() {
       toast.success('TTL configuration saved');
       setEditedTtls(null);
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.error || 'Failed to save TTL configuration');
     },
   });
@@ -316,7 +325,7 @@ export default function CachePage() {
       queryClient.invalidateQueries({ queryKey: ['cache', 'warmer-status'] });
       toast.success('Warmer configuration saved');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.error || 'Failed to save warmer configuration');
     },
   });
@@ -394,26 +403,38 @@ export default function CachePage() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Cache"
-        description="Monitor cache performance and manage entries"
-      />
-
-      {/* Status Bar */}
-      <PageStatusBar items={[
-        { type: 'badge', label: 'Redis / Valkey', status: redisAvailable ? 'success' : 'neutral', badgeLabel: redisAvailable ? 'Connected' : 'Offline' },
-        { type: 'text', label: 'L1 Cache Keys', value: localKeys.toLocaleString() },
-        { type: 'text', label: 'Hit Rate', value: hitRate },
-        { type: 'text', label: 'Total Hits', value: hits.toLocaleString() },
-        { type: 'text', label: 'Total Misses', value: misses.toLocaleString() },
-      ]} />
+    <div className="p-6 space-y-6 overflow-y-auto h-full">
+      <h1 className="text-lg font-semibold text-dark-700">Cache Management</h1>
 
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
       {/* Tab: Overview */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard label="L1 Cache Keys" value={localKeys.toLocaleString()} />
+            <StatCard label="Hit Rate" value={hitRate} />
+            <StatCard label="Total Hits" value={(hits).toLocaleString()} />
+            <StatCard label="Total Misses" value={(misses).toLocaleString()} />
+          </div>
+
+          {/* Redis Status */}
+          <Card title="Redis / Valkey Connection">
+            <div className="flex items-center gap-3">
+              <StatusBadge
+                status={redisAvailable ? 'success' : 'neutral'}
+                label={redisAvailable ? 'Connected' : 'Offline'}
+              />
+              {cacheStats?.redis?.memory && (
+                <span className="text-sm text-dark-400">Memory: {cacheStats.redis.memory}</span>
+              )}
+              {cacheStats?.redis?.keys !== undefined && (
+                <span className="text-sm text-dark-400">Keys: {cacheStats.redis.keys.toLocaleString()}</span>
+              )}
+            </div>
+          </Card>
+
           {/* TTL Configuration (read-only overview) */}
           <Card title="Current TTL Settings">
             <div className="space-y-4">
@@ -422,14 +443,14 @@ export default function CachePage() {
                 if (entries.length === 0) return null;
                 return (
                   <div key={category}>
-                    <h4 className="text-xs font-semibold text-semantic-text-subtle uppercase tracking-wider mb-2">{label}</h4>
+                    <h4 className="text-xs font-semibold text-dark-500 uppercase tracking-wider mb-2">{label}</h4>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                       {entries.map(([key, val]) => {
                         const info = TTL_LABELS[key] || { label: key };
                         return (
-                          <div key={key} className="flex items-center justify-between p-2 bg-interactive-hover rounded-lg text-sm">
-                            <span className="text-semantic-text-secondary">{info.label}</span>
-                            <span className="text-semantic-text-faint font-mono">{formatTTL(val as number)}</span>
+                          <div key={key} className="flex items-center justify-between p-2 bg-dark-100/50 rounded-lg text-sm">
+                            <span className="text-dark-600">{info.label}</span>
+                            <span className="text-dark-400 font-mono">{formatTTL(val as number)}</span>
                           </div>
                         );
                       })}
@@ -438,9 +459,9 @@ export default function CachePage() {
                 );
               })}
               {ttlConfig.default !== undefined && (
-                <div className="flex items-center gap-3 p-2 bg-interactive-hover rounded-lg text-sm">
-                  <span className="text-semantic-text-secondary font-medium">Default TTL</span>
-                  <span className="text-semantic-text-faint font-mono">{formatTTL(ttlConfig.default)}</span>
+                <div className="flex items-center gap-3 p-2 bg-dark-100/50 rounded-lg text-sm">
+                  <span className="text-dark-600 font-medium">Default TTL</span>
+                  <span className="text-dark-400 font-mono">{formatTTL(ttlConfig.default)}</span>
                 </div>
               )}
             </div>
@@ -459,7 +480,7 @@ export default function CachePage() {
             {warmerLoading ? (
               <LoadingSpinner size="md" />
             ) : warmerState === 'disabled' ? (
-              <p className="text-sm text-semantic-text-faint">Cache warmer is not enabled. Enable it via environment configuration.</p>
+              <p className="text-sm text-dark-400">Cache warmer is not enabled. Enable it via environment configuration.</p>
             ) : (
               <div className="space-y-4">
                 {/* Controls */}
@@ -521,10 +542,10 @@ export default function CachePage() {
 
                 {/* Timing info */}
                 {warmerData?.lastRun && (
-                  <p className="text-xs text-semantic-text-faint">Last run: {new Date(warmerData.lastRun).toLocaleString()}</p>
+                  <p className="text-xs text-dark-400">Last run: {new Date(warmerData.lastRun).toLocaleString()}</p>
                 )}
                 {warmerData?.nextRun && (
-                  <p className="text-xs text-semantic-text-faint">Next run: {new Date(warmerData.nextRun).toLocaleString()}</p>
+                  <p className="text-xs text-dark-400">Next run: {new Date(warmerData.nextRun).toLocaleString()}</p>
                 )}
               </div>
             )}
@@ -532,51 +553,54 @@ export default function CachePage() {
 
           {/* Warmer Configuration */}
           {warmerState !== 'disabled' && warmerData?.config && (
-            <Card title="Warmer Configuration" headerAction={
-              <Button
-                size="sm"
-                icon={<Save className="w-3.5 h-3.5" />}
-                onClick={handleSaveWarmerConfig}
-                loading={saveWarmerConfigMutation.isPending}
-              >
-                Save Config
-              </Button>
-            }>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-semantic-text-secondary mb-1">Interval (ms)</label>
-                  <input
-                    id="warmerInterval"
-                    type="number"
-                    defaultValue={warmerData.config.intervalMs}
-                    min={10000}
-                    className="w-full px-3 py-2 bg-surface-overlay border border-border rounded-lg text-sm text-semantic-text-default focus:outline-none focus:ring-2 focus:ring-interactive-focus-ring"
-                  />
-                  <p className="text-xs text-semantic-text-faint mt-1">{formatDuration(warmerData.config.intervalMs)}</p>
+            <Card title="Warmer Configuration">
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-dark-600 mb-1">Interval (ms)</label>
+                    <input
+                      id="warmerInterval"
+                      type="number"
+                      defaultValue={warmerData.config.intervalMs}
+                      min={10000}
+                      className="w-full px-3 py-2 bg-dark-100 border border-dark-200 rounded-lg text-sm text-dark-700 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                    <p className="text-xs text-dark-400 mt-1">{formatDuration(warmerData.config.intervalMs)}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-dark-600 mb-1">Stagger Delay (ms)</label>
+                    <input
+                      id="warmerStagger"
+                      type="number"
+                      defaultValue={warmerData.config.staggerDelayMs}
+                      min={1000}
+                      className="w-full px-3 py-2 bg-dark-100 border border-dark-200 rounded-lg text-sm text-dark-700 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                    <p className="text-xs text-dark-400 mt-1">{formatDuration(warmerData.config.staggerDelayMs)}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-dark-600 mb-1">Refresh Threshold</label>
+                    <input
+                      id="warmerThreshold"
+                      type="number"
+                      defaultValue={warmerData.config.refreshThreshold}
+                      min={0}
+                      max={1}
+                      step={0.05}
+                      className="w-full px-3 py-2 bg-dark-100 border border-dark-200 rounded-lg text-sm text-dark-700 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                    <p className="text-xs text-dark-400 mt-1">Refresh when {Math.round((warmerData.config.refreshThreshold) * 100)}% of TTL remains</p>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-semantic-text-secondary mb-1">Stagger Delay (ms)</label>
-                  <input
-                    id="warmerStagger"
-                    type="number"
-                    defaultValue={warmerData.config.staggerDelayMs}
-                    min={1000}
-                    className="w-full px-3 py-2 bg-surface-overlay border border-border rounded-lg text-sm text-semantic-text-default focus:outline-none focus:ring-2 focus:ring-interactive-focus-ring"
-                  />
-                  <p className="text-xs text-semantic-text-faint mt-1">{formatDuration(warmerData.config.staggerDelayMs)}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-semantic-text-secondary mb-1">Refresh Threshold</label>
-                  <input
-                    id="warmerThreshold"
-                    type="number"
-                    defaultValue={warmerData.config.refreshThreshold}
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    className="w-full px-3 py-2 bg-surface-overlay border border-border rounded-lg text-sm text-semantic-text-default focus:outline-none focus:ring-2 focus:ring-interactive-focus-ring"
-                  />
-                  <p className="text-xs text-semantic-text-faint mt-1">Refresh when {Math.round((warmerData.config.refreshThreshold) * 100)}% of TTL remains</p>
+                <div className="flex justify-end">
+                  <Button
+                    size="sm"
+                    icon={<Save className="w-3.5 h-3.5" />}
+                    onClick={handleSaveWarmerConfig}
+                    loading={saveWarmerConfigMutation.isPending}
+                  >
+                    Save Config
+                  </Button>
                 </div>
               </div>
             </Card>
@@ -597,7 +621,7 @@ export default function CachePage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-semantic-text-faint text-center py-6">No warming targets configured</p>
+                <p className="text-sm text-dark-400 text-center py-6">No warming targets configured</p>
               )}
             </Card>
           )}
@@ -611,13 +635,13 @@ export default function CachePage() {
           <Card title="Clear Cache by Pattern">
             <div className="flex items-center gap-3">
               <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-semantic-text-faint" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-400" />
                 <input
                   type="text"
                   value={clearPattern}
                   onChange={(e) => setClearPattern(e.target.value)}
                   placeholder="Enter cache key pattern (e.g. customers:*)"
-                  className="w-full pl-10 pr-3 py-2 bg-surface-overlay border border-border rounded-lg text-sm text-semantic-text-default placeholder:text-semantic-text-faint focus:outline-none focus:ring-2 focus:ring-interactive-focus-ring"
+                  className="w-full pl-10 pr-3 py-2 bg-dark-100 border border-dark-200 rounded-lg text-sm text-dark-700 placeholder:text-dark-400 focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
               </div>
               <Button
@@ -635,7 +659,7 @@ export default function CachePage() {
           {/* Clear All */}
           <Card title="Clear All Cache">
             <div className="flex items-center justify-between">
-              <p className="text-sm text-semantic-text-faint">
+              <p className="text-sm text-dark-400">
                 Clear all cached data. This will force fresh data to be fetched from the ERP system.
               </p>
               <Button
@@ -690,11 +714,11 @@ export default function CachePage() {
               })}
               {/* Default TTL */}
               <div className="space-y-2">
-                <h3 className="text-sm font-semibold text-semantic-text-secondary">Default</h3>
-                <div className="flex items-center gap-3 p-3 bg-interactive-hover border border-border rounded-lg">
+                <h3 className="text-sm font-semibold text-dark-600">Default</h3>
+                <div className="flex items-center gap-3 p-3 bg-dark-100/50 border border-dark-200 rounded-lg">
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-semantic-text-default">Default TTL</p>
-                    <p className="text-xs text-semantic-text-faint">Applied to entities without specific TTL</p>
+                    <p className="text-sm font-medium text-dark-700">Default TTL</p>
+                    <p className="text-xs text-dark-400">Applied to entities without specific TTL</p>
                   </div>
                   <input
                     type="number"
@@ -707,10 +731,10 @@ export default function CachePage() {
                         default: parseInt(e.target.value) || 0,
                       }))
                     }
-                    className="w-20 px-2 py-1.5 text-sm text-right bg-surface-overlay border border-border rounded-lg text-semantic-text-default focus:outline-none focus:ring-2 focus:ring-interactive-focus-ring"
+                    className="w-20 px-2 py-1.5 text-sm text-right bg-dark-100 border border-dark-200 rounded-lg text-dark-700 focus:outline-none focus:ring-2 focus:ring-primary/50"
                   />
-                  <span className="text-xs text-semantic-text-faint w-8">sec</span>
-                  <span className="text-xs text-semantic-text-faint w-14 text-right">({formatTTL(ttlConfig.default ?? 300)})</span>
+                  <span className="text-xs text-dark-400 w-8">sec</span>
+                  <span className="text-xs text-dark-400 w-14 text-right">({formatTTL(ttlConfig.default ?? 300)})</span>
                 </div>
               </div>
             </div>
@@ -739,7 +763,7 @@ export default function CachePage() {
           </>
         }
       >
-        <p className="text-sm text-semantic-text-secondary">
+        <p className="text-sm text-dark-600">
           Are you sure you want to clear all cached data? This will force fresh data to be fetched from the ERP system on the next request.
         </p>
       </Modal>

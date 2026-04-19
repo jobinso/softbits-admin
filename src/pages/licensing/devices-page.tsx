@@ -14,7 +14,7 @@ import {
   TableColumnPicker,
 } from '@/components/shared';
 import type { ColumnDef, TableFilterField, TableColumnPickerColumn } from '@/components/shared';
-import type { Device, DeviceLicenseCheck } from '@/types';
+import type { Device, DeviceLicenseCheck, ApiError } from '@/types';
 import {
   getDevices,
   createDevice,
@@ -165,7 +165,7 @@ export default function DevicesPage() {
       }
       handleCloseRegister();
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.error || 'Failed to register device');
     },
   });
@@ -178,7 +178,7 @@ export default function DevicesPage() {
       toast.success('Device updated successfully');
       setEditDevice(null);
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.error || 'Failed to update device');
     },
   });
@@ -190,7 +190,7 @@ export default function DevicesPage() {
       toast.success('Device retired');
       setConfirmRetire(null);
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.error || 'Failed to retire device');
     },
   });
@@ -215,7 +215,7 @@ export default function DevicesPage() {
         toast.success(`${check.appCode}: ${check.activeCount} active devices (no limit set)`);
       }
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.error || 'Failed to check license');
     },
   });

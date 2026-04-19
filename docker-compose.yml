@@ -7,7 +7,6 @@ services:
     build:
       context: ..
       dockerfile: softbits-admin/Dockerfile
-    image: softbits-admin:latest
     container_name: softbits-admin
     restart: unless-stopped
     environment:

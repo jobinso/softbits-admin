@@ -1,7 +1,16 @@
+// Axios error shape for use in React Query onError callbacks.
+// Bridge returns error as a string in the standard envelope: { success: false, error: "message" }
+export interface ApiError extends Error {
+  response?: {
+    data?: {
+      error?: string;
+    };
+  };
+}
+
 export interface User {
   UserId: string;
   UserName: string;
-  FullName?: string;
   Email?: string;
   Role: string;
   AllowedTabs?: string[];
@@ -102,18 +111,6 @@ export interface SystemHealth {
     connected: boolean;
   };
   apps?: Record<string, AppStatus>;
-}
-
-// ===== System Settings Types =====
-
-export interface SystemSetting {
-  SettingKey: string;
-  SettingValue: string | null;
-  Description: string | null;
-  DataType: 'string' | 'number' | 'boolean' | 'json';
-  IsEncrypted: boolean;
-  UpdatedAt: string | null;
-  UpdatedBy: string | null;
 }
 
 // ===== Cache Types =====
@@ -312,7 +309,6 @@ export interface OptionSetItem {
   sortOrder?: number;
   isDefault: boolean;
   isActive: boolean;
-  isSystem?: boolean;
 }
 
 // ===== Warehouses =====
@@ -504,41 +500,17 @@ export interface ConnectSyncConfig {
   SyncEnabled: boolean;
   SyncDirection: string;
   SyncFrequencyMinutes?: number;
-  ConflictResolution?: string;
-  LastSyncAt?: string | null;
-  LastSyncStatus?: string | null;
-  LastSyncMessage?: string | null;
 }
 
 export interface ConnectSyncHistoryEntry {
   Id?: string;
-  SyncRunId?: string;
   SyncedAt: string;
   EntityType: string;
-  EntityId?: string;
-  ErpId?: string;
-  Operation?: string;
   Direction: string;
   Status: string;
   RecordsAffected: number;
   ErrorMessage?: string;
   Message?: string;
-  DurationMs?: number;
-  SyncedBy?: string;
-  // API tracking
-  ApiMethod?: string;
-  ApiUrl?: string;
-  ApiEndpoint?: string;
-  ApiRequestBody?: string;
-  ApiResponseStatus?: number;
-  ApiResponseBody?: string;
-  // Data payloads
-  SourceData?: string;
-  MappedData?: string;
-  // Error diagnostics
-  FailedField?: string;
-  FailedFieldValue?: string;
-  FailedFieldExpectedType?: string;
 }
 
 export interface Territory {
@@ -584,45 +556,6 @@ export interface Stage {
   Colour?: string;
   IsClosed: boolean;
   IsWon: boolean;
-  IsActive: boolean;
-}
-
-export interface CaseType {
-  Id: string;
-  Code: string;
-  Name: string;
-  Description?: string;
-  IconName?: string;
-  Color?: string;
-  Prefix: string;
-  RequiresRootCause: boolean;
-  RequiresContainment: boolean;
-  RequiresVerification: boolean;
-  RequiresApproval: boolean;
-  DefaultPriority?: string;
-  DefaultSlaResponseHours?: number;
-  DefaultSlaResolutionHours?: number;
-  DefaultAssignedTeamId?: string;
-  IsPortalCreatable: boolean;
-  IsCustomerFacing: boolean;
-  SortOrder: number;
-  IsActive: boolean;
-  SubTypeCount?: number;
-  CaseCount?: number;
-  StepCount?: number;
-}
-
-export interface CaseTypeStep {
-  Id: string;
-  CaseTypeId: string;
-  CaseTypeName?: string;
-  Name: string;
-  StatusCode?: string;
-  DisplayOrder: number;
-  Color?: string;
-  IsTerminal: boolean;
-  IsResolved: boolean;
-  RequiresApproval: boolean;
   IsActive: boolean;
 }
 
@@ -1008,7 +941,6 @@ export interface ShopMarkitCampaign {
 export interface InfuseConfig {
   enabled: boolean;
   aiProvider: string;
-  providerId?: string;
   systemPrompt?: string;
   context?: {
     includeUserProfile?: boolean;
@@ -1060,15 +992,10 @@ export interface WorkWorkflow {
   N8NWorkflowId: string;
   TriggerType: string;
   WebhookUrl?: string;
-  ProviderId?: string;
   TimeoutMs: number;
   IsActive: boolean;
   LastExecutedAt?: string;
   CreatedAt?: string;
-  TemplateId?: number;
-  TemplateCode?: string;
-  TemplateName?: string;
-  ExecutionHandler?: string;
 }
 
 export interface WorkExecution {
@@ -1083,25 +1010,8 @@ export interface WorkExecution {
   CompletedAt?: string;
   DurationMs?: number;
   ErrorMessage?: string;
-  ErrorDetails?: string;
-  ErrorDetailsParsed?: PipelineResult;
   InputPayload?: string;
   OutputPayload?: string;
-  OutputPayloadParsed?: PipelineResult;
-}
-
-export interface PipelineStep {
-  order: number;
-  label: string;
-  status: string;
-  data?: unknown;
-  durationMs: number;
-}
-
-export interface PipelineResult {
-  success: boolean;
-  steps: PipelineStep[];
-  durationMs: number;
 }
 
 export interface WorkExecutionStats {
@@ -1145,55 +1055,6 @@ export interface WorkServiceHealth {
   n8n?: { status: string };
 }
 
-export interface WorkTemplateConfigField {
-  name: string;
-  type: string;
-  required?: boolean;
-  default?: unknown;
-  options?: string[];
-}
-
-export interface WorkTemplateStep {
-  order: number;
-  type: string;
-  action: string;
-  label: string;
-  configFields: WorkTemplateConfigField[];
-}
-
-export interface WorkTemplate {
-  TemplateId: number;
-  Code: string;
-  Name: string;
-  Description: string;
-  Category: string;
-  Icon: string;
-  Version: number;
-  StepDefinitions: WorkTemplateStep[];
-  DefaultConfig: Record<string, unknown>;
-  RequiredProviderTypes: string[];
-  IsActive: boolean;
-  IsSystem: boolean;
-  SortOrder: number;
-  ExecutionHandler?: string;
-}
-
-export interface WorkTemplateInstance {
-  InstanceId: number;
-  TemplateId: number;
-  TemplateCode?: string;
-  TemplateName?: string;
-  WorkflowId: number | null;
-  Name: string;
-  Configuration: Record<string, unknown>;
-  ProviderId: string | null;
-  Status: string;
-  ErrorMessage: string | null;
-  CreatedAt: string;
-  CreatedBy: string;
-  UpdatedAt?: string;
-}
-
 // ===== PulpIT (Documents) Admin Types =====
 
 export interface DocumentStats {
@@ -1227,7 +1088,6 @@ export interface RetentionPolicy {
   DocumentType?: string;
   RetentionPeriodDays: number;
   Action: string;
-  NotifyRoles?: string;
   NotifyDaysBefore?: number;
   IsActive: boolean;
 }
@@ -1249,25 +1109,6 @@ export interface RetentionLogEntry {
   PerformedAt: string;
 }
 
-export interface ArchivedDocument {
-  DocumentId: string;
-  DocumentName: string;
-  DocumentTitle?: string;
-  DocumentType: string;
-  MimeType: string;
-  FileExtension?: string;
-  FileSizeBytes: number;
-  StorageProvider: string;
-  StorageReference: string;
-  RetentionPolicy?: string;
-  RetentionExpiryDate?: string;
-  CreatedAt: string;
-  CreatedBy: string;
-  UpdatedAt?: string;
-  UpdatedBy?: string;
-  HasArchiveFile: boolean;
-}
-
 export interface ApprovalWorkflow {
   WorkflowId: string;
   WorkflowName: string;
@@ -1276,600 +1117,4 @@ export interface ApprovalWorkflow {
   ApprovalRoles: string[];
   SequentialApproval: boolean;
   AutoPublishOnApproval: boolean;
-}
-
-export interface DocumentTypeConfig {
-  DocumentTypeId: number;
-  TypeCode: string;
-  DisplayName: string;
-  Description: string | null;
-  Category: string;
-  IconName: string | null;
-  SortOrder: number;
-  IsActive: boolean;
-  // Upload control
-  IsUploadEnabled: boolean;
-  AllowedRoles: string | null; // JSON array string
-  // Classification
-  ClassificationRequired: boolean;
-  AutoAdvanceClassification: boolean;
-  ClassificationConfidenceThreshold: number;
-  // Extraction
-  ExtractionRequired: boolean;
-  RequiredFields: string | null; // JSON array string
-  // Entity matching
-  EntityMatchRequired: boolean;
-  EntityMatchMinConfidence: number;
-  // Review
-  ReviewRequired: boolean;
-  ReviewBypassConfidence: number | null;
-  ReviewBypassMaxValue: number | null;
-  // Posting
-  PostingEnabled: boolean;
-  PostingType: string;
-  AutoPostEnabled: boolean;
-  AutoPostMinConfidence: number;
-  AutoPostMaxValue: number | null;
-  AutoPostMaxLines: number | null;
-  // Audit
-  CreatedAt: string;
-  CreatedBy: string;
-  UpdatedAt: string;
-  UpdatedBy: string | null;
-}
-
-// ===== EdIT (EDI Integration) Types =====
-
-export interface EditVanProvider {
-  VanId: number;
-  VanCode: string;
-  VanName: string;
-  VanType: string;
-  BaseUrl?: string;
-  ApiVersion?: string;
-  AuthType: string;
-  AuthConfig?: string;
-  PollIntervalMs: number;
-  PollEnabled: boolean;
-  PollLastRun?: string;
-  PollLastStatus?: string;
-  DocumentFormat: string;
-  SandboxMode: boolean;
-  SandboxConfig?: string;
-  IsActive: boolean;
-  Notes?: string;
-  CreatedAt?: string;
-  UpdatedAt?: string;
-  CreatedBy?: string;
-  // Computed
-  partnerCount?: number;
-}
-
-export interface EditTradingPartner {
-  PartnerId: number;
-  PartnerCode: string;
-  CompanyName: string;
-  VanId?: number;
-  VanPartnerId?: string;
-  VanCode?: string;
-  VanName?: string;
-  QualifierId?: string;
-  InterchangeId?: string;
-  ABN?: string;
-  GLN?: string;
-  SysproCustomer?: string;
-  SysproSupplier?: string;
-  DirectCommProtocol?: string;
-  DirectCommConfig?: string;
-  DefaultFormat: string;
-  DefaultVersion?: string;
-  WorkflowProvider: string;
-  IsActive: boolean;
-  Notes?: string;
-  CreatedAt?: string;
-  UpdatedAt?: string;
-}
-
-export interface EditTransaction {
-  TransactionId: number;
-  TransactionGuid: string;
-  PartnerId: number;
-  PartnerCode?: string;
-  CompanyName?: string;
-  VanId?: number;
-  VanCode?: string;
-  TypeId: number;
-  TypeCode?: string;
-  TypeName?: string;
-  Direction: string;
-  ControlNumber?: string;
-  DocumentRef?: string;
-  VanDocumentId?: string;
-  Status: string;
-  SourceFormat?: string;
-  SysproDocNumber?: string;
-  ErrorMessage?: string;
-  WorkflowProvider?: string;
-  RetryCount: number;
-  MaxRetries: number;
-  ReceivedAt?: string;
-  CompletedAt?: string;
-  DurationMs?: number;
-  CreatedAt?: string;
-  // Attached on detail view
-  stages?: EditDocumentStage[];
-}
-
-export interface EditDocumentStage {
-  StageId: number;
-  TransactionId: number;
-  StageName: string;
-  StageOrder: number;
-  Status: string;
-  StartedAt?: string;
-  CompletedAt?: string;
-  DurationMs?: number;
-  InputData?: string;
-  OutputData?: string;
-  ErrorMessage?: string;
-  ErrorDetails?: string;
-}
-
-export interface EditErrorLog {
-  ErrorId: number;
-  TransactionId?: number;
-  PartnerId?: number;
-  PartnerCode?: string;
-  CompanyName?: string;
-  VanId?: number;
-  StageName?: string;
-  ErrorCode?: string;
-  ErrorMessage: string;
-  ErrorDetails?: string;
-  Severity: string;
-  IsResolved: boolean;
-  ResolvedAt?: string;
-  ResolvedBy?: string;
-  ResolutionNotes?: string;
-  CreatedAt?: string;
-  DocumentRef?: string;
-}
-
-export interface EditTransactionType {
-  TypeId: number;
-  TypeCode: string;
-  EdifactCode?: string;
-  RsxDocType?: string;
-  Name: string;
-  Direction: string;
-  SysproBO?: string;
-  Description?: string;
-  IsActive: boolean;
-}
-
-export interface EditFormatSpec {
-  SpecId: number;
-  PartnerId?: number;
-  PartnerCode?: string;
-  TypeId?: number;
-  TypeCode?: string;
-  VanId?: number;
-  VanCode?: string;
-  SpecName: string;
-  SpecVersion?: string;
-  ImportedFrom?: string;
-  ImportedFileName?: string;
-  FieldCount: number;
-  RequiredFieldCount: number;
-  MappingStatus: string;
-  GeneratedMapsCount: number;
-  Notes?: string;
-  ImportedAt?: string;
-  ImportedBy?: string;
-  IsActive: boolean;
-}
-
-export interface EditFormatSpecField {
-  FieldId: number;
-  SpecId: number;
-  FieldPosition: number;
-  SegmentId?: string;
-  ElementId?: string;
-  FieldName?: string;
-  DataType?: string;
-  MinLength?: number;
-  MaxLength?: number;
-  IsRequired: boolean;
-  IsMapped: boolean;
-  MappedToXPath?: string;
-  SampleValue?: string;
-  Notes?: string;
-}
-
-export interface EditWorkflowProviderConfig {
-  ProviderId: number;
-  ProviderCode: string;
-  ProviderName: string;
-  IsEnabled: boolean;
-  Configuration?: string;
-  CreatedAt?: string;
-  UpdatedAt?: string;
-}
-
-export interface EditDashboardSummary {
-  byStatus: Array<{ Status: string; count: number }>;
-  byType: Array<{ TypeCode: string; count: number }>;
-  byVan: Array<{ VanCode: string; count: number }>;
-}
-
-export interface EditDashboardStats {
-  today: number;
-  week: number;
-  month: number;
-  successRate: number;
-  avgDurationMs: number;
-}
-
-export interface EditFieldMap {
-  MapId: number;
-  TypeId: number;
-  PartnerId?: number;
-  SourcePath: string;
-  TargetXPath: string;
-  TransformRule: string;
-  TransformConfig?: string;
-  IsRequired: boolean;
-  DefaultValue?: string;
-  Description?: string;
-  SortOrder: number;
-}
-
-export interface EditPartnerTransactionConfig {
-  ConfigId: number;
-  PartnerId: number;
-  TypeId: number;
-  TypeCode?: string;
-  TypeName?: string;
-  IsEnabled: boolean;
-  WorkflowProvider?: string;
-  WorkflowId?: string;
-  ValidationRules?: string;
-  FieldMapOverrides?: string;
-  PostingConfig?: string;
-  AckRequired: boolean;
-  AutoProcess: boolean;
-}
-
-// ===== ERP Config Types =====
-
-export type ErpConfigFolder = 'query' | 'build' | 'fieldmap' | 'warmer';
-
-export interface ErpConfigFile {
-  filename: string;
-  folder: ErpConfigFolder;
-  size: number;
-  modified: string;
-}
-
-export interface ErpConfigFileContent {
-  filename: string;
-  folder: ErpConfigFolder;
-  content: string;
-}
-
-// ===== Endpoint Types =====
-
-export interface ApiEndpoint {
-  EndpointId: string;
-  Path: string;
-  Method: string;
-  Entity?: string;
-  Action?: string;
-  Description?: string;
-  GroupId?: string;
-  GroupName?: string;
-  IsActive: boolean;
-}
-
-export interface EndpointGroup {
-  GroupId: string;
-  Name: string;
-  Entity?: string;
-  EndpointCount?: number;
-}
-
-// ===== Provider Types =====
-
-export interface ProviderType {
-  TypeCode: string;
-  DisplayName: string;
-  Category: string;
-  Description?: string;
-  ConfigSchema?: string;
-  IsActive: boolean;
-  IsBuiltIn?: boolean;
-}
-
-export interface Provider {
-  ProviderId: string;
-  ProviderTypeCode: string;
-  TypeDisplayName?: string;
-  Category?: string;
-  Name: string;
-  Description?: string;
-  Configuration?: Record<string, unknown> | null;
-  Credentials?: Record<string, unknown> | null;
-  IsDefault: boolean;
-  IsActive: boolean;
-  Scope?: 'internal' | 'external';
-  LastTestStatus?: string | null;
-  LastTestError?: string | null;
-  LastTestedAt?: string | null;
-  LastUsedAt?: string | null;
-  CreatedBy?: string;
-  UpdatedBy?: string;
-  CreatedAt?: string;
-  UpdatedAt?: string;
-  Applications?: string[];
-}
-
-export interface ProviderApiDetails {
-  connectionUrl?: string | null;
-  healthEndpoint?: string | null;
-  webhookPaths?: string[];
-  oauth?: {
-    enabled: boolean;
-    scopes: string[];
-    resourceUri: string | null;
-  } | null;
-  ipWhitelist: string[];
-  lastTestStatus?: string | null;
-  lastTestError?: string | null;
-  lastTestedAt?: string | null;
-  lastUsedAt?: string | null;
-  linkedOAuthClients: number;
-  scope: string;
-  allowedCallbackUrls?: string[];
-}
-
-// ===== Internal Services Types =====
-
-export interface SystemService {
-  key: string;
-  name: string;
-  description: string;
-  type: 'BRIDGE_MODE' | 'BRIDGE_SERVICE';
-  enabled: boolean;
-  connectionUrl?: string;
-  healthEndpoint?: string;
-  status?: string | null;
-}
-
-export interface OAuthServerInfo {
-  enabled: boolean;
-  issuer: string;
-  allowedCallbackUrls: string[];
-  mcpResourceUri: string;
-  accessTokenTtl: number;
-  refreshTokenTtl: number;
-  authCodeTtl: number;
-}
-
-export interface InternalServicesResponse {
-  providers: Provider[];
-  systemServices: SystemService[];
-  oauthServer: OAuthServerInfo;
-}
-
-export interface InfuseSessionInfo {
-  active: number;
-  persistenceEnabled: boolean;
-  persistenceAvailable: boolean;
-}
-
-export interface InfuseExecutionSummary {
-  total: number;
-  success: number;
-  failed: number;
-  pending: number;
-  running: number;
-  timeout: number;
-}
-
-export interface InfuseWorkflowStat {
-  workflowName: string;
-  total: number;
-  success: number;
-  failed: number;
-  avgDuration: number;
-}
-
-export interface InfuseChatStats {
-  totalRequests: number;
-  completedRequests: number;
-  failedRequests: number;
-  activeRequests: number;
-  queueSize: number;
-  circuitBreaker: {
-    isOpen: boolean;
-    consecutiveFailures: number;
-    threshold: number;
-    lastFailure: number | null;
-  };
-}
-
-export interface InfuseDashboardData {
-  services: Record<string, { status: string; uptime?: number; error?: string }>;
-  aiProvider: {
-    name: string;
-    type: string;
-    model: string;
-    healthStatus: string | null;
-  } | null;
-  oauthServer: {
-    enabled: boolean;
-    issuer: string;
-    allowedCallbackUrls: string[];
-    mcpResourceUri: string;
-  };
-  config: {
-    enabled: boolean;
-    contextSettings: Record<string, boolean>;
-  };
-  sessions: {
-    mcp: InfuseSessionInfo | null;
-    app: InfuseSessionInfo | null;
-  } | null;
-  workload: {
-    executions: InfuseExecutionSummary | null;
-    workflows: InfuseWorkflowStat[] | null;
-    work: { pendingExecutions: number; database: { status: string }; n8n: { status: string; connected: boolean } } | null;
-    chat: InfuseChatStats | null;
-  } | null;
-}
-
-// ===== EdIT (EDI) Types =====
-
-export interface EditVanProvider {
-  VanId: string;
-  VanCode: string;
-  VanName: string;
-  VanType: string;
-  ConnectionConfig: Record<string, unknown> | null;
-  DocumentFormat: string;
-  PollEnabled: boolean;
-  PollIntervalMinutes: number;
-  PollLastRun: string | null;
-  PollLastStatus: string | null;
-  PollLastError: string | null;
-  IsActive: boolean;
-  CreatedAt: string;
-  UpdatedAt: string | null;
-}
-
-export interface EditTradingPartner {
-  PartnerId: string;
-  PartnerCode: string;
-  CompanyName: string;
-  VanId: string | null;
-  VanName: string | null;
-  DefaultFormat: string;
-  WorkflowProvider: string | null;
-  ContactEmail: string | null;
-  ContactPhone: string | null;
-  Notes: string | null;
-  IsActive: boolean;
-  CreatedAt: string;
-  UpdatedAt: string | null;
-}
-
-export interface EditTransaction {
-  TransactionId: number;
-  PartnerCode: string;
-  CompanyName: string | null;
-  TypeCode: string;
-  TypeName: string | null;
-  Direction: string;
-  DocumentRef: string | null;
-  Status: string;
-  ReceivedAt: string;
-  CompletedAt: string | null;
-  DurationMs: number | null;
-  ErrorMessage: string | null;
-}
-
-export interface EditDocumentStage {
-  StageId: number;
-  TransactionId: number;
-  StageName: string;
-  StageOrder: number;
-  Status: string;
-  StartedAt: string | null;
-  CompletedAt: string | null;
-  DurationMs: number | null;
-  ErrorMessage: string | null;
-  ErrorDetails: string | null;
-}
-
-export interface EditErrorLog {
-  ErrorId: number;
-  TransactionId: number | null;
-  StageName: string | null;
-  Severity: string;
-  ErrorMessage: string;
-  ErrorDetails: string | null;
-  PartnerCode: string | null;
-  IsResolved: boolean;
-  ResolvedBy: string | null;
-  ResolvedAt: string | null;
-  CreatedAt: string;
-}
-
-export interface EditTransactionType {
-  TypeCode: string;
-  TypeName: string;
-  Direction: string;
-  Description: string | null;
-  IsActive: boolean;
-}
-
-export interface EditFormatSpec {
-  SpecId: string;
-  SpecName: string;
-  PartnerCode: string | null;
-  TypeCode: string | null;
-  ImportedFrom: string | null;
-  FieldCount: number;
-  MappingStatus: string;
-  ImportedAt: string;
-  UpdatedAt: string | null;
-}
-
-export interface EditFormatSpecField {
-  FieldId: string;
-  SpecId: string;
-  FieldName: string;
-  FieldPosition: number;
-  DataType: string | null;
-  MaxLength: number | null;
-  IsRequired: boolean;
-  MappedTo: string | null;
-  MappingStatus: string;
-}
-
-export interface EditWorkflowProviderConfig {
-  ProviderId: string;
-  ProviderName: string;
-  ProviderType: string;
-  BaseUrl: string | null;
-  IsActive: boolean;
-  LastTestStatus: string | null;
-  LastTestedAt: string | null;
-}
-
-export interface EditDashboardSummary {
-  totalTransactionsToday: number;
-  successRate: number;
-  activeVans: number;
-  activePartners: number;
-  recentErrors: number;
-}
-
-export interface EditDashboardStats {
-  byStatus: Array<{ Status: string; Count: number }>;
-  byPartner: Array<{ PartnerCode: string; Count: number }>;
-  byType: Array<{ TypeCode: string; Count: number }>;
-}
-
-// ===== About Types =====
-
-export interface AboutInfo {
-  version: string;
-  name: string;
-  description?: string;
-  nodeVersion: string;
-  uptime: number;
-  platform: string;
-  apps: Record<string, { enabled: boolean; label: string }>;
-  endpoints: { total: number; groups: Array<{ Name: string; Entity: string; EndpointCount: number }> };
 }
