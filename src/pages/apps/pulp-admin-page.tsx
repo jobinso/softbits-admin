@@ -10,14 +10,11 @@ import {
   Tabs,
   StatusBadge,
   LoadingSpinner,
-  PageHeader,
-  TableCard,
 } from '@/components/shared';
 import type { TabItem, ColumnDef } from '@/components/shared';
 import { useModal } from '@shared/hooks';
 import type { StorageProvider, StagedDocument, RetentionPolicy, ExpiringDocument, RetentionLogEntry, ApprovalWorkflow } from '@/types';
 import {
-  getHealth,
   getDocumentStats,
   getStorageProviders,
   getStagedDocuments,
@@ -98,14 +95,8 @@ export default function PulpAdminPage() {
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['admin', 'pulp', 'stats'],
     queryFn: getDocumentStats,
+    enabled: activeTab === 'dashboard',
   });
-
-  const { data: healthData } = useQuery({
-    queryKey: ['bridge', 'health'],
-    queryFn: getHealth,
-    refetchInterval: 30000,
-  });
-  const isServiceConnected = !!healthData && healthData?.apps?.pulp?.enabled !== false;
 
   const { data: providers, isLoading: providersLoading } = useQuery({
     queryKey: ['admin', 'pulp', 'providers'],
@@ -179,9 +170,9 @@ export default function PulpAdminPage() {
     onError: (err: Error) => toast.error(err.message),
   });
 
-  const enforceMutation = useMutation({
-    mutationFn: () => triggerRetentionEnforcement(),
-    onSuccess: (data: any) => {
+  const enforceMutation = useMutation<{ archived?: number; deleted?: number; notified?: number }>({
+    mutationFn: () => triggerRetentionEnforcement() as Promise<{ archived?: number; deleted?: number; notified?: number }>,
+    onSuccess: (data) => {
       const msg = `Enforcement complete: ${data.archived || 0} archived, ${data.deleted || 0} deleted, ${data.notified || 0} notified`;
       toast.success(msg);
       invalidatePulp();
@@ -281,15 +272,15 @@ export default function PulpAdminPage() {
   // ===== Column definitions =====
 
   const providerColumns: ColumnDef<StorageProvider>[] = [
-    { key: 'ProviderName', label: 'Provider', sortable: true, render: (val) => <span className="font-medium text-semantic-text-default">{val}</span> },
-    { key: 'DisplayName', label: 'Name', sortable: true, render: (val) => <span className="text-semantic-text-secondary">{val}</span> },
-    { key: 'IsDefault', label: 'Default', width: 80, render: (val) => val ? <span className="text-primary">Yes</span> : <span className="text-semantic-text-faint">No</span> },
+    { key: 'ProviderName', label: 'Provider', sortable: true, render: (val) => <span className="font-medium text-dark-700">{val}</span> },
+    { key: 'DisplayName', label: 'Name', sortable: true, render: (val) => <span className="text-dark-600">{val}</span> },
+    { key: 'IsDefault', label: 'Default', width: 80, render: (val) => val ? <span className="text-primary">Yes</span> : <span className="text-dark-400">No</span> },
     { key: 'IsActive', label: 'Active', width: 80, render: (val) => <StatusBadge status={val ? 'success' : 'danger'} label={val ? 'Active' : 'Inactive'} size="sm" /> },
-    { key: 'MaxFileSizeBytes', label: 'Max Size', width: 120, render: (val) => <span className="text-semantic-text-faint">{val ? formatStorageSize(val / 1048576) : 'No limit'}</span> },
+    { key: 'MaxFileSizeBytes', label: 'Max Size', width: 120, render: (val) => <span className="text-dark-400">{val ? formatStorageSize(val / 1048576) : 'No limit'}</span> },
   ];
 
   const stagedColumns: ColumnDef<StagedDocument>[] = [
-    { key: 'OriginalFileName', label: 'File Name', sortable: true, filterable: true, render: (val) => <span className="text-semantic-text-default">{val}</span> },
+    { key: 'OriginalFileName', label: 'File Name', sortable: true, filterable: true, render: (val) => <span className="text-dark-700">{val}</span> },
     {
       key: 'Status', label: 'Status', width: 110, sortable: true,
       render: (val) => {
@@ -300,14 +291,14 @@ export default function PulpAdminPage() {
         return <StatusBadge status={map[val] || 'neutral'} label={val} size="sm" />;
       },
     },
-    { key: 'ClassifiedType', label: 'Type', width: 120, render: (val) => <span className="text-semantic-text-faint">{val || '-'}</span> },
-    { key: 'CaptureSource', label: 'Source', width: 100, render: (val) => <span className="text-semantic-text-faint">{val}</span> },
-    { key: 'CreatedAt', label: 'Created', width: 160, render: (val) => <span className="text-xs text-semantic-text-faint">{val ? new Date(val).toLocaleString() : '-'}</span> },
+    { key: 'ClassifiedType', label: 'Type', width: 120, render: (val) => <span className="text-dark-400">{val || '-'}</span> },
+    { key: 'CaptureSource', label: 'Source', width: 100, render: (val) => <span className="text-dark-400">{val}</span> },
+    { key: 'CreatedAt', label: 'Created', width: 160, render: (val) => <span className="text-xs text-dark-400">{val ? new Date(val).toLocaleString() : '-'}</span> },
     {
       key: 'StagedDocumentId', label: 'Actions', width: 140, sortable: false,
       render: (_val, row) => {
         const canAct = STAGED_STATUSES_ACTIONABLE.includes(row.Status);
-        if (!canAct) return <span className="text-semantic-text-faint">-</span>;
+        if (!canAct) return <span className="text-dark-400">-</span>;
         return (
           <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
             <Button size="sm" onClick={() => handleApprove(row)} loading={approveMutation.isPending}>Approve</Button>
@@ -319,9 +310,9 @@ export default function PulpAdminPage() {
   ];
 
   const policyColumns: ColumnDef<RetentionPolicy>[] = [
-    { key: 'PolicyName', label: 'Name', sortable: true, filterable: true, render: (val) => <span className="font-medium text-semantic-text-default">{val}</span> },
-    { key: 'DocumentType', label: 'Doc Type', width: 120, render: (val) => val ? <span className="text-semantic-text-secondary">{val}</span> : <span className="text-semantic-text-faint">Default</span> },
-    { key: 'RetentionPeriodDays', label: 'Retention', width: 110, render: (val) => <span className="text-semantic-text-faint">{val === 0 ? 'Permanent' : formatRetentionDays(val)}</span> },
+    { key: 'PolicyName', label: 'Name', sortable: true, filterable: true, render: (val) => <span className="font-medium text-dark-700">{val}</span> },
+    { key: 'DocumentType', label: 'Doc Type', width: 120, render: (val) => val ? <span className="text-dark-600">{val}</span> : <span className="text-dark-400">Default</span> },
+    { key: 'RetentionPeriodDays', label: 'Retention', width: 110, render: (val) => <span className="text-dark-400">{val === 0 ? 'Permanent' : formatRetentionDays(val)}</span> },
     {
       key: 'Action', label: 'Action', width: 100,
       render: (val) => {
@@ -329,22 +320,22 @@ export default function PulpAdminPage() {
         return <StatusBadge status={map[val] || 'neutral'} label={val} size="sm" />;
       },
     },
-    { key: 'NotifyDaysBefore', label: 'Notify Days', width: 100, render: (val) => <span className="text-semantic-text-faint">{val || '-'}</span> },
+    { key: 'NotifyDaysBefore', label: 'Notify Days', width: 100, render: (val) => <span className="text-dark-400">{val || '-'}</span> },
     { key: 'IsActive', label: 'Active', width: 80, render: (val) => <StatusBadge status={val ? 'success' : 'danger'} label={val ? 'Yes' : 'No'} size="sm" /> },
     {
       key: 'PolicyId', label: 'Actions', width: 80, sortable: false,
       render: (_val, row) => (
         <div onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={() => { if (window.confirm('Delete this policy?')) deletePolicyMutation.mutate(row.PolicyId); }} className="p-1.5 text-semantic-text-faint hover:text-danger rounded hover:bg-interactive-hover" title="Delete"><Trash2 className="w-4 h-4" /></button>
+          <button type="button" onClick={() => { if (window.confirm('Delete this policy?')) deletePolicyMutation.mutate(row.PolicyId); }} className="p-1.5 text-dark-400 hover:text-danger rounded hover:bg-dark-100" title="Delete"><Trash2 className="w-4 h-4" /></button>
         </div>
       ),
     },
   ];
 
   const expiringColumns: ColumnDef<ExpiringDocument>[] = [
-    { key: 'DocumentName', label: 'Document', sortable: true, render: (val) => <span className="text-semantic-text-default">{val}</span> },
-    { key: 'DocumentType', label: 'Type', width: 120, render: (val) => <span className="text-semantic-text-faint">{val}</span> },
-    { key: 'RetentionPolicy', label: 'Policy', width: 160, render: (val) => <span className="text-semantic-text-faint">{val}</span> },
+    { key: 'DocumentName', label: 'Document', sortable: true, render: (val) => <span className="text-dark-700">{val}</span> },
+    { key: 'DocumentType', label: 'Type', width: 120, render: (val) => <span className="text-dark-400">{val}</span> },
+    { key: 'RetentionPolicy', label: 'Policy', width: 160, render: (val) => <span className="text-dark-400">{val}</span> },
     { key: 'RetentionExpiryDate', label: 'Expires', width: 120, render: (val) => <span className="text-warning">{val ? new Date(val).toLocaleDateString() : '-'}</span> },
     {
       key: 'DocumentId', label: 'Actions', width: 140, sortable: false,
@@ -358,8 +349,8 @@ export default function PulpAdminPage() {
   ];
 
   const logColumns: ColumnDef<RetentionLogEntry>[] = [
-    { key: 'PerformedAt', label: 'Date', width: 160, sortable: true, render: (val) => <span className="text-xs text-semantic-text-faint">{val ? new Date(val).toLocaleString() : '-'}</span> },
-    { key: 'DocumentName', label: 'Document', sortable: true, render: (val, row) => <span className="text-semantic-text-default">{val || row.DocumentId}</span> },
+    { key: 'PerformedAt', label: 'Date', width: 160, sortable: true, render: (val) => <span className="text-xs text-dark-400">{val ? new Date(val).toLocaleString() : '-'}</span> },
+    { key: 'DocumentName', label: 'Document', sortable: true, render: (val, row) => <span className="text-dark-700">{val || row.DocumentId}</span> },
     {
       key: 'Action', label: 'Action', width: 100,
       render: (val) => {
@@ -367,13 +358,13 @@ export default function PulpAdminPage() {
         return <StatusBadge status={map[val] || 'neutral'} label={val} size="sm" />;
       },
     },
-    { key: 'Reason', label: 'Reason', render: (val) => <span className="text-semantic-text-faint">{val || '-'}</span> },
-    { key: 'PerformedBy', label: 'By', width: 120, render: (val) => <span className="text-semantic-text-faint">{val}</span> },
+    { key: 'Reason', label: 'Reason', render: (val) => <span className="text-dark-400">{val || '-'}</span> },
+    { key: 'PerformedBy', label: 'By', width: 120, render: (val) => <span className="text-dark-400">{val}</span> },
   ];
 
   const workflowColumns: ColumnDef<ApprovalWorkflow>[] = [
-    { key: 'WorkflowName', label: 'Name', sortable: true, filterable: true, render: (val) => <span className="font-medium text-semantic-text-default">{val}</span> },
-    { key: 'DocumentType', label: 'Doc Type', width: 120, render: (val) => val ? <span className="text-semantic-text-secondary">{val}</span> : <span className="text-semantic-text-faint">Any</span> },
+    { key: 'WorkflowName', label: 'Name', sortable: true, filterable: true, render: (val) => <span className="font-medium text-dark-700">{val}</span> },
+    { key: 'DocumentType', label: 'Doc Type', width: 120, render: (val) => val ? <span className="text-dark-600">{val}</span> : <span className="text-dark-400">Any</span> },
     { key: 'RequiredApprovals', label: 'Required', width: 80 },
     {
       key: 'ApprovalRoles', label: 'Roles', render: (val) => {
@@ -382,50 +373,24 @@ export default function PulpAdminPage() {
       },
     },
     { key: 'SequentialApproval', label: 'Order', width: 100, render: (val) => val ? <span className="text-warning">Sequential</span> : <span className="text-primary">Parallel</span> },
-    { key: 'AutoPublishOnApproval', label: 'Auto-Publish', width: 100, render: (val) => val ? <span className="text-success">Yes</span> : <span className="text-semantic-text-faint">No</span> },
+    { key: 'AutoPublishOnApproval', label: 'Auto-Publish', width: 100, render: (val) => val ? <span className="text-success">Yes</span> : <span className="text-dark-400">No</span> },
     {
       key: 'WorkflowId', label: 'Actions', width: 80, sortable: false,
       render: (_val, row) => (
         <div onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={() => { if (window.confirm('Delete this workflow?')) deleteWfMutation.mutate(row.WorkflowId); }} className="p-1.5 text-semantic-text-faint hover:text-danger rounded hover:bg-interactive-hover" title="Delete"><Trash2 className="w-4 h-4" /></button>
+          <button type="button" onClick={() => { if (window.confirm('Delete this workflow?')) deleteWfMutation.mutate(row.WorkflowId); }} className="p-1.5 text-dark-400 hover:text-danger rounded hover:bg-dark-100" title="Delete"><Trash2 className="w-4 h-4" /></button>
         </div>
       ),
     },
   ];
 
-  // ===== Derived values =====
-
-  const stagedCount = (stats?.stagedQueue || [])
-    .filter((s: { Status: string }) => STAGED_STATUSES_ACTIONABLE.includes(s.Status))
-    .reduce((sum: number, s: { Count: number }) => sum + s.Count, 0);
-
   // ===== Render =====
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="PulpIT"
-        description="Document management configuration"
-      />
-
-      {/* Status Bar — pill style matching Licensing */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-surface-raised border border-border rounded-xl">
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Service</p>
-          <StatusBadge status={isServiceConnected ? 'success' : 'danger'} label={isServiceConnected ? 'Connected' : 'Offline'} size="sm" />
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Total Documents</p>
-          <p className="text-sm font-semibold text-semantic-text-default tabular-nums">{stats?.totalDocuments || 0}</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Storage Used</p>
-          <p className="text-sm font-semibold text-semantic-text-default tabular-nums">{formatStorageSize(stats?.storageMB || 0)}</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Staged Queue</p>
-          <p className={`text-sm font-semibold tabular-nums ${stagedCount > 0 ? 'text-warning' : 'text-semantic-text-faint'}`}>{stagedCount}</p>
-        </div>
+    <div className="p-6 space-y-6 overflow-y-auto h-full">
+      <div className="flex items-center gap-3">
+        <FileText className="w-5 h-5 text-primary" />
+        <h1 className="text-lg font-semibold text-dark-700">PulpIT Administration</h1>
       </div>
 
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
@@ -454,9 +419,9 @@ export default function PulpAdminPage() {
                 <Card title="Documents by Type">
                   <div className="space-y-2">
                     {stats.byType.map((t: { DocumentType: string; Count: number }) => (
-                      <div key={t.DocumentType} className="flex items-center justify-between px-3 py-2 bg-interactive-hover rounded-lg">
-                        <span className="text-sm text-semantic-text-default">{t.DocumentType}</span>
-                        <span className="text-sm text-semantic-text-faint">{t.Count}</span>
+                      <div key={t.DocumentType} className="flex items-center justify-between px-3 py-2 bg-dark-100/50 rounded-lg">
+                        <span className="text-sm text-dark-700">{t.DocumentType}</span>
+                        <span className="text-sm text-dark-400">{t.Count}</span>
                       </div>
                     ))}
                   </div>
@@ -464,54 +429,38 @@ export default function PulpAdminPage() {
               )}
             </>
           ) : (
-            <div className="text-center py-12 text-sm text-semantic-text-faint">Unable to load document statistics</div>
+            <div className="text-center py-12 text-sm text-dark-400">Unable to load document statistics</div>
           )}
         </div>
       )}
 
       {/* Tab: Storage Providers */}
       {activeTab === 'providers' && (
-        <TableCard
-          title="Storage Providers"
-          icon={<Database className="w-4 h-4" />}
-          count={providersList.length}
-        >
-          {providersLoading ? <LoadingSpinner size="lg" /> : (
-            <DataTable<StorageProvider>
-              id="admin-pulp-providers"
-              columns={providerColumns}
-              data={providersList}
-              rowKey="ProviderName"
-              emptyMessage="No storage providers configured"
-              emptyIcon={Database}
-              embedded
-              showColumnPicker={false}
-            />
-          )}
-        </TableCard>
+        providersLoading ? <LoadingSpinner size="lg" /> : (
+          <DataTable<StorageProvider>
+            id="admin-pulp-providers"
+            columns={providerColumns}
+            data={providersList}
+            rowKey="ProviderName"
+            emptyMessage="No storage providers configured"
+            emptyIcon={Database}
+          />
+        )
       )}
 
       {/* Tab: Staged Queue */}
       {activeTab === 'staged' && (
-        <TableCard
-          title="Staged Documents"
-          icon={<Clock className="w-4 h-4" />}
-          count={stagedList.length}
-        >
-          {stagedLoading ? <LoadingSpinner size="lg" /> : (
-            <DataTable<StagedDocument>
-              id="admin-pulp-staged"
-              columns={stagedColumns}
-              data={stagedList}
-              rowKey="StagedDocumentId"
-              emptyMessage="Staging queue is empty"
-              emptyIcon={Clock}
-              showFilters
-              embedded
-              showColumnPicker={false}
-            />
-          )}
-        </TableCard>
+        stagedLoading ? <LoadingSpinner size="lg" /> : (
+          <DataTable<StagedDocument>
+            id="admin-pulp-staged"
+            columns={stagedColumns}
+            data={stagedList}
+            rowKey="StagedDocumentId"
+            emptyMessage="Staging queue is empty"
+            emptyIcon={Clock}
+            showFilters
+          />
+        )
       )}
 
       {/* Tab: Retention */}
@@ -527,7 +476,7 @@ export default function PulpAdminPage() {
                 className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
                   retentionSubTab === sub
                     ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-border text-semantic-text-faint hover:text-semantic-text-secondary hover:border-border'
+                    : 'border-dark-200 text-dark-400 hover:text-dark-600 hover:border-dark-300'
                 }`}
               >
                 {sub === 'policies' ? 'Policies' : sub === 'expiring' ? 'Expiring Soon' : 'Enforcement Log'}
@@ -546,14 +495,10 @@ export default function PulpAdminPage() {
           </div>
 
           {retentionSubTab === 'policies' && (
-            <TableCard
-              title="Retention Policies"
-              icon={<Shield className="w-4 h-4" />}
-              count={policiesList.length}
-              headerActions={
+            <div className="space-y-4">
+              <div className="flex justify-end">
                 <Button icon={<Plus className="w-4 h-4" />} onClick={openCreatePolicy}>New Policy</Button>
-              }
-            >
+              </div>
               {policiesLoading ? <LoadingSpinner size="lg" /> : (
                 <DataTable<RetentionPolicy>
                   id="admin-pulp-policies"
@@ -563,67 +508,45 @@ export default function PulpAdminPage() {
                   emptyMessage="No retention policies defined"
                   emptyIcon={Shield}
                   showFilters
-                  embedded
-                  showColumnPicker={false}
                 />
               )}
-            </TableCard>
+            </div>
           )}
 
           {retentionSubTab === 'expiring' && (
-            <TableCard
-              title="Expiring Documents"
-              icon={<Clock className="w-4 h-4" />}
-              count={expiringList.length}
-            >
-              {expiringLoading ? <LoadingSpinner size="lg" /> : (
-                <DataTable<ExpiringDocument>
-                  id="admin-pulp-expiring"
-                  columns={expiringColumns}
-                  data={expiringList}
-                  rowKey="DocumentId"
-                  emptyMessage="No documents expiring in the next 30 days"
-                  emptyIcon={Clock}
-                  embedded
-                  showColumnPicker={false}
-                />
-              )}
-            </TableCard>
+            expiringLoading ? <LoadingSpinner size="lg" /> : (
+              <DataTable<ExpiringDocument>
+                id="admin-pulp-expiring"
+                columns={expiringColumns}
+                data={expiringList}
+                rowKey="DocumentId"
+                emptyMessage="No documents expiring in the next 30 days"
+                emptyIcon={Clock}
+              />
+            )
           )}
 
           {retentionSubTab === 'log' && (
-            <TableCard
-              title="Enforcement Log"
-              icon={<FileText className="w-4 h-4" />}
-              count={logsList.length}
-            >
-              {logsLoading ? <LoadingSpinner size="lg" /> : (
-                <DataTable<RetentionLogEntry>
-                  id="admin-pulp-retention-log"
-                  columns={logColumns}
-                  data={logsList}
-                  rowKey="DocumentId"
-                  emptyMessage="No retention actions recorded"
-                  emptyIcon={FileText}
-                  embedded
-                  showColumnPicker={false}
-                />
-              )}
-            </TableCard>
+            logsLoading ? <LoadingSpinner size="lg" /> : (
+              <DataTable<RetentionLogEntry>
+                id="admin-pulp-retention-log"
+                columns={logColumns}
+                data={logsList}
+                rowKey="DocumentId"
+                emptyMessage="No retention actions recorded"
+                emptyIcon={FileText}
+              />
+            )
           )}
         </div>
       )}
 
       {/* Tab: Approval Workflows */}
       {activeTab === 'workflows' && (
-        <TableCard
-          title="Approval Workflows"
-          icon={<CheckCircle className="w-4 h-4" />}
-          count={workflowsList.length}
-          headerActions={
+        <div className="space-y-4">
+          <div className="flex justify-end">
             <Button icon={<Plus className="w-4 h-4" />} onClick={openCreateWorkflow}>New Workflow</Button>
-          }
-        >
+          </div>
           {workflowsLoading ? <LoadingSpinner size="lg" /> : (
             <DataTable<ApprovalWorkflow>
               id="admin-pulp-workflows"
@@ -633,11 +556,9 @@ export default function PulpAdminPage() {
               emptyMessage="No approval workflows defined"
               emptyIcon={CheckCircle}
               showFilters
-              embedded
-              showColumnPicker={false}
             />
           )}
-        </TableCard>
+        </div>
       )}
 
       {/* Create Policy Modal */}
@@ -745,7 +666,7 @@ export default function PulpAdminPage() {
 function FormField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-semantic-text-subtle mb-1">
+      <label className="block text-xs font-medium text-dark-500 mb-1">
         {label}{required && <span className="text-danger ml-0.5">*</span>}
       </label>
       {children}
@@ -755,8 +676,8 @@ function FormField({ label, required, children }: { label: string; required?: bo
 
 function StatCard({ label, value, color }: { label: string; value: string; color: string }) {
   return (
-    <div className="bg-surface-raised border border-border rounded-xl p-5">
-      <div className="text-xs text-semantic-text-faint uppercase tracking-wider">{label}</div>
+    <div className="bg-dark-50 border border-dark-200 rounded-xl p-5">
+      <div className="text-xs text-dark-400 uppercase tracking-wider">{label}</div>
       <div className={`text-2xl font-bold mt-2 ${color}`}>{value}</div>
     </div>
   );

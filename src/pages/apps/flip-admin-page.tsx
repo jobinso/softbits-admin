@@ -14,12 +14,9 @@ import {
   LoadingSpinner,
   Tabs,
   Card,
-  PageHeader,
-  TableCard,
 } from '@/components/shared';
 import type { ColumnDef, TabItem } from '@/components/shared';
 import {
-  getHealth,
   getPosTerminals,
   getGpsTerminalsFilter,
   getGpsSalesData,
@@ -31,8 +28,8 @@ import type { PosTerminal, GpsTransaction, GpsSalesTerminal } from '@/types';
 // ---------------------------------------------------------------------------
 
 const FLIP_TABS: TabItem[] = [
-  { id: 'status', label: 'Dashboard', icon: <Activity className="w-4 h-4" /> },
-  { id: 'dashboard', label: 'GPS', icon: <MapPin className="w-4 h-4" /> },
+  { id: 'status', label: 'Status', icon: <Activity className="w-4 h-4" /> },
+  { id: 'dashboard', label: 'GPS Dashboard', icon: <MapPin className="w-4 h-4" /> },
 ];
 
 const TERMINAL_COLORS = [
@@ -52,13 +49,6 @@ export default function FlipAdminPage() {
   const [gpsLoaded, setGpsLoaded] = useState(false);
 
   // ==== Queries ====
-
-  const { data: healthData } = useQuery({
-    queryKey: ['bridge', 'health'],
-    queryFn: getHealth,
-    refetchInterval: 30000,
-  });
-  const isServiceConnected = !!healthData && healthData?.apps?.flip?.enabled !== false;
 
   const { data: terminalsData, isLoading: terminalsLoading } = useQuery({
     queryKey: ['flip', 'terminals'],
@@ -127,8 +117,8 @@ export default function FlipAdminPage() {
       key: 'TerminalCode', label: 'Terminal', sortable: true,
       render: (v, row) => (
         <div>
-          <div className="font-medium text-semantic-text-default">{v}</div>
-          {row.Description && <div className="text-xs text-semantic-text-subtle">{row.Description}</div>}
+          <div className="font-medium text-dark-700">{v}</div>
+          {row.Description && <div className="text-xs text-dark-400">{row.Description}</div>}
         </div>
       ),
     },
@@ -138,7 +128,7 @@ export default function FlipAdminPage() {
       render: (v, row) => (
         <div>
           <div className="font-medium">{v || '-'}</div>
-          {row.ReplenishmentWarehouse && <div className="text-xs text-semantic-text-subtle">From: {row.ReplenishmentWarehouse}</div>}
+          {row.ReplenishmentWarehouse && <div className="text-xs text-dark-400">From: {row.ReplenishmentWarehouse}</div>}
         </div>
       ),
     },
@@ -163,37 +153,29 @@ export default function FlipAdminPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="FlipIT"
-        description="Point of sale configuration"
-      />
+    <div className="p-6 space-y-6 overflow-y-auto h-full">
+      <div className="flex items-center gap-3">
+        <ShoppingCart className="w-5 h-5 text-primary" />
+        <h1 className="text-lg font-semibold text-dark-700">FlipIT Admin</h1>
+      </div>
 
-      {/* Status Bar — pill style matching Licensing */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 p-4 bg-surface-raised border border-border rounded-xl">
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Service</p>
-          <StatusBadge status={isServiceConnected ? 'success' : 'danger'} label={isServiceConnected ? 'Connected' : 'Offline'} size="sm" />
+      {/* Status Bar */}
+      <div className="flex flex-wrap items-center gap-4 text-xs">
+        <div className="flex items-center gap-1.5">
+          <span className="text-dark-400">Terminals:</span>
+          <span className="text-dark-600 font-medium">{totalTerminals}</span>
         </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Terminals</p>
-          <p className="text-sm font-semibold text-semantic-text-default tabular-nums">{totalTerminals}</p>
+        <div className="flex items-center gap-1.5">
+          <span className="text-dark-400">Active:</span>
+          <span className="text-dark-600 font-medium">{activeTerminals}</span>
         </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Active</p>
-          <p className="text-sm font-semibold text-semantic-text-default tabular-nums">{activeTerminals}</p>
+        <div className="flex items-center gap-1.5">
+          <span className="text-dark-400">Today Txns:</span>
+          <span className="text-dark-600 font-medium">{todayTxns}</span>
         </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Active Trucks</p>
-          <p className="text-sm font-semibold text-semantic-text-default tabular-nums">{terminals.filter((t) => t.IsActive && t.VanRegistration).length}</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Today Transactions</p>
-          <p className="text-sm font-semibold text-semantic-text-default tabular-nums">{todayTxns}</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Today Sales</p>
-          <p className="text-sm font-semibold text-accent tabular-nums">R{todaySales.toFixed(2)}</p>
+        <div className="flex items-center gap-1.5">
+          <span className="text-dark-400">Today Sales:</span>
+          <span className="text-primary font-medium">R{todaySales.toFixed(2)}</span>
         </div>
       </div>
 
@@ -202,13 +184,16 @@ export default function FlipAdminPage() {
       {/* ===== Status Tab ===== */}
       {activeTab === 'status' && (
         <div className="space-y-4">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <StatCard label="Active Terminals" value={String(activeTerminals)} />
+            <StatCard label="Active Trucks" value={String(terminals.filter((t) => t.IsActive && t.VanRegistration).length)} />
+            <StatCard label="Today Transactions" value={String(todayTxns)} />
+            <StatCard label="Today Sales" value={`R${todaySales.toFixed(2)}`} highlight />
+          </div>
 
           {/* Terminals Table */}
-          <TableCard
-            title="POS Terminals"
-            icon={<ShoppingCart className="w-4 h-4" />}
-            count={terminals.length}
-          >
+          <Card title={`POS Terminals (${terminals.length})`}>
             <DataTable<PosTerminal>
               id="flip-terminals"
               columns={terminalColumns}
@@ -218,10 +203,8 @@ export default function FlipAdminPage() {
               })}
               rowKey={(row) => row.TerminalCode}
               emptyMessage="No terminals configured"
-              embedded
-              showColumnPicker={false}
             />
-          </TableCard>
+          </Card>
         </div>
       )}
 
@@ -232,7 +215,7 @@ export default function FlipAdminPage() {
           <Card>
             <div className="flex flex-wrap items-center gap-3">
               <div>
-                <label className="block text-xs text-semantic-text-subtle mb-1">Date</label>
+                <label className="block text-xs text-dark-400 mb-1">Date</label>
                 <input
                   type="date"
                   value={gpsDate}
@@ -241,7 +224,7 @@ export default function FlipAdminPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-semantic-text-subtle mb-1">Terminals</label>
+                <label className="block text-xs text-dark-400 mb-1">Terminals</label>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -250,18 +233,18 @@ export default function FlipAdminPage() {
                   >
                     {selectedTerminalIds.length === gpsFilterTerminals.length ? 'Deselect All' : 'Select All'}
                   </button>
-                  <span className="text-xs text-semantic-text-subtle">
+                  <span className="text-xs text-dark-400">
                     {selectedTerminalIds.length} of {gpsFilterTerminals.length} selected
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-1 mt-1 max-w-md">
                   {gpsFilterTerminals.map((t: { terminalId: string; terminalCode: string; description?: string; vanRegistration?: string }) => (
-                    <label key={t.terminalId} className="flex items-center gap-1 text-xs text-semantic-text-subtle cursor-pointer bg-surface-overlay px-2 py-1 rounded">
+                    <label key={t.terminalId} className="flex items-center gap-1 text-xs text-dark-500 cursor-pointer bg-dark-100 px-2 py-1 rounded">
                       <input
                         type="checkbox"
                         checked={selectedTerminalIds.includes(t.terminalId)}
                         onChange={() => toggleTerminal(t.terminalId)}
-                        className="w-3 h-3 rounded border-border-bold"
+                        className="w-3 h-3 rounded border-dark-300"
                       />
                       {t.terminalCode}
                     </label>
@@ -276,21 +259,12 @@ export default function FlipAdminPage() {
             </div>
           </Card>
 
-          {/* GPS Summary — pill style */}
+          {/* GPS Summary */}
           {gpsSummary && (
-            <div className="grid grid-cols-3 gap-4 p-4 bg-surface-raised border border-border rounded-xl">
-              <div>
-                <p className="text-xs text-semantic-text-faint mb-1">Transactions</p>
-                <p className="text-sm font-semibold text-semantic-text-default tabular-nums">{gpsSummary.totalTransactions}</p>
-              </div>
-              <div>
-                <p className="text-xs text-semantic-text-faint mb-1">Total Sales</p>
-                <p className="text-sm font-semibold text-accent tabular-nums">R{gpsSummary.totalSales.toFixed(2)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-semantic-text-faint mb-1">Terminals</p>
-                <p className="text-sm font-semibold text-semantic-text-default tabular-nums">{gpsSummary.terminalCount}</p>
-              </div>
+            <div className="grid grid-cols-3 gap-4">
+              <StatCard label="Transactions" value={String(gpsSummary.totalTransactions)} />
+              <StatCard label="Total Sales" value={`R${gpsSummary.totalSales.toFixed(2)}`} highlight />
+              <StatCard label="Terminals" value={String(gpsSummary.terminalCount)} />
             </div>
           )}
 
@@ -299,29 +273,29 @@ export default function FlipAdminPage() {
             <Card title={`GPS Transactions (${gpsTransactions.length})`}>
               <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
                 <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-surface-raised">
-                    <tr className="border-b border-border">
-                      <th className="px-3 py-2 text-left text-xs font-medium text-semantic-text-subtle">Time</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-semantic-text-subtle">Truck</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-semantic-text-subtle">Customer</th>
-                      <th className="px-3 py-2 text-right text-xs font-medium text-semantic-text-subtle">Amount</th>
-                      <th className="px-3 py-2 text-center text-xs font-medium text-semantic-text-subtle">Map</th>
+                  <thead className="sticky top-0 bg-dark-50">
+                    <tr className="border-b border-dark-200">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-dark-400">Time</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-dark-400">Truck</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-dark-400">Customer</th>
+                      <th className="px-3 py-2 text-right text-xs font-medium text-dark-400">Amount</th>
+                      <th className="px-3 py-2 text-center text-xs font-medium text-dark-400">Map</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border-default">
+                  <tbody className="divide-y divide-dark-200">
                     {gpsTransactions.map((tx, idx) => {
                       const termIdx = gpsTerminalSales.findIndex((t) => t.terminalCode === tx.terminalCode);
                       const color = TERMINAL_COLORS[termIdx % TERMINAL_COLORS.length] || '#666';
                       return (
-                        <tr key={idx} className="hover:bg-interactive-hover">
-                          <td className="px-3 py-2 text-semantic-text-subtle">{new Date(tx.createdAt).toLocaleTimeString()}</td>
+                        <tr key={idx} className="hover:bg-dark-100/50">
+                          <td className="px-3 py-2 text-dark-500">{new Date(tx.createdAt).toLocaleTimeString()}</td>
                           <td className="px-3 py-2">
                             <span className="px-2 py-0.5 rounded text-xs text-white font-medium" style={{ backgroundColor: color }}>
                               {tx.terminalCode}
                             </span>
                           </td>
-                          <td className="px-3 py-2 text-semantic-text-secondary">{tx.customerName || tx.customerCode}</td>
-                          <td className="px-3 py-2 text-right font-medium text-semantic-text-default">R{parseFloat(tx.grandTotal).toFixed(2)}</td>
+                          <td className="px-3 py-2 text-dark-600">{tx.customerName || tx.customerCode}</td>
+                          <td className="px-3 py-2 text-right font-medium text-dark-700">R{parseFloat(tx.grandTotal).toFixed(2)}</td>
                           <td className="px-3 py-2 text-center">
                             <a
                               href={`https://www.google.com/maps?q=${tx.latitude},${tx.longitude}`}
@@ -348,17 +322,17 @@ export default function FlipAdminPage() {
                 {gpsTerminalSales.map((term, idx) => {
                   const color = TERMINAL_COLORS[idx % TERMINAL_COLORS.length];
                   return (
-                    <div key={term.terminalCode} className="bg-interactive-hover border border-border rounded-lg p-4">
+                    <div key={term.terminalCode} className="bg-dark-100/50 border border-dark-200 rounded-lg p-4">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                           <span className="px-2.5 py-1 rounded text-xs text-white font-medium" style={{ backgroundColor: color }}>
                             {term.terminalCode}
                           </span>
-                          <span className="text-sm text-semantic-text-subtle">{term.description || term.vanRegistration || ''}</span>
+                          <span className="text-sm text-dark-400">{term.description || term.vanRegistration || ''}</span>
                         </div>
                         <div className="text-right">
                           <div className="text-lg font-bold text-success">R{term.totalSales.toFixed(2)}</div>
-                          <div className="text-xs text-semantic-text-subtle">{term.transactionCount} transactions</div>
+                          <div className="text-xs text-dark-400">{term.transactionCount} transactions</div>
                         </div>
                       </div>
                     </div>
@@ -369,15 +343,15 @@ export default function FlipAdminPage() {
           )}
 
           {gpsLoaded && gpsTransactions.length === 0 && !gpsFetching && (
-            <div className="text-center py-12 text-sm text-semantic-text-subtle">
-              <Truck className="w-12 h-12 text-semantic-text-faint mx-auto mb-3" />
+            <div className="text-center py-12 text-sm text-dark-400">
+              <Truck className="w-12 h-12 text-dark-300 mx-auto mb-3" />
               <p>No GPS transactions found for the selected criteria.</p>
             </div>
           )}
 
           {!gpsLoaded && (
-            <div className="text-center py-12 text-sm text-semantic-text-subtle">
-              <MapPin className="w-12 h-12 text-semantic-text-faint mx-auto mb-3" />
+            <div className="text-center py-12 text-sm text-dark-400">
+              <MapPin className="w-12 h-12 text-dark-300 mx-auto mb-3" />
               <p>Select terminals and click "Load Data" to view GPS sales data.</p>
             </div>
           )}
@@ -391,3 +365,11 @@ export default function FlipAdminPage() {
 // Helpers
 // ---------------------------------------------------------------------------
 
+function StatCard({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <div className="bg-dark-50 border border-dark-200 rounded-xl p-4">
+      <div className="text-xs text-dark-400 mb-1">{label}</div>
+      <div className={`text-2xl font-bold ${highlight ? 'text-primary' : 'text-dark-700'}`}>{value}</div>
+    </div>
+  );
+}

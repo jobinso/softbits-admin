@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Cpu, Save, Zap, Eye, EyeOff } from 'lucide-react';
+import { Brain, Cpu, Save, Zap, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Button, Card, Tabs, StatusBadge, LoadingSpinner, PageHeader } from '@/components/shared';
+import { Button, Card, Tabs, StatusBadge, LoadingSpinner } from '@/components/shared';
 import type { TabItem } from '@/components/shared';
 import type { InfuseConfig } from '@/types';
 import {
@@ -10,7 +10,6 @@ import {
   updateInfuseConfig,
   testInfuseConnection,
   testMcpConnection,
-  getInfuseStatus,
 } from '@/services/admin-service';
 
 // ===== Constants =====
@@ -86,56 +85,48 @@ export default function InfuseAdminPage() {
   const [mcpAuthType, setMcpAuthType] = useState('none');
   const [mcpAuthValue, setMcpAuthValue] = useState('');
   const [mcpConnectionStatus, setMcpConnectionStatus] = useState('');
-  const [mcpStatusColor, setMcpStatusColor] = useState('text-semantic-text-faint');
+  const [mcpStatusColor, setMcpStatusColor] = useState('text-dark-400');
 
   const [configLoaded, setConfigLoaded] = useState(false);
 
   // ===== Queries =====
 
-  const { data: configData, isLoading } = useQuery({
+  const { isLoading } = useQuery({
     queryKey: ['admin', 'infuse', 'config'],
     queryFn: getInfuseConfig,
-  });
+    onSuccess: (data: { config?: InfuseConfig }) => {
+      const config = data.config || {} as InfuseConfig;
+      setEnabled(config.enabled || false);
+      setProvider(config.aiProvider || 'anthropic');
+      setSystemPrompt(config.systemPrompt || '');
+      setIncludeUserProfile(config.context?.includeUserProfile !== false);
+      setIncludeCurrentView(config.context?.includeCurrentView !== false);
+      setIncludeSelectedEntity(config.context?.includeSelectedEntity !== false);
 
-  const { data: statusData } = useQuery({
-    queryKey: ['admin', 'infuse', 'status'],
-    queryFn: getInfuseStatus,
-    refetchInterval: 15000,
-  });
+      const p = config.aiProvider || 'anthropic';
+      const providerConfig = (config as Record<string, any>)[p] || {};
+      if (providerConfig.apiKey) {
+        setApiKey('\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022' + providerConfig.apiKey.slice(-4));
+        setApiKeyMasked(true);
+      } else {
+        setApiKey('');
+        setApiKeyMasked(false);
+      }
+      setBaseUrl(providerConfig.baseUrl || '');
+      setModel(providerConfig.model || '');
+      setCustomModel('');
 
-  useEffect(() => {
-    if (!configData?.config) return;
-    const config = configData.config as InfuseConfig;
-    setEnabled(config.enabled || false);
-    setProvider(config.aiProvider || 'anthropic');
-    setSystemPrompt(config.systemPrompt || '');
-    setIncludeUserProfile(config.context?.includeUserProfile !== false);
-    setIncludeCurrentView(config.context?.includeCurrentView !== false);
-    setIncludeSelectedEntity(config.context?.includeSelectedEntity !== false);
-
-    const p = config.aiProvider || 'anthropic';
-    const providerConfig = (config as Record<string, any>)[p] || {};
-    if (providerConfig.apiKey) {
-      setApiKey('\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022' + providerConfig.apiKey.slice(-4));
-      setApiKeyMasked(true);
-    } else {
-      setApiKey('');
-      setApiKeyMasked(false);
-    }
-    setBaseUrl(providerConfig.baseUrl || '');
-    setModel(providerConfig.model || '');
-    setCustomModel('');
-
-    if (p === 'vllm' && providerConfig.multiSession) {
-      const ms = providerConfig.multiSession;
-      setVllmMultiEnabled(ms.enabled !== false);
-      setVllmMaxConcurrent(ms.maxConcurrent || 10);
-      setVllmRateLimit(ms.rateLimitPerUser || 20);
-      setVllmQueueSize(ms.userQueueSize || 5);
-      setVllmTimeout(ms.requestTimeout || 120000);
-    }
-    setConfigLoaded(true);
-  }, [configData]);
+      if (p === 'vllm' && providerConfig.multiSession) {
+        const ms = providerConfig.multiSession;
+        setVllmMultiEnabled(ms.enabled !== false);
+        setVllmMaxConcurrent(ms.maxConcurrent || 10);
+        setVllmRateLimit(ms.rateLimitPerUser || 20);
+        setVllmQueueSize(ms.userQueueSize || 5);
+        setVllmTimeout(ms.requestTimeout || 120000);
+      }
+      setConfigLoaded(true);
+    },
+  } as any);
 
   // ===== Mutations =====
 
@@ -216,7 +207,7 @@ export default function InfuseAdminPage() {
   function handleTest() {
     const effectiveModel = model === 'custom' ? customModel : model;
     const key = apiKeyMasked ? null : apiKey;
-    const payload: any = { provider, model: effectiveModel };
+    const payload: { provider: string; model: string; apiKey?: string | null; baseUrl?: string } = { provider, model: effectiveModel };
     if (provider !== 'ollama' && provider !== 'lmstudio' && key) payload.apiKey = key;
     if (['ollama', 'openai', 'vllm', 'lmstudio'].includes(provider) && baseUrl) payload.baseUrl = baseUrl;
     testMutation.mutate(payload);
@@ -254,34 +245,15 @@ export default function InfuseAdminPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="InfuseIT"
-        description="AI integration services configuration"
-      />
-
-      {/* Status Bar — pill style matching Licensing */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 p-4 bg-surface-raised border border-border rounded-xl">
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">AI Provider</p>
-          <StatusBadge status={enabled ? 'success' : 'neutral'} label={enabled ? 'Enabled' : 'Disabled'} size="sm" />
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">MCP</p>
-          <StatusBadge status={statusData?.data?.mcp?.status === 'ok' ? 'success' : 'danger'} label={statusData?.data?.mcp?.status === 'ok' ? 'Online' : 'Offline'} size="sm" />
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">APP</p>
-          <StatusBadge status={statusData?.data?.app?.status === 'ok' ? 'success' : 'danger'} label={statusData?.data?.app?.status === 'ok' ? 'Online' : 'Offline'} size="sm" />
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">HTTP</p>
-          <StatusBadge status={statusData?.data?.http?.status === 'ok' ? 'success' : 'danger'} label={statusData?.data?.http?.status === 'ok' ? 'Online' : 'Offline'} size="sm" />
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">WORK</p>
-          <StatusBadge status={statusData?.data?.work?.status === 'ok' ? 'success' : 'danger'} label={statusData?.data?.work?.status === 'ok' ? 'Online' : 'Offline'} size="sm" />
-        </div>
+    <div className="p-6 space-y-6 overflow-y-auto h-full">
+      <div className="flex items-center gap-3">
+        <Brain className="w-5 h-5 text-primary" />
+        <h1 className="text-lg font-semibold text-dark-700">InfuseIT Administration</h1>
+        <StatusBadge
+          status={enabled ? 'success' : 'neutral'}
+          label={enabled ? 'Enabled' : 'Disabled'}
+          size="sm"
+        />
       </div>
 
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
@@ -298,9 +270,9 @@ export default function InfuseAdminPage() {
                     type="checkbox"
                     checked={enabled}
                     onChange={(e) => setEnabled(e.target.checked)}
-                    className="rounded border-border bg-surface-subtle text-primary focus:ring-interactive-focus-ring"
+                    className="rounded border-dark-300 bg-dark-200 text-primary focus:ring-primary/50"
                   />
-                  <span className="text-sm text-semantic-text-secondary">{enabled ? 'Enabled' : 'Disabled'}</span>
+                  <span className="text-sm text-dark-600">{enabled ? 'Enabled' : 'Disabled'}</span>
                 </label>
               </div>
 
@@ -361,7 +333,7 @@ export default function InfuseAdminPage() {
                     <button
                       type="button"
                       onClick={() => setShowApiKey(!showApiKey)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-semantic-text-faint hover:text-semantic-text-secondary"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-dark-400 hover:text-dark-600"
                     >
                       {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -388,17 +360,17 @@ export default function InfuseAdminPage() {
 
               {/* vLLM Multi-Session */}
               {provider === 'vllm' && (
-                <div className="border-t border-border pt-4 mt-4">
-                  <h4 className="text-xs font-medium text-semantic-text-subtle mb-3">Multi-Session Settings</h4>
+                <div className="border-t border-dark-200 pt-4 mt-4">
+                  <h4 className="text-xs font-medium text-dark-500 mb-3">Multi-Session Settings</h4>
                   <div className="space-y-3">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={vllmMultiEnabled}
                         onChange={(e) => setVllmMultiEnabled(e.target.checked)}
-                        className="rounded border-border bg-surface-subtle text-primary focus:ring-interactive-focus-ring"
+                        className="rounded border-dark-300 bg-dark-200 text-primary focus:ring-primary/50"
                       />
-                      <span className="text-sm text-semantic-text-secondary">Enable multi-session</span>
+                      <span className="text-sm text-dark-600">Enable multi-session</span>
                     </label>
                     <div className="grid grid-cols-2 gap-4">
                       <FormField label="Max Concurrent">
@@ -446,27 +418,27 @@ export default function InfuseAdminPage() {
                   type="checkbox"
                   checked={includeUserProfile}
                   onChange={(e) => setIncludeUserProfile(e.target.checked)}
-                  className="rounded border-border bg-surface-subtle text-primary focus:ring-interactive-focus-ring"
+                  className="rounded border-dark-300 bg-dark-200 text-primary focus:ring-primary/50"
                 />
-                <span className="text-sm text-semantic-text-secondary">Include user profile in context</span>
+                <span className="text-sm text-dark-600">Include user profile in context</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={includeCurrentView}
                   onChange={(e) => setIncludeCurrentView(e.target.checked)}
-                  className="rounded border-border bg-surface-subtle text-primary focus:ring-interactive-focus-ring"
+                  className="rounded border-dark-300 bg-dark-200 text-primary focus:ring-primary/50"
                 />
-                <span className="text-sm text-semantic-text-secondary">Include current view in context</span>
+                <span className="text-sm text-dark-600">Include current view in context</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={includeSelectedEntity}
                   onChange={(e) => setIncludeSelectedEntity(e.target.checked)}
-                  className="rounded border-border bg-surface-subtle text-primary focus:ring-interactive-focus-ring"
+                  className="rounded border-dark-300 bg-dark-200 text-primary focus:ring-primary/50"
                 />
-                <span className="text-sm text-semantic-text-secondary">Include selected entity in context</span>
+                <span className="text-sm text-dark-600">Include selected entity in context</span>
               </label>
             </div>
           </Card>
@@ -557,7 +529,7 @@ export default function InfuseAdminPage() {
 function FormField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-semantic-text-subtle mb-1">{label}</label>
+      <label className="block text-xs font-medium text-dark-500 mb-1">{label}</label>
       {children}
     </div>
   );

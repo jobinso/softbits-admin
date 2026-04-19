@@ -3,24 +3,23 @@
  *
  * Tests the login flow, TOTP flow, logout, and token persistence.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock admin-service
-const mockVerifyLogin = vi.fn();
-const mockVerifyTotpApi = vi.fn();
+const mockVerifyLogin = jest.fn();
+const mockVerifyTotpApi = jest.fn();
 
-vi.mock('../services/admin-service', () => ({
+jest.mock('../services/admin-service', () => ({
   verifyLogin: (...args: unknown[]) => mockVerifyLogin(...args),
   verifyTotp: (...args: unknown[]) => mockVerifyTotpApi(...args),
 }));
 
 // Mock api module
-vi.mock('../services/api', () => ({
+jest.mock('../services/api', () => ({
   api: {
     defaults: { headers: { common: {} } },
     interceptors: {
-      request: { use: vi.fn() },
-      response: { use: vi.fn() },
+      request: { use: jest.fn() },
+      response: { use: jest.fn() },
     },
   },
 }));
@@ -29,9 +28,9 @@ vi.mock('../services/api', () => ({
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
   return {
-    getItem: vi.fn((key: string) => store[key] ?? null),
-    setItem: vi.fn((key: string, value: string) => { store[key] = value; }),
-    removeItem: vi.fn((key: string) => { delete store[key]; }),
+    getItem: jest.fn((key: string) => store[key] ?? null),
+    setItem: jest.fn((key: string, value: string) => { store[key] = value; }),
+    removeItem: jest.fn((key: string) => { delete store[key]; }),
     clear: () => { store = {}; },
   };
 })();
@@ -41,7 +40,7 @@ import { useAuth } from '../hooks/use-auth';
 import { api } from '../services/api';
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  jest.clearAllMocks();
   localStorageMock.clear();
   // Reset zustand store to initial state
   useAuth.setState({

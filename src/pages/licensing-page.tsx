@@ -12,9 +12,9 @@ import {
   X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Button, Card, Tabs, StatusBadge, LoadingSpinner, Modal, PageHeader } from '@/components/shared';
+import { Button, Card, Tabs, StatusBadge, LoadingSpinner, Modal } from '@/components/shared';
 import type { TabItem } from '@/components/shared';
-import type { LicenseModule, LicenseUser, ComplianceData } from '@/types';
+import type { LicenseModule, LicenseUser, ComplianceData, ApiError } from '@/types';
 import {
   getLicense,
   validateLicense,
@@ -62,7 +62,7 @@ function formatDate(dateStr?: string | null): string {
 }
 
 function getDaysColor(days: number | undefined | null): string {
-  if (days === undefined || days === null) return 'text-semantic-text-subtle';
+  if (days === undefined || days === null) return 'text-dark-500';
   if (days < 0) return 'text-danger';
   if (days < 30) return 'text-warning';
   return 'text-success';
@@ -113,9 +113,9 @@ function getModuleDetails(mod: LicenseModule): string {
 
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between py-2 border-b border-border-subtle last:border-b-0">
-      <span className="text-sm text-semantic-text-faint">{label}</span>
-      <span className="text-sm text-semantic-text-default font-medium">{children}</span>
+    <div className="flex items-center justify-between py-2 border-b border-dark-200/30 last:border-b-0">
+      <span className="text-sm text-dark-400">{label}</span>
+      <span className="text-sm text-dark-700 font-medium">{children}</span>
     </div>
   );
 }
@@ -140,21 +140,21 @@ function ComplianceCard({
   const barColor = pct > 90 ? 'bg-danger' : pct > 75 ? 'bg-warning' : 'bg-success';
 
   return (
-    <div className="bg-surface-raised border border-border rounded-xl p-5">
+    <div className="bg-dark-50 border border-dark-200 rounded-xl p-5">
       <div className="flex items-start justify-between mb-3">
         <div>
-          <p className="text-sm font-semibold text-semantic-text-default">{title}</p>
-          {subtitle && <p className="text-xs text-semantic-text-faint mt-0.5">{subtitle}</p>}
+          <p className="text-sm font-semibold text-dark-700">{title}</p>
+          {subtitle && <p className="text-xs text-dark-400 mt-0.5">{subtitle}</p>}
         </div>
         <StatusBadge status={badge.status} label={badge.label} size="sm" />
       </div>
-      <p className="text-2xl font-bold text-semantic-text-default mb-2">{countText}</p>
+      <p className="text-2xl font-bold text-dark-700 mb-2">{countText}</p>
       {max !== null && max !== undefined && max > 0 && (
         <>
-          <div className="h-1.5 bg-surface-subtle rounded-full overflow-hidden">
+          <div className="h-1.5 bg-dark-200 rounded-full overflow-hidden">
             <div className={`h-full ${barColor} rounded-full transition-all`} style={{ width: `${pct}%` }} />
           </div>
-          <p className="text-xs text-semantic-text-faint mt-1">{pct.toFixed(1)}% used</p>
+          <p className="text-xs text-dark-400 mt-1">{pct.toFixed(1)}% used</p>
         </>
       )}
     </div>
@@ -211,9 +211,10 @@ export default function LicensingPage() {
 
   // ===== Mutations =====
 
-  const validateMutation = useMutation({
-    mutationFn: validateLicense,
-    onSuccess: (data: any) => {
+  type ValidateResult = { success?: boolean; validation?: { valid?: boolean; source?: string; error?: { message?: string } }; error?: string };
+  const validateMutation = useMutation<ValidateResult, ApiError>({
+    mutationFn: () => validateLicense() as Promise<ValidateResult>,
+    onSuccess: (data) => {
       if (data.success && data.validation?.valid) {
         toast.success(`License validated (source: ${data.validation.source || 'unknown'})`);
       } else {
@@ -221,7 +222,7 @@ export default function LicensingPage() {
       }
       queryClient.invalidateQueries({ queryKey: ['admin', 'license'] });
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.error || 'Failed to validate license');
     },
   });
@@ -235,7 +236,7 @@ export default function LicensingPage() {
       setLicenseFileName(null);
       queryClient.invalidateQueries({ queryKey: ['admin', 'license'] });
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.error || 'Failed to upload license');
     },
   });
@@ -312,49 +313,46 @@ export default function LicensingPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Licensing"
-        description="Manage license subscriptions and entitlements"
-        actions={
-          <>
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={<Upload className="w-3.5 h-3.5" />}
-              onClick={() => setShowUploadModal(true)}
-            >
-              Upload License
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={<RefreshCw className="w-3.5 h-3.5" />}
-              onClick={() => validateMutation.mutate()}
-              loading={validateMutation.isPending}
-            >
-              Validate
-            </Button>
-          </>
-        }
-      />
+    <div className="p-6 space-y-6 overflow-y-auto h-full">
+      <div className="flex items-center justify-between">
+        <h1 className="text-lg font-semibold text-dark-700">Licensing</h1>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<Upload className="w-3.5 h-3.5" />}
+            onClick={() => setShowUploadModal(true)}
+          >
+            Upload License
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<RefreshCw className="w-3.5 h-3.5" />}
+            onClick={() => validateMutation.mutate()}
+            loading={validateMutation.isPending}
+          >
+            Validate
+          </Button>
+        </div>
+      </div>
 
       {/* Status Bar */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 p-4 bg-surface-raised border border-border rounded-xl">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 p-4 bg-dark-50 border border-dark-200 rounded-xl">
         <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Status</p>
+          <p className="text-xs text-dark-400 mb-1">Status</p>
           <StatusBadge status={statusBadge.status} label={statusBadge.label} size="sm" />
         </div>
         <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Tier</p>
-          <p className="text-sm font-medium text-semantic-text-default">{tier || '-'}</p>
+          <p className="text-xs text-dark-400 mb-1">Tier</p>
+          <p className="text-sm font-medium text-dark-700">{tier || '-'}</p>
         </div>
         <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Expiration</p>
-          <p className="text-sm font-medium text-semantic-text-default">{expiresAt ? formatDate(expiresAt) : 'Perpetual'}</p>
+          <p className="text-xs text-dark-400 mb-1">Expiration</p>
+          <p className="text-sm font-medium text-dark-700">{expiresAt ? formatDate(expiresAt) : 'Perpetual'}</p>
         </div>
         <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Days Remaining</p>
+          <p className="text-xs text-dark-400 mb-1">Days Remaining</p>
           <p className={`text-sm font-semibold ${getDaysColor(daysRemaining)}`}>
             {daysRemaining !== undefined && daysRemaining !== null
               ? daysRemaining < 0 ? `${Math.abs(daysRemaining)} overdue` : `${daysRemaining} days`
@@ -362,12 +360,12 @@ export default function LicensingPage() {
           </p>
         </div>
         <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Active Users</p>
-          <p className="text-sm font-medium text-semantic-text-default">{(licenseData as any)?.activeUsers ?? 0}</p>
+          <p className="text-xs text-dark-400 mb-1">Active Users</p>
+          <p className="text-sm font-medium text-dark-700">{(licenseData as any)?.activeUsers ?? 0}</p>
         </div>
         <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Sessions</p>
-          <p className="text-sm font-medium text-semantic-text-default">{(licenseData as any)?.activeSessions ?? 0}</p>
+          <p className="text-xs text-dark-400 mb-1">Sessions</p>
+          <p className="text-sm font-medium text-dark-700">{(licenseData as any)?.activeSessions ?? 0}</p>
         </div>
       </div>
 
@@ -407,7 +405,7 @@ export default function LicensingPage() {
 
           <Card title="License Key" className="lg:col-span-2">
             <div className="flex items-center gap-3">
-              <code className="flex-1 font-mono text-sm bg-surface-overlay border border-border rounded-lg p-3 text-semantic-text-secondary select-all">
+              <code className="flex-1 font-mono text-sm bg-dark-100 border border-dark-200 rounded-lg p-3 text-dark-600 select-all">
                 {licenseKey
                   ? keyRevealed ? licenseKey : maskLicenseKey(licenseKey)
                   : '-'}
@@ -431,7 +429,7 @@ export default function LicensingPage() {
       {activeTab === 'modules' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {modules.length === 0 ? (
-            <div className="col-span-full text-center py-12 text-sm text-semantic-text-faint">
+            <div className="col-span-full text-center py-12 text-sm text-dark-400">
               No module entitlements found
             </div>
           ) : (
@@ -440,12 +438,12 @@ export default function LicensingPage() {
               return (
                 <div
                   key={mod.code}
-                  className="bg-surface-raised border border-border rounded-xl p-4"
+                  className="bg-dark-50 border border-dark-200 rounded-xl p-4"
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div>
-                      <p className="text-sm font-semibold text-semantic-text-default">{mod.name || mod.code}</p>
-                      <p className="text-xs text-semantic-text-faint font-mono">{mod.code}</p>
+                      <p className="text-sm font-semibold text-dark-700">{mod.name || mod.code}</p>
+                      <p className="text-xs text-dark-400 font-mono">{mod.code}</p>
                     </div>
                     <StatusBadge
                       status={isEnabled ? 'success' : 'neutral'}
@@ -453,7 +451,7 @@ export default function LicensingPage() {
                       size="sm"
                     />
                   </div>
-                  <p className="text-xs text-semantic-text-subtle leading-relaxed">{getModuleDetails(mod)}</p>
+                  <p className="text-xs text-dark-500 leading-relaxed">{getModuleDetails(mod)}</p>
                 </div>
               );
             })
@@ -467,7 +465,7 @@ export default function LicensingPage() {
           {complianceLoading ? (
             <div className="text-center py-12"><LoadingSpinner size="md" /></div>
           ) : !compliance ? (
-            <div className="text-center py-12 text-sm text-semantic-text-faint">
+            <div className="text-center py-12 text-sm text-dark-400">
               Failed to load compliance data
             </div>
           ) : (
@@ -492,7 +490,7 @@ export default function LicensingPage() {
 
               {/* Usage Cards */}
               <div>
-                <p className="text-xs text-semantic-text-faint font-semibold uppercase tracking-wider mb-3">Usage</p>
+                <p className="text-xs text-dark-400 font-semibold uppercase tracking-wider mb-3">Usage</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   <ComplianceCard
                     title="Named Users"
@@ -539,22 +537,22 @@ export default function LicensingPage() {
                   <div className="overflow-x-auto -m-5">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-border">
-                          <th className="text-left px-5 py-3 text-xs font-semibold text-semantic-text-faint uppercase">Module</th>
-                          <th className="text-left px-3 py-3 text-xs font-semibold text-semantic-text-faint uppercase">Status</th>
-                          <th className="text-center px-3 py-3 text-xs font-semibold text-semantic-text-faint uppercase">Concurrent</th>
-                          <th className="text-center px-3 py-3 text-xs font-semibold text-semantic-text-faint uppercase">Named</th>
-                          <th className="text-center px-3 py-3 text-xs font-semibold text-semantic-text-faint uppercase">Terminals</th>
-                          <th className="text-center px-3 py-3 text-xs font-semibold text-semantic-text-faint uppercase">Warehouses</th>
-                          <th className="text-center px-3 py-3 text-xs font-semibold text-semantic-text-faint uppercase">Vans</th>
-                          <th className="text-center px-3 py-3 text-xs font-semibold text-semantic-text-faint uppercase">Kiosks</th>
-                          <th className="text-center px-3 py-3 text-xs font-semibold text-semantic-text-faint uppercase">Queries/Mo</th>
+                        <tr className="border-b border-dark-200">
+                          <th className="text-left px-5 py-3 text-xs font-semibold text-dark-400 uppercase">Module</th>
+                          <th className="text-left px-3 py-3 text-xs font-semibold text-dark-400 uppercase">Status</th>
+                          <th className="text-center px-3 py-3 text-xs font-semibold text-dark-400 uppercase">Concurrent</th>
+                          <th className="text-center px-3 py-3 text-xs font-semibold text-dark-400 uppercase">Named</th>
+                          <th className="text-center px-3 py-3 text-xs font-semibold text-dark-400 uppercase">Terminals</th>
+                          <th className="text-center px-3 py-3 text-xs font-semibold text-dark-400 uppercase">Warehouses</th>
+                          <th className="text-center px-3 py-3 text-xs font-semibold text-dark-400 uppercase">Vans</th>
+                          <th className="text-center px-3 py-3 text-xs font-semibold text-dark-400 uppercase">Kiosks</th>
+                          <th className="text-center px-3 py-3 text-xs font-semibold text-dark-400 uppercase">Queries/Mo</th>
                         </tr>
                       </thead>
                       <tbody>
                         {compliance.modules.map((mod) => (
-                          <tr key={mod.code} className="border-b border-border-subtle">
-                            <td className="px-5 py-3 font-medium text-semantic-text-default">{mod.name || mod.code}</td>
+                          <tr key={mod.code} className="border-b border-dark-200/50">
+                            <td className="px-5 py-3 font-medium text-dark-700">{mod.name || mod.code}</td>
                             <td className="px-3 py-3">
                               <StatusBadge
                                 status={mod.enabled ? 'success' : 'neutral'}
@@ -562,13 +560,13 @@ export default function LicensingPage() {
                                 size="sm"
                               />
                             </td>
-                            <td className="text-center px-3 py-3 text-semantic-text-secondary">{mod.maxConcurrentUsers ?? <span className="text-semantic-text-disabled">&mdash;</span>}</td>
-                            <td className="text-center px-3 py-3 text-semantic-text-secondary">{mod.maxNamedUsers ?? <span className="text-semantic-text-disabled">&mdash;</span>}</td>
-                            <td className="text-center px-3 py-3 text-semantic-text-secondary">{mod.maxTerminals ?? <span className="text-semantic-text-disabled">&mdash;</span>}</td>
-                            <td className="text-center px-3 py-3 text-semantic-text-secondary">{mod.maxWarehouses ?? <span className="text-semantic-text-disabled">&mdash;</span>}</td>
-                            <td className="text-center px-3 py-3 text-semantic-text-secondary">{mod.maxVans ?? <span className="text-semantic-text-disabled">&mdash;</span>}</td>
-                            <td className="text-center px-3 py-3 text-semantic-text-secondary">{mod.maxKiosks ?? <span className="text-semantic-text-disabled">&mdash;</span>}</td>
-                            <td className="text-center px-3 py-3 text-semantic-text-secondary">{mod.maxQueriesPerMonth ?? <span className="text-semantic-text-disabled">&mdash;</span>}</td>
+                            <td className="text-center px-3 py-3 text-dark-600">{mod.maxConcurrentUsers ?? <span className="text-dark-300">&mdash;</span>}</td>
+                            <td className="text-center px-3 py-3 text-dark-600">{mod.maxNamedUsers ?? <span className="text-dark-300">&mdash;</span>}</td>
+                            <td className="text-center px-3 py-3 text-dark-600">{mod.maxTerminals ?? <span className="text-dark-300">&mdash;</span>}</td>
+                            <td className="text-center px-3 py-3 text-dark-600">{mod.maxWarehouses ?? <span className="text-dark-300">&mdash;</span>}</td>
+                            <td className="text-center px-3 py-3 text-dark-600">{mod.maxVans ?? <span className="text-dark-300">&mdash;</span>}</td>
+                            <td className="text-center px-3 py-3 text-dark-600">{mod.maxKiosks ?? <span className="text-dark-300">&mdash;</span>}</td>
+                            <td className="text-center px-3 py-3 text-dark-600">{mod.maxQueriesPerMonth ?? <span className="text-dark-300">&mdash;</span>}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -587,13 +585,13 @@ export default function LicensingPage() {
           {/* Summary Cards */}
           {summary && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-surface-raised border border-border rounded-xl p-4">
-                <p className="text-xs text-semantic-text-faint mb-1">Active Users</p>
-                <p className="text-xl font-bold text-semantic-text-default">{summary.activeUsers ?? 0}</p>
+              <div className="bg-dark-50 border border-dark-200 rounded-xl p-4">
+                <p className="text-xs text-dark-400 mb-1">Active Users</p>
+                <p className="text-xl font-bold text-dark-700">{summary.activeUsers ?? 0}</p>
               </div>
-              <div className="bg-surface-raised border border-border rounded-xl p-4">
-                <p className="text-xs text-semantic-text-faint mb-1">Active Sessions</p>
-                <p className="text-xl font-bold text-semantic-text-default">{summary.totalActiveSessions ?? 0}</p>
+              <div className="bg-dark-50 border border-dark-200 rounded-xl p-4">
+                <p className="text-xs text-dark-400 mb-1">Active Sessions</p>
+                <p className="text-xl font-bold text-dark-700">{summary.totalActiveSessions ?? 0}</p>
               </div>
             </div>
           )}
@@ -601,39 +599,39 @@ export default function LicensingPage() {
           {/* Users Table */}
           <Card title="Licensed Users">
             {users.length === 0 ? (
-              <div className="text-center py-12 text-sm text-semantic-text-faint">
+              <div className="text-center py-12 text-sm text-dark-400">
                 No licensed users configured
               </div>
             ) : (
               <div className="overflow-x-auto -m-5">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-border">
-                      <th className="text-left px-5 py-3 text-xs font-semibold text-semantic-text-faint uppercase">User</th>
-                      <th className="text-left px-3 py-3 text-xs font-semibold text-semantic-text-faint uppercase">Operator</th>
-                      <th className="text-left px-3 py-3 text-xs font-semibold text-semantic-text-faint uppercase">Type</th>
-                      <th className="text-left px-3 py-3 text-xs font-semibold text-semantic-text-faint uppercase">Modules</th>
-                      <th className="text-center px-3 py-3 text-xs font-semibold text-semantic-text-faint uppercase">Sessions</th>
-                      <th className="text-left px-3 py-3 text-xs font-semibold text-semantic-text-faint uppercase">Status</th>
+                    <tr className="border-b border-dark-200">
+                      <th className="text-left px-5 py-3 text-xs font-semibold text-dark-400 uppercase">User</th>
+                      <th className="text-left px-3 py-3 text-xs font-semibold text-dark-400 uppercase">Operator</th>
+                      <th className="text-left px-3 py-3 text-xs font-semibold text-dark-400 uppercase">Type</th>
+                      <th className="text-left px-3 py-3 text-xs font-semibold text-dark-400 uppercase">Modules</th>
+                      <th className="text-center px-3 py-3 text-xs font-semibold text-dark-400 uppercase">Sessions</th>
+                      <th className="text-left px-3 py-3 text-xs font-semibold text-dark-400 uppercase">Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {users.map((user) => (
-                      <tr key={user.Id} className="border-b border-border-subtle">
+                      <tr key={user.Id} className="border-b border-dark-200/50">
                         <td className="px-5 py-3">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-cyan-400 flex items-center justify-center text-xs font-bold text-semantic-text-on-primary">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-cyan-400 flex items-center justify-center text-xs font-bold text-dark">
                               {(user.DisplayName || user.SysproOperator || 'U').charAt(0).toUpperCase()}
                             </div>
                             <div>
-                              <p className="text-sm font-medium text-semantic-text-default">
+                              <p className="text-sm font-medium text-dark-700">
                                 {user.DisplayName || user.SysproOperator}
                               </p>
-                              {user.Email && <p className="text-xs text-semantic-text-faint">{user.Email}</p>}
+                              {user.Email && <p className="text-xs text-dark-400">{user.Email}</p>}
                             </div>
                           </div>
                         </td>
-                        <td className="px-3 py-3 font-mono text-semantic-text-secondary text-xs">{user.SysproOperator}</td>
+                        <td className="px-3 py-3 font-mono text-dark-600 text-xs">{user.SysproOperator}</td>
                         <td className="px-3 py-3">
                           <StatusBadge status="info" label={user.UserType === 'named' ? 'Named' : user.UserType === 'concurrent' ? 'Concurrent' : user.UserType} size="sm" />
                         </td>
@@ -643,11 +641,11 @@ export default function LicensingPage() {
                               <span key={m} className="px-1.5 py-0.5 text-xs bg-info/10 text-info rounded font-medium">{m}</span>
                             ))}
                             {(!user.AllowedModules || user.AllowedModules.length === 0) && (
-                              <span className="text-xs text-semantic-text-faint">None</span>
+                              <span className="text-xs text-dark-400">None</span>
                             )}
                           </div>
                         </td>
-                        <td className="text-center px-3 py-3 text-sm text-semantic-text-secondary">
+                        <td className="text-center px-3 py-3 text-sm text-dark-600">
                           {user.CurrentSessions || 0} / {user.MaxSessions || 1}
                         </td>
                         <td className="px-3 py-3">
@@ -689,16 +687,16 @@ export default function LicensingPage() {
         }
       >
         <div className="space-y-4">
-          <p className="text-sm text-semantic-text-subtle">
+          <p className="text-sm text-dark-500">
             Select an XML license file to upload. This will replace the current license.
           </p>
           <div
-            className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-accent-primary transition-colors"
+            className="border-2 border-dashed border-dark-200 rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
             onClick={() => fileInputRef.current?.click()}
           >
-            <Upload className="w-8 h-8 text-semantic-text-faint mx-auto mb-3" />
-            <p className="text-sm text-semantic-text-subtle">Click to select a file or drag and drop</p>
-            <p className="text-xs text-semantic-text-faint mt-1">XML files only</p>
+            <Upload className="w-8 h-8 text-dark-400 mx-auto mb-3" />
+            <p className="text-sm text-dark-500">Click to select a file or drag and drop</p>
+            <p className="text-xs text-dark-400 mt-1">XML files only</p>
             <input
               ref={fileInputRef}
               type="file"
@@ -709,13 +707,13 @@ export default function LicensingPage() {
             />
           </div>
           {licenseFileName && (
-            <div className="flex items-center gap-2 p-3 bg-surface-overlay rounded-lg">
+            <div className="flex items-center gap-2 p-3 bg-dark-100 rounded-lg">
               <CheckCircle className="w-4 h-4 text-success" />
-              <span className="text-sm text-semantic-text-secondary flex-1">{licenseFileName}</span>
+              <span className="text-sm text-dark-600 flex-1">{licenseFileName}</span>
               <button
                 type="button"
                 onClick={() => { setLicenseFileContent(null); setLicenseFileName(null); }}
-                className="text-semantic-text-faint hover:text-semantic-text-secondary"
+                className="text-dark-400 hover:text-dark-600"
                 aria-label="Remove selected file"
               >
                 <X className="w-4 h-4" />

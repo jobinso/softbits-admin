@@ -40,15 +40,15 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-base flex items-center justify-center px-4">
+    <div className="min-h-screen bg-dark flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center mb-3">
-            <ShieldCheck className="w-7 h-7 text-semantic-text-on-primary" />
+            <ShieldCheck className="w-7 h-7 text-dark" />
           </div>
-          <h1 className="text-xl font-semibold text-semantic-text-default">AdminIT</h1>
-          <p className="text-sm text-semantic-text-faint mt-1">System Administration Console</p>
+          <h1 className="text-xl font-semibold text-dark-700">AdminIT</h1>
+          <p className="text-sm text-dark-400 mt-1">System Administration Console</p>
         </div>
 
         {/* Error Display */}
@@ -68,9 +68,9 @@ export default function LoginPage() {
 
         {/* Login Form */}
         {!requiresTotp ? (
-          <form onSubmit={handleLogin} className="bg-surface-raised border border-border rounded-xl p-6 space-y-4">
+          <form onSubmit={handleLogin} className="bg-dark-50 border border-dark-200 rounded-xl p-6 space-y-4">
             <div>
-              <label htmlFor="username" className="block text-sm text-semantic-text-subtle mb-1">
+              <label htmlFor="username" className="block text-sm text-dark-500 mb-1">
                 Username
               </label>
               <input
@@ -80,12 +80,12 @@ export default function LoginPage() {
                 onChange={(e) => setUsername(e.target.value)}
                 autoComplete="username"
                 required
-                className="w-full px-3 py-2.5 bg-surface-overlay border border-border rounded-lg text-sm text-semantic-text-default"
+                className="w-full px-3 py-2.5 bg-dark-100 border border-dark-200 rounded-lg text-sm text-dark-700"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm text-semantic-text-subtle mb-1">
+              <label htmlFor="password" className="block text-sm text-dark-500 mb-1">
                 Password
               </label>
               <input
@@ -95,28 +95,28 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
                 required
-                className="w-full px-3 py-2.5 bg-surface-overlay border border-border rounded-lg text-sm text-semantic-text-default"
+                className="w-full px-3 py-2.5 bg-dark-100 border border-dark-200 rounded-lg text-sm text-dark-700"
               />
             </div>
 
             <button
               type="submit"
               disabled={isLoading || !username || !password}
-              className="w-full py-2.5 bg-accent-primary text-semantic-text-on-primary font-medium rounded-lg disabled:opacity-50 transition-colors"
+              className="w-full py-2.5 bg-primary text-dark font-medium rounded-lg disabled:opacity-50 transition-colors"
             >
               {isLoading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
         ) : (
-          <form onSubmit={handleTotp} className="bg-surface-raised border border-border rounded-xl p-6 space-y-4">
+          <form onSubmit={handleTotp} className="bg-dark-50 border border-dark-200 rounded-xl p-6 space-y-4">
             <div className="text-center mb-2">
-              <p className="text-sm text-semantic-text-subtle">
+              <p className="text-sm text-dark-500">
                 Enter the 6-digit code from your authenticator app
               </p>
             </div>
 
             <div>
-              <label htmlFor="totpCode" className="block text-sm text-semantic-text-subtle mb-1">
+              <label htmlFor="totpCode" className="block text-sm text-dark-500 mb-1">
                 Verification Code
               </label>
               <input
@@ -130,14 +130,14 @@ export default function LoginPage() {
                 autoComplete="one-time-code"
                 autoFocus
                 required
-                className="w-full px-3 py-2.5 bg-surface-overlay border border-border rounded-lg text-sm text-semantic-text-default text-center tracking-widest"
+                className="w-full px-3 py-2.5 bg-dark-100 border border-dark-200 rounded-lg text-sm text-dark-700 text-center tracking-widest"
               />
             </div>
 
             <button
               type="submit"
               disabled={isLoading || totpCode.length !== 6}
-              className="w-full py-2.5 bg-accent-primary text-semantic-text-on-primary font-medium rounded-lg disabled:opacity-50 transition-colors"
+              className="w-full py-2.5 bg-primary text-dark font-medium rounded-lg disabled:opacity-50 transition-colors"
             >
               {isLoading ? 'Verifying...' : 'Verify'}
             </button>
@@ -145,14 +145,14 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={handleCancelTotp}
-              className="w-full py-2 text-sm text-semantic-text-faint hover:text-semantic-text-subtle transition-colors"
+              className="w-full py-2 text-sm text-dark-400 hover:text-dark-500 transition-colors"
             >
               Back to login
             </button>
           </form>
         )}
 
-        <p className="text-center text-xs text-semantic-text-faint mt-6">
+        <p className="text-center text-xs text-dark-400 mt-6">
           softBITS AdminIT
         </p>
       </div>

@@ -1,4 +1,3 @@
-/// <reference types="vitest" />
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
@@ -19,7 +18,7 @@ export default defineConfig(({ mode }) => {
         '@shared/hooks': path.resolve(__dirname, '../softbits-shared/hooks'),
       },
       // Ensure shared components resolve deps from admin's node_modules
-      dedupe: ['react', 'react-dom', 'clsx', 'lucide-react', 'react-dom/client', 'date-fns'],
+      dedupe: ['react', 'react-dom', 'clsx', 'lucide-react', 'react-dom/client'],
     },
     optimizeDeps: {
       include: ['react', 'react-dom', 'clsx', 'lucide-react'],
@@ -36,21 +35,11 @@ export default defineConfig(({ mode }) => {
           target: bridgeUrl,
           changeOrigin: true,
         },
-        '/work': {
-          target: env.VITE_WORK_URL || 'http://localhost:3900',
-          changeOrigin: true,
-          rewrite: (path: string) => path.replace(/^\/work/, ''),
-        },
         '/health': {
           target: bridgeUrl,
           changeOrigin: true,
         },
       },
-    },
-    test: {
-      environment: 'jsdom',
-      setupFiles: ['./src/test-setup.ts'],
-      globals: true,
     },
     build: {
       outDir: 'dist',

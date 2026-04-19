@@ -6,12 +6,14 @@ import type { AppStatus } from '@/types';
 // ===== Static metadata per app key =====
 
 const APP_METADATA: Record<string, { port: number; description: string }> = {
-  flip:    { port: 4580, description: 'Point of Sale' },
-  connect: { port: 4280, description: 'CRM & Customer Management' },
-  stack:   { port: 4680, description: 'Warehouse Management' },
-  floor:   { port: 4880, description: 'Shop Floor Labor' },
-  shop:    { port: 9000, description: 'E-commerce & Ordering' },
-  infuse:  { port: 3900, description: 'AI Integration (MCP)' },
+  flip:      { port: 4580, description: 'Point of Sale' },
+  connect:   { port: 4280, description: 'CRM & Customer Management' },
+  stack:     { port: 4680, description: 'Warehouse Management' },
+  floor:     { port: 4880, description: 'Shop Floor Labor' },
+  shop:      { port: 9000, description: 'E-commerce & Ordering' },
+  infuse:    { port: 3900, description: 'AI Integration (MCP)' },
+  infuseApp: { port: 3910, description: 'AI Integration (App)' },
+  work:      { port: 3990, description: 'Workflow Automation' },
 };
 
 // ===== Types =====

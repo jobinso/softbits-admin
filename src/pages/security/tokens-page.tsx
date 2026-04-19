@@ -14,9 +14,10 @@ import {
   TableColumnPicker,
 } from '@/components/shared';
 import type { ColumnDef, TableFilterField, TableColumnPickerColumn } from '@/components/shared';
-import type { ApiToken } from '@/types';
+import type { ApiToken, ApiError } from '@/types';
 import {
   getTokens,
+  getUsers,
   createToken,
   deactivateToken,
   reactivateToken,
@@ -45,6 +46,14 @@ function getTokenStatus(token: ApiToken): { status: 'success' | 'danger' | 'warn
   return { status: 'success', label: 'Active' };
 }
 
+const ALL_PERMISSIONS = ['get', 'post', 'browse', 'build', 'utils'] as const;
+
+interface UserOption {
+  id: string;
+  username: string;
+  fullName?: string;
+}
+
 export default function TokensPage() {
   const queryClient = useQueryClient();
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -57,6 +66,8 @@ export default function TokensPage() {
   const [tokenName, setTokenName] = useState('');
   const [tokenDescription, setTokenDescription] = useState('');
   const [expiryDays, setExpiryDays] = useState<string>('90');
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([...ALL_PERMISSIONS]);
 
   // ---- Filters & column visibility ----
 
@@ -93,6 +104,12 @@ export default function TokensPage() {
   });
 
   const tokens: ApiToken[] = tokensResponse?.tokens || [];
+
+  const { data: usersResponse } = useQuery({
+    queryKey: ['admin', 'users'],
+    queryFn: getUsers,
+  });
+  const users: UserOption[] = usersResponse?.users || [];
 
   // ---- Filtered data ----
 
@@ -134,13 +151,13 @@ export default function TokensPage() {
   }, [tokens, search, filters, filterFields]);
 
   const createMutation = useMutation({
-    mutationFn: (data: { name: string; description?: string; expiresInDays?: number }) => createToken(data),
+    mutationFn: (data: { name: string; description?: string; expiresInDays?: number; userId?: string; permissions?: string[] }) => createToken(data),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'tokens'] });
       setCreatedTokenValue(data.token);
       toast.success('Token created successfully');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.error || 'Failed to create token');
     },
   });
@@ -152,7 +169,7 @@ export default function TokensPage() {
       toast.success('Token deactivated');
       setConfirmAction(null);
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.error || 'Failed to deactivate token');
     },
   });
@@ -164,7 +181,7 @@ export default function TokensPage() {
       toast.success('Token reactivated');
       setConfirmAction(null);
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.error || 'Failed to reactivate token');
     },
   });
@@ -176,20 +193,38 @@ export default function TokensPage() {
       toast.success('Token deleted');
       setConfirmAction(null);
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.error || 'Failed to delete token');
     },
   });
+
+  const togglePermission = (perm: string) => {
+    setSelectedPermissions((prev) =>
+      prev.includes(perm) ? prev.filter((p) => p !== perm) : [...prev, perm]
+    );
+  };
+
+  const toggleAllPermissions = (checked: boolean) => {
+    setSelectedPermissions(checked ? [...ALL_PERMISSIONS] : []);
+  };
+
+  const allPermissionsSelected = selectedPermissions.length === ALL_PERMISSIONS.length;
 
   const handleCreate = () => {
     if (!tokenName.trim()) {
       toast.error('Token name is required');
       return;
     }
+    if (selectedPermissions.length === 0) {
+      toast.error('At least one permission is required');
+      return;
+    }
     createMutation.mutate({
       name: tokenName.trim(),
       description: tokenDescription.trim() || undefined,
       expiresInDays: expiryDays === 'never' ? undefined : Number(expiryDays),
+      userId: selectedUserId || undefined,
+      permissions: allPermissionsSelected ? undefined : selectedPermissions,
     });
   };
 
@@ -222,6 +257,8 @@ export default function TokensPage() {
     setTokenName('');
     setTokenDescription('');
     setExpiryDays('90');
+    setSelectedUserId('');
+    setSelectedPermissions([...ALL_PERMISSIONS]);
     setCopied(false);
   };
 
@@ -461,6 +498,50 @@ export default function TokensPage() {
                 <option value="365">1 year</option>
                 <option value="never">Never</option>
               </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-semantic-text-secondary mb-1">
+                Link to User <span className="text-semantic-text-faint font-normal">(optional)</span>
+              </label>
+              <select
+                value={selectedUserId}
+                onChange={(e) => setSelectedUserId(e.target.value)}
+                className="w-full px-3 py-2 bg-surface-overlay border border-border rounded-lg text-sm text-semantic-text-default focus:outline-none focus:ring-2 focus:ring-interactive-focus-ring"
+              >
+                <option value="">None (standalone token)</option>
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.fullName || user.username} ({user.username})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-semantic-text-secondary mb-1">Permissions</label>
+              <div className="space-y-2 p-3 bg-surface-overlay border border-border rounded-lg">
+                <label className="flex items-center gap-2 text-sm text-semantic-text-subtle cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={allPermissionsSelected}
+                    onChange={(e) => toggleAllPermissions(e.target.checked)}
+                    className="rounded border-border bg-surface-subtle text-primary focus:ring-interactive-focus-ring"
+                  />
+                  Select All
+                </label>
+                <div className="border-t border-border pt-2 space-y-1.5">
+                  {ALL_PERMISSIONS.map((perm) => (
+                    <label key={perm} className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedPermissions.includes(perm)}
+                        onChange={() => togglePermission(perm)}
+                        className="rounded border-border bg-surface-subtle text-primary focus:ring-interactive-focus-ring"
+                      />
+                      {perm}
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         )}

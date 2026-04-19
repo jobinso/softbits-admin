@@ -10,8 +10,6 @@ import {
   Tabs,
   StatusBadge,
   LoadingSpinner,
-  PageHeader,
-  TableCard,
 } from '@/components/shared';
 import type { TabItem, ColumnDef } from '@/components/shared';
 import { useModal } from '@shared/hooks';
@@ -41,7 +39,7 @@ import {
 // ===== Constants =====
 
 const tabs: TabItem[] = [
-  { id: 'status', label: 'Dashboard', icon: <Workflow className="w-4 h-4" /> },
+  { id: 'status', label: 'Status', icon: <Workflow className="w-4 h-4" /> },
   { id: 'workflows', label: 'Workflows', icon: <Play className="w-4 h-4" /> },
   { id: 'mappings', label: 'Event Mappings', icon: <Workflow className="w-4 h-4" /> },
   { id: 'apikeys', label: 'API Keys', icon: <Key className="w-4 h-4" /> },
@@ -150,6 +148,7 @@ export default function WorkAdminPage() {
     queryKey: ['admin', 'work', 'execStats'],
     queryFn: getWorkExecutionStats,
     retry: false,
+    enabled: activeTab === 'status',
   });
 
   const { data: mappingsData, isLoading: mappingsLoading } = useQuery({
@@ -194,9 +193,9 @@ export default function WorkAdminPage() {
     onError: (err: Error) => toast.error(err.message),
   });
 
-  const execWfMutation = useMutation({
-    mutationFn: (id: number) => executeWorkWorkflow(id),
-    onSuccess: (data: any) => { toast.success(`Execution started (ID: ${data.executionId || 'N/A'})`); invalidateWork(); },
+  const execWfMutation = useMutation<{ executionId?: string | number }, Error, number>({
+    mutationFn: (id: number) => executeWorkWorkflow(id) as Promise<{ executionId?: string | number }>,
+    onSuccess: (data) => { toast.success(`Execution started (ID: ${data.executionId || 'N/A'})`); invalidateWork(); },
     onError: (err: Error) => toast.error(err.message),
   });
 
@@ -219,9 +218,9 @@ export default function WorkAdminPage() {
     onError: (err: Error) => toast.error(err.message),
   });
 
-  const createKeyMutation = useMutation({
-    mutationFn: (data: Record<string, unknown>) => createWorkApiKey(data),
-    onSuccess: (data: any) => {
+  const createKeyMutation = useMutation<{ apiKey?: { key?: string } }, Error, Record<string, unknown>>({
+    mutationFn: (data: Record<string, unknown>) => createWorkApiKey(data) as Promise<{ apiKey?: { key?: string } }>,
+    onSuccess: (data) => {
       apiKeyModal.close();
       setCreatedKey(data.apiKey?.key || '');
       createdKeyModal.open();
@@ -230,9 +229,9 @@ export default function WorkAdminPage() {
     onError: (err: Error) => toast.error(err.message),
   });
 
-  const rotateKeyMutation = useMutation({
-    mutationFn: (id: number) => rotateWorkApiKey(id),
-    onSuccess: (data: any) => {
+  const rotateKeyMutation = useMutation<{ apiKey?: { key?: string } }, Error, number>({
+    mutationFn: (id: number) => rotateWorkApiKey(id) as Promise<{ apiKey?: { key?: string } }>,
+    onSuccess: (data) => {
       setCreatedKey(data.apiKey?.key || '');
       createdKeyModal.open();
       invalidateWork();
@@ -348,39 +347,39 @@ export default function WorkAdminPage() {
       key: 'Name', label: 'Workflow', sortable: true, filterable: true,
       render: (_val, row) => (
         <div>
-          <span className="font-medium text-semantic-text-default">{row.Name}</span>
-          {row.Description && <div className="text-xs text-semantic-text-faint">{row.Description}</div>}
+          <span className="font-medium text-dark-700">{row.Name}</span>
+          {row.Description && <div className="text-xs text-dark-400">{row.Description}</div>}
         </div>
       ),
     },
     { key: 'N8NWorkflowId', label: 'N8N ID', width: 120, sortable: true, render: (val) => <code className="text-primary text-xs">{val}</code> },
     { key: 'TriggerType', label: 'Trigger', width: 100, sortable: true },
-    { key: 'TimeoutMs', label: 'Timeout', width: 90, render: (val) => <span className="text-semantic-text-faint">{val ? (val / 1000) + 's' : '30s'}</span> },
+    { key: 'TimeoutMs', label: 'Timeout', width: 90, render: (val) => <span className="text-dark-400">{val ? (val / 1000) + 's' : '30s'}</span> },
     {
       key: 'IsActive', label: 'Status', width: 90, sortable: true,
       render: (val) => <StatusBadge status={val ? 'success' : 'neutral'} label={val ? 'Active' : 'Inactive'} size="sm" />,
     },
     {
       key: 'LastExecutedAt', label: 'Last Run', width: 160,
-      render: (val) => <span className="text-xs text-semantic-text-faint">{val ? new Date(val).toLocaleString() : 'Never'}</span>,
+      render: (val) => <span className="text-xs text-dark-400">{val ? new Date(val).toLocaleString() : 'Never'}</span>,
     },
     {
       key: 'WorkflowId', label: 'Actions', width: 130, sortable: false,
       render: (_val, row) => (
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={() => execWfMutation.mutate(row.WorkflowId)} className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover" title="Execute"><Play className="w-4 h-4" /></button>
-          <button type="button" onClick={() => openEditWf(row)} className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover" title="Edit"><Edit className="w-4 h-4" /></button>
-          <button type="button" onClick={() => deleteWfModal.open(row)} className="p-1.5 text-semantic-text-faint hover:text-danger rounded hover:bg-interactive-hover" title="Delete"><Trash2 className="w-4 h-4" /></button>
+          <button type="button" onClick={() => execWfMutation.mutate(row.WorkflowId)} className="p-1.5 text-dark-400 hover:text-primary rounded hover:bg-dark-100" title="Execute"><Play className="w-4 h-4" /></button>
+          <button type="button" onClick={() => openEditWf(row)} className="p-1.5 text-dark-400 hover:text-primary rounded hover:bg-dark-100" title="Edit"><Edit className="w-4 h-4" /></button>
+          <button type="button" onClick={() => deleteWfModal.open(row)} className="p-1.5 text-dark-400 hover:text-danger rounded hover:bg-dark-100" title="Delete"><Trash2 className="w-4 h-4" /></button>
         </div>
       ),
     },
   ];
 
   const execColumns: ColumnDef<WorkExecution>[] = [
-    { key: 'ExecutionId', label: 'ID', width: 70, sortable: true, render: (val) => <code className="text-xs text-semantic-text-faint">{val}</code> },
-    { key: 'WorkflowName', label: 'Workflow', sortable: true, render: (val) => <span className="text-semantic-text-secondary">{val || '-'}</span> },
-    { key: 'EventType', label: 'Event', width: 140, render: (val) => val ? <code className="text-xs">{val}</code> : <span className="text-semantic-text-faint">-</span> },
-    { key: 'SourceApp', label: 'Source', width: 90, render: (val) => <span className="text-semantic-text-faint">{val || '-'}</span> },
+    { key: 'ExecutionId', label: 'ID', width: 70, sortable: true, render: (val) => <code className="text-xs text-dark-400">{val}</code> },
+    { key: 'WorkflowName', label: 'Workflow', sortable: true, render: (val) => <span className="text-dark-600">{val || '-'}</span> },
+    { key: 'EventType', label: 'Event', width: 140, render: (val) => val ? <code className="text-xs">{val}</code> : <span className="text-dark-400">-</span> },
+    { key: 'SourceApp', label: 'Source', width: 90, render: (val) => <span className="text-dark-400">{val || '-'}</span> },
     {
       key: 'Status', label: 'Status', width: 90, sortable: true,
       render: (val) => {
@@ -388,15 +387,15 @@ export default function WorkAdminPage() {
         return <StatusBadge status={map[val] || 'neutral'} label={val} size="sm" />;
       },
     },
-    { key: 'StartedAt', label: 'Started', width: 160, render: (val) => <span className="text-xs text-semantic-text-faint">{val ? new Date(val).toLocaleString() : '-'}</span> },
-    { key: 'DurationMs', label: 'Duration', width: 90, render: (val) => <span className="text-semantic-text-faint">{val ? (val / 1000).toFixed(2) + 's' : '-'}</span> },
+    { key: 'StartedAt', label: 'Started', width: 160, render: (val) => <span className="text-xs text-dark-400">{val ? new Date(val).toLocaleString() : '-'}</span> },
+    { key: 'DurationMs', label: 'Duration', width: 90, render: (val) => <span className="text-dark-400">{val ? (val / 1000).toFixed(2) + 's' : '-'}</span> },
     {
       key: 'ExecutionId' as any, label: 'Actions', width: 80, sortable: false,
       render: (_val, row) => (
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={() => openExecDetail(row)} className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover" title="Details"><Eye className="w-4 h-4" /></button>
+          <button type="button" onClick={() => openExecDetail(row)} className="p-1.5 text-dark-400 hover:text-primary rounded hover:bg-dark-100" title="Details"><Eye className="w-4 h-4" /></button>
           {row.Status === 'failed' && (
-            <button type="button" onClick={() => retryExecMutation.mutate(row.ExecutionId)} className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover" title="Retry"><RotateCcw className="w-4 h-4" /></button>
+            <button type="button" onClick={() => retryExecMutation.mutate(row.ExecutionId)} className="p-1.5 text-dark-400 hover:text-primary rounded hover:bg-dark-100" title="Retry"><RotateCcw className="w-4 h-4" /></button>
           )}
         </div>
       ),
@@ -405,16 +404,16 @@ export default function WorkAdminPage() {
 
   const mappingColumns: ColumnDef<WorkEventMapping>[] = [
     { key: 'EventType', label: 'Event Type', sortable: true, filterable: true, render: (val) => <code className="text-primary text-xs">{val}</code> },
-    { key: 'WorkflowName', label: 'Workflow', sortable: true, render: (val) => <span className="text-semantic-text-secondary">{val || 'Unknown'}</span> },
+    { key: 'WorkflowName', label: 'Workflow', sortable: true, render: (val) => <span className="text-dark-600">{val || 'Unknown'}</span> },
     { key: 'Priority', label: 'Priority', width: 80, sortable: true },
-    { key: 'Conditions', label: 'Conditions', width: 100, render: (val) => val && val !== '{}' ? <span className="text-warning">Yes</span> : <span className="text-semantic-text-faint">None</span> },
+    { key: 'Conditions', label: 'Conditions', width: 100, render: (val) => val && val !== '{}' ? <span className="text-warning">Yes</span> : <span className="text-dark-400">None</span> },
     { key: 'IsActive', label: 'Status', width: 90, sortable: true, render: (val) => <StatusBadge status={val ? 'success' : 'neutral'} label={val ? 'Active' : 'Inactive'} size="sm" /> },
     {
       key: 'MappingId', label: 'Actions', width: 100, sortable: false,
       render: (_val, row) => (
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={() => openEditMapping(row)} className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover" title="Edit"><Edit className="w-4 h-4" /></button>
-          <button type="button" onClick={() => deleteMappingModal.open(row)} className="p-1.5 text-semantic-text-faint hover:text-danger rounded hover:bg-interactive-hover" title="Delete"><Trash2 className="w-4 h-4" /></button>
+          <button type="button" onClick={() => openEditMapping(row)} className="p-1.5 text-dark-400 hover:text-primary rounded hover:bg-dark-100" title="Edit"><Edit className="w-4 h-4" /></button>
+          <button type="button" onClick={() => deleteMappingModal.open(row)} className="p-1.5 text-dark-400 hover:text-danger rounded hover:bg-dark-100" title="Delete"><Trash2 className="w-4 h-4" /></button>
         </div>
       ),
     },
@@ -425,8 +424,8 @@ export default function WorkAdminPage() {
       key: 'Name', label: 'Name', sortable: true, filterable: true,
       render: (_val, row) => (
         <div>
-          <span className="font-medium text-semantic-text-default">{row.Name}</span>
-          {row.Description && <div className="text-xs text-semantic-text-faint">{row.Description}</div>}
+          <span className="font-medium text-dark-700">{row.Name}</span>
+          {row.Description && <div className="text-xs text-dark-400">{row.Description}</div>}
         </div>
       ),
     },
@@ -435,11 +434,11 @@ export default function WorkAdminPage() {
       key: 'Permissions', label: 'Permissions', width: 160,
       render: (val) => {
         const perms = Array.isArray(val) ? val : typeof val === 'string' ? JSON.parse(val) : [];
-        return <span className="text-xs text-semantic-text-faint">{perms.join(', ') || '-'}</span>;
+        return <span className="text-xs text-dark-400">{perms.join(', ') || '-'}</span>;
       },
     },
-    { key: 'RateLimitPerMinute', label: 'Rate', width: 80, render: (val) => <span className="text-semantic-text-faint">{val || 100}/min</span> },
-    { key: 'LastUsedAt', label: 'Last Used', width: 140, render: (val) => <span className="text-xs text-semantic-text-faint">{val ? new Date(val).toLocaleString() : 'Never'}</span> },
+    { key: 'RateLimitPerMinute', label: 'Rate', width: 80, render: (val) => <span className="text-dark-400">{val || 100}/min</span> },
+    { key: 'LastUsedAt', label: 'Last Used', width: 140, render: (val) => <span className="text-xs text-dark-400">{val ? new Date(val).toLocaleString() : 'Never'}</span> },
     { key: 'IsActive', label: 'Status', width: 90, sortable: true, render: (val) => <StatusBadge status={val ? 'success' : 'neutral'} label={val ? 'Active' : 'Revoked'} size="sm" /> },
     {
       key: 'ApiKeyId', label: 'Actions', width: 120, sortable: false,
@@ -447,11 +446,11 @@ export default function WorkAdminPage() {
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
           {row.IsActive && (
             <>
-              <button type="button" onClick={() => { if (window.confirm('Rotate this API key?')) rotateKeyMutation.mutate(row.ApiKeyId); }} className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover" title="Rotate"><RefreshCw className="w-4 h-4" /></button>
-              <button type="button" onClick={() => { if (window.confirm('Revoke this API key?')) revokeKeyMutation.mutate(row.ApiKeyId); }} className="p-1.5 text-semantic-text-faint hover:text-warning rounded hover:bg-interactive-hover" title="Revoke"><Ban className="w-4 h-4" /></button>
+              <button type="button" onClick={() => { if (window.confirm('Rotate this API key?')) rotateKeyMutation.mutate(row.ApiKeyId); }} className="p-1.5 text-dark-400 hover:text-primary rounded hover:bg-dark-100" title="Rotate"><RefreshCw className="w-4 h-4" /></button>
+              <button type="button" onClick={() => { if (window.confirm('Revoke this API key?')) revokeKeyMutation.mutate(row.ApiKeyId); }} className="p-1.5 text-dark-400 hover:text-warning rounded hover:bg-dark-100" title="Revoke"><Ban className="w-4 h-4" /></button>
             </>
           )}
-          <button type="button" onClick={() => { if (window.confirm('Delete this API key?')) deleteKeyMutation.mutate(row.ApiKeyId); }} className="p-1.5 text-semantic-text-faint hover:text-danger rounded hover:bg-interactive-hover" title="Delete"><Trash2 className="w-4 h-4" /></button>
+          <button type="button" onClick={() => { if (window.confirm('Delete this API key?')) deleteKeyMutation.mutate(row.ApiKeyId); }} className="p-1.5 text-dark-400 hover:text-danger rounded hover:bg-dark-100" title="Delete"><Trash2 className="w-4 h-4" /></button>
         </div>
       ),
     },
@@ -460,38 +459,11 @@ export default function WorkAdminPage() {
   // ===== Render =====
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="WorkIT"
-        description="Work order and job management"
-      />
-
-      {/* Status Bar — pill style matching Licensing */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 p-4 bg-surface-raised border border-border rounded-xl">
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Service</p>
-          <StatusBadge status={serviceConnected ? 'success' : 'danger'} label={serviceConnected ? 'Connected' : 'Offline'} size="sm" />
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">N8N</p>
-          <StatusBadge status={n8nConnected ? 'success' : 'danger'} label={n8nConnected ? 'Connected' : 'Disconnected'} size="sm" />
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Active Workflows</p>
-          <p className="text-sm font-semibold text-semantic-text-default tabular-nums">{activeWfCount}</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Executions Today</p>
-          <p className="text-sm font-semibold text-semantic-text-default tabular-nums">{execStats?.summary?.total || 0}</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Failed</p>
-          <p className={`text-sm font-semibold tabular-nums ${(execStats?.summary?.failed || 0) > 0 ? 'text-danger' : 'text-semantic-text-faint'}`}>{execStats?.summary?.failed || 0}</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Pending</p>
-          <p className={`text-sm font-semibold tabular-nums ${(execStats?.summary?.pending || 0) > 0 ? 'text-warning' : 'text-semantic-text-faint'}`}>{execStats?.summary?.pending || 0}</p>
-        </div>
+    <div className="p-6 space-y-6 overflow-y-auto h-full">
+      <div className="flex items-center gap-3">
+        <Workflow className="w-5 h-5 text-primary" />
+        <h1 className="text-lg font-semibold text-dark-700">WorkIT Administration</h1>
+        <StatusBadge status={serviceConnected ? 'success' : 'danger'} label={serviceConnected ? 'Connected' : 'Offline'} size="sm" />
       </div>
 
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
@@ -518,11 +490,7 @@ export default function WorkAdminPage() {
           )}
 
           {/* Recent executions */}
-          <TableCard
-            title="Recent Executions"
-            icon={<Workflow className="w-4 h-4" />}
-            count={executions.length}
-          >
+          <Card title="Recent Executions">
             <DataTable<WorkExecution>
               id="admin-work-executions"
               columns={execColumns}
@@ -530,23 +498,17 @@ export default function WorkAdminPage() {
               rowKey="ExecutionId"
               emptyMessage="No executions found"
               emptyIcon={Workflow}
-              embedded
-              showColumnPicker={false}
             />
-          </TableCard>
+          </Card>
         </div>
       )}
 
       {/* Tab: Workflows */}
       {activeTab === 'workflows' && (
-        <TableCard
-          title="Workflows"
-          icon={<Play className="w-4 h-4" />}
-          count={workflows.length}
-          headerActions={
+        <div className="space-y-4">
+          <div className="flex justify-end">
             <Button icon={<Plus className="w-4 h-4" />} onClick={openCreateWf}>New Workflow</Button>
-          }
-        >
+          </div>
           {wfLoading ? <LoadingSpinner size="lg" /> : (
             <DataTable<WorkWorkflow>
               id="admin-work-workflows"
@@ -557,23 +519,17 @@ export default function WorkAdminPage() {
               emptyMessage="No workflows registered"
               emptyIcon={Workflow}
               showFilters
-              embedded
-              showColumnPicker={false}
             />
           )}
-        </TableCard>
+        </div>
       )}
 
       {/* Tab: Event Mappings */}
       {activeTab === 'mappings' && (
-        <TableCard
-          title="Event Mappings"
-          icon={<Workflow className="w-4 h-4" />}
-          count={mappings.length}
-          headerActions={
+        <div className="space-y-4">
+          <div className="flex justify-end">
             <Button icon={<Plus className="w-4 h-4" />} onClick={openCreateMapping}>New Mapping</Button>
-          }
-        >
+          </div>
           {mappingsLoading ? <LoadingSpinner size="lg" /> : (
             <DataTable<WorkEventMapping>
               id="admin-work-mappings"
@@ -584,23 +540,17 @@ export default function WorkAdminPage() {
               emptyMessage="No event mappings configured"
               emptyIcon={Workflow}
               showFilters
-              embedded
-              showColumnPicker={false}
             />
           )}
-        </TableCard>
+        </div>
       )}
 
       {/* Tab: API Keys */}
       {activeTab === 'apikeys' && (
-        <TableCard
-          title="API Keys"
-          icon={<Key className="w-4 h-4" />}
-          count={apiKeys.length}
-          headerActions={
+        <div className="space-y-4">
+          <div className="flex justify-end">
             <Button icon={<Plus className="w-4 h-4" />} onClick={openCreateKey}>New API Key</Button>
-          }
-        >
+          </div>
           {keysLoading ? <LoadingSpinner size="lg" /> : (
             <DataTable<WorkApiKey>
               id="admin-work-apikeys"
@@ -610,11 +560,9 @@ export default function WorkAdminPage() {
               emptyMessage="No API keys created"
               emptyIcon={Key}
               showFilters
-              embedded
-              showColumnPicker={false}
             />
           )}
-        </TableCard>
+        </div>
       )}
 
       {/* Workflow Create/Edit Modal */}
@@ -655,8 +603,8 @@ export default function WorkAdminPage() {
             </FormField>
             <FormField label="Status">
               <label className="flex items-center gap-2 mt-2 cursor-pointer">
-                <input type="checkbox" checked={wfForm.isActive} onChange={(e) => setWfForm({ ...wfForm, isActive: e.target.checked })} className="rounded border-border bg-surface-subtle text-primary focus:ring-interactive-focus-ring" />
-                <span className="text-sm text-semantic-text-secondary">Active</span>
+                <input type="checkbox" checked={wfForm.isActive} onChange={(e) => setWfForm({ ...wfForm, isActive: e.target.checked })} className="rounded border-dark-300 bg-dark-200 text-primary focus:ring-primary/50" />
+                <span className="text-sm text-dark-600">Active</span>
               </label>
             </FormField>
           </div>
@@ -670,7 +618,7 @@ export default function WorkAdminPage() {
       <Modal isOpen={deleteWfModal.isOpen} onClose={deleteWfModal.close} title="Delete Workflow" size="sm"
         footer={<><Button variant="secondary" onClick={deleteWfModal.close}>Cancel</Button><Button variant="danger" onClick={() => deleteWfModal.data && deleteWfMutation.mutate(deleteWfModal.data.WorkflowId)} loading={deleteWfMutation.isPending}>Delete</Button></>}
       >
-        <p className="text-sm text-semantic-text-subtle">Delete <strong className="text-semantic-text-default">{deleteWfModal.data?.Name}</strong>?</p>
+        <p className="text-sm text-dark-500">Delete <strong className="text-dark-700">{deleteWfModal.data?.Name}</strong>?</p>
       </Modal>
 
       {/* Execution Detail Modal */}
@@ -688,19 +636,19 @@ export default function WorkAdminPage() {
             {execDetail.ErrorMessage && (
               <div>
                 <label className="block text-xs font-medium text-danger mb-1">Error</label>
-                <pre className="bg-surface-overlay rounded-lg p-3 text-xs text-danger font-mono overflow-auto max-h-[150px]">{execDetail.ErrorMessage}</pre>
+                <pre className="bg-dark-100 rounded-lg p-3 text-xs text-danger font-mono overflow-auto max-h-[150px]">{execDetail.ErrorMessage}</pre>
               </div>
             )}
             {execDetail.InputPayload && (
               <div>
-                <label className="block text-xs font-medium text-semantic-text-subtle mb-1">Input</label>
-                <pre className="bg-surface-overlay rounded-lg p-3 text-xs text-semantic-text-subtle font-mono overflow-auto max-h-[150px]">{tryFormatJson(execDetail.InputPayload)}</pre>
+                <label className="block text-xs font-medium text-dark-500 mb-1">Input</label>
+                <pre className="bg-dark-100 rounded-lg p-3 text-xs text-dark-500 font-mono overflow-auto max-h-[150px]">{tryFormatJson(execDetail.InputPayload)}</pre>
               </div>
             )}
             {execDetail.OutputPayload && (
               <div>
-                <label className="block text-xs font-medium text-semantic-text-subtle mb-1">Output</label>
-                <pre className="bg-surface-overlay rounded-lg p-3 text-xs text-success font-mono overflow-auto max-h-[150px]">{tryFormatJson(execDetail.OutputPayload)}</pre>
+                <label className="block text-xs font-medium text-dark-500 mb-1">Output</label>
+                <pre className="bg-dark-100 rounded-lg p-3 text-xs text-success font-mono overflow-auto max-h-[150px]">{tryFormatJson(execDetail.OutputPayload)}</pre>
               </div>
             )}
           </div>
@@ -738,8 +686,8 @@ export default function WorkAdminPage() {
             </FormField>
             <FormField label="Status">
               <label className="flex items-center gap-2 mt-2 cursor-pointer">
-                <input type="checkbox" checked={mappingForm.isActive} onChange={(e) => setMappingForm({ ...mappingForm, isActive: e.target.checked })} className="rounded border-border bg-surface-subtle text-primary focus:ring-interactive-focus-ring" />
-                <span className="text-sm text-semantic-text-secondary">Active</span>
+                <input type="checkbox" checked={mappingForm.isActive} onChange={(e) => setMappingForm({ ...mappingForm, isActive: e.target.checked })} className="rounded border-dark-300 bg-dark-200 text-primary focus:ring-primary/50" />
+                <span className="text-sm text-dark-600">Active</span>
               </label>
             </FormField>
           </div>
@@ -756,7 +704,7 @@ export default function WorkAdminPage() {
       <Modal isOpen={deleteMappingModal.isOpen} onClose={deleteMappingModal.close} title="Delete Event Mapping" size="sm"
         footer={<><Button variant="secondary" onClick={deleteMappingModal.close}>Cancel</Button><Button variant="danger" onClick={() => deleteMappingModal.data && deleteMappingMutation.mutate(deleteMappingModal.data.MappingId)} loading={deleteMappingMutation.isPending}>Delete</Button></>}
       >
-        <p className="text-sm text-semantic-text-subtle">Delete mapping for <strong className="text-semantic-text-default">{deleteMappingModal.data?.EventType}</strong>?</p>
+        <p className="text-sm text-dark-500">Delete mapping for <strong className="text-dark-700">{deleteMappingModal.data?.EventType}</strong>?</p>
       </Modal>
 
       {/* API Key Create Modal */}
@@ -797,9 +745,9 @@ export default function WorkAdminPage() {
                         permissions: e.target.checked ? [...keyForm.permissions, perm] : keyForm.permissions.filter((p) => p !== perm),
                       });
                     }}
-                    className="rounded border-border bg-surface-subtle text-primary focus:ring-interactive-focus-ring"
+                    className="rounded border-dark-300 bg-dark-200 text-primary focus:ring-primary/50"
                   />
-                  <span className="text-sm text-semantic-text-secondary">{perm}</span>
+                  <span className="text-sm text-dark-600">{perm}</span>
                 </label>
               ))}
             </div>
@@ -818,8 +766,8 @@ export default function WorkAdminPage() {
       {/* Created Key Modal */}
       <Modal isOpen={createdKeyModal.isOpen} onClose={createdKeyModal.close} title="API Key Created" size="md">
         <div className="space-y-4">
-          <p className="text-sm text-semantic-text-subtle">Copy this key now. It will not be shown again.</p>
-          <pre className="bg-surface-overlay rounded-lg p-3 text-sm text-primary font-mono break-all">{createdKey}</pre>
+          <p className="text-sm text-dark-500">Copy this key now. It will not be shown again.</p>
+          <pre className="bg-dark-100 rounded-lg p-3 text-sm text-primary font-mono break-all">{createdKey}</pre>
           <Button
             onClick={() => { navigator.clipboard.writeText(createdKey); toast.success('Copied to clipboard'); }}
           >
@@ -836,7 +784,7 @@ export default function WorkAdminPage() {
 function FormField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-semantic-text-subtle mb-1">
+      <label className="block text-xs font-medium text-dark-500 mb-1">
         {label}{required && <span className="text-danger ml-0.5">*</span>}
       </label>
       {children}
@@ -846,8 +794,8 @@ function FormField({ label, required, children }: { label: string; required?: bo
 
 function StatusCard({ label, value, status }: { label: string; value: string; status: 'success' | 'danger' | 'warning' | 'info' | 'neutral' }) {
   return (
-    <div className="bg-surface-raised border border-border rounded-xl p-4">
-      <div className="text-xs text-semantic-text-faint mb-1">{label}</div>
+    <div className="bg-dark-50 border border-dark-200 rounded-xl p-4">
+      <div className="text-xs text-dark-400 mb-1">{label}</div>
       <StatusBadge status={status} label={value} size="sm" />
     </div>
   );
@@ -855,9 +803,9 @@ function StatusCard({ label, value, status }: { label: string; value: string; st
 
 function MiniStat({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div className="bg-surface-raised border border-border rounded-lg p-3 text-center">
-      <div className={`text-xl font-bold ${value > 0 ? color : 'text-semantic-text-faint'}`}>{value}</div>
-      <div className="text-xs text-semantic-text-faint">{label}</div>
+    <div className="bg-dark-50 border border-dark-200 rounded-lg p-3 text-center">
+      <div className={`text-xl font-bold ${value > 0 ? color : 'text-dark-400'}`}>{value}</div>
+      <div className="text-xs text-dark-400">{label}</div>
     </div>
   );
 }
@@ -865,8 +813,8 @@ function MiniStat({ label, value, color }: { label: string; value: number; color
 function DetailItem({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-semantic-text-faint mb-0.5">{label}</label>
-      <div className="text-sm text-semantic-text-default">{value}</div>
+      <label className="block text-xs font-medium text-dark-400 mb-0.5">{label}</label>
+      <div className="text-sm text-dark-700">{value}</div>
     </div>
   );
 }

@@ -1,107 +1,24 @@
-import { api, getAuthToken, setAuthToken } from './api';
-import axios from 'axios';
-import { STORAGE_KEYS } from '../utils/constants';
-import type { ApiResponse, User, AdminRole, Device, SystemHealth, ProjectType, ProjectTypeStatus, ProjectTypeField, Currency, ExchangeRateProvider, ExchangeRate, OptionSet, OptionSetItem, Warehouse, WarehouseErpLink, ErpWarehouseBrowse, Patch, PatchLevel, PatchHistoryEntry, ComplianceData, ConnectSyncStatus, ConnectSyncHistoryEntry, Territory, SalesRep, Pipeline, Stage, RateCard, BillingRole, PosTerminal, GpsSalesData, GpsTerminalFilter, InfuseTestResult, McpTestConnectionResult, DocumentStats, StorageProvider, StagedDocument, RetentionPolicy, ExpiringDocument, RetentionLogEntry, ApprovalWorkflow } from '../types';
+import { api, attachAuthInterceptor, attachTokenRefreshInterceptor } from './api';
+import axios, { type AxiosResponse } from 'axios';
+import type { ApiResponse, User, AdminRole, Device, SystemHealth, SystemSetting, ProjectType, ProjectTypeStatus, ProjectTypeField, Currency, ExchangeRateProvider, ExchangeRate, OptionSet, OptionSetItem, Warehouse, WarehouseErpLink, ErpWarehouseBrowse, Patch, PatchLevel, PatchHistoryEntry, ComplianceData, ConnectSyncStatus, ConnectSyncHistoryEntry, Territory, SalesRep, Pipeline, Stage, CaseType, CaseTypeStep, RateCard, RateCardLineItem, BillingRole, PosTerminal, GpsSalesData, GpsTerminalFilter, InfuseTestResult, McpTestConnectionResult, DocumentStats, StorageProvider, StagedDocument, RetentionPolicy, ExpiringDocument, RetentionLogEntry, ApprovalWorkflow, DocumentTypeConfig, Provider, ProviderType, InternalServicesResponse, InfuseDashboardData, EditVanProvider, EditTradingPartner, EditTransaction, EditDocumentStage, EditErrorLog, EditTransactionType, EditFormatSpec, EditFormatSpecField, EditWorkflowProviderConfig, EditDashboardSummary, EditDashboardStats } from '../types';
+
+/**
+ * Unwrap the softbits standard response envelope.
+ * If the response body is `{ success, data, meta }`, returns `body.data`.
+ * Otherwise returns the body as-is (for non-standard endpoints).
+ */
+function unwrapResponse<T>(response: AxiosResponse): T {
+  const body = response.data;
+  if (body && typeof body === 'object' && 'success' in body && 'data' in body) {
+    return body.data as T;
+  }
+  return body as T;
+}
 
 // Raw API for routes mounted at /admin/* (without /api prefix)
 const rawApi = axios.create({ headers: { 'Content-Type': 'application/json' } });
-rawApi.interceptors.request.use((config) => {
-  const token = getAuthToken();
-  if (token) config.headers['Authorization'] = `Bearer ${token}`;
-  return config;
-});
-
-// Token refresh state for rawApi (mirrors api.ts pattern)
-let isRefreshing = false;
-let failedQueue: Array<{ resolve: (token: string) => void; reject: (error: unknown) => void }> = [];
-
-const processQueue = (error: unknown, token: string | null = null) => {
-  failedQueue.forEach(({ resolve, reject }) => {
-    if (error) reject(error);
-    else resolve(token!);
-  });
-  failedQueue = [];
-};
-
-// Handle 401s with token refresh, then retry
-rawApi.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-    const url = originalRequest?.url || '';
-
-    // Don't intercept non-401s, already-retried requests, or auth routes
-    if (
-      error.response?.status !== 401 ||
-      originalRequest._retry ||
-      url.includes('/admin/auth/')
-    ) {
-      return Promise.reject(error);
-    }
-
-    // If already refreshing, queue this request
-    if (isRefreshing) {
-      return new Promise<string>((resolve, reject) => {
-        failedQueue.push({ resolve, reject });
-      }).then((token) => {
-        originalRequest.headers['Authorization'] = `Bearer ${token}`;
-        return rawApi(originalRequest);
-      });
-    }
-
-    originalRequest._retry = true;
-    isRefreshing = true;
-
-    try {
-      // Read refresh token from Zustand's persisted state in localStorage
-      let refreshToken: string | null = null;
-      try {
-        const stored = localStorage.getItem(STORAGE_KEYS.AUTH);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          refreshToken = parsed.state?.refreshToken || null;
-        }
-      } catch { /* ignore */ }
-
-      if (!refreshToken) {
-        throw new Error('No refresh token available');
-      }
-
-      // Call the Bridge refresh endpoint
-      const response = await rawApi.post('/api/auth/refresh', { refreshToken });
-      const data = response.data?.data || response.data;
-      const { token, refreshToken: newRefreshToken } = data;
-
-      // Update module-level auth token
-      setAuthToken(token);
-
-      // Update localStorage so Zustand stays in sync
-      try {
-        const stored = localStorage.getItem(STORAGE_KEYS.AUTH);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          parsed.state = { ...parsed.state, token, refreshToken: newRefreshToken };
-          localStorage.setItem(STORAGE_KEYS.AUTH, JSON.stringify(parsed));
-        }
-      } catch { /* ignore */ }
-
-      processQueue(null, token);
-
-      // Retry the original request with the new token
-      originalRequest.headers['Authorization'] = `Bearer ${token}`;
-      return rawApi(originalRequest);
-    } catch (refreshError) {
-      processQueue(refreshError, null);
-      // Refresh failed — clear auth and redirect to login
-      localStorage.removeItem(STORAGE_KEYS.AUTH);
-      setAuthToken(null);
-      window.location.href = '/login';
-      return Promise.reject(refreshError);
-    } finally {
-      isRefreshing = false;
-    }
-  }
-);
+attachAuthInterceptor(rawApi);
+attachTokenRefreshInterceptor(rawApi);
 
 // ===== Auth =====
 
@@ -245,7 +162,7 @@ export async function getToken(tokenId: string) {
   return response.data;
 }
 
-export async function createToken(data: { name: string; description?: string; expiresInDays?: number }) {
+export async function createToken(data: { name: string; description?: string; expiresInDays?: number; userId?: string; permissions?: string[] }) {
   const response = await rawApi.post('/admin/tokens', data);
   return response.data;
 }
@@ -402,18 +319,18 @@ export async function executeDevTask(taskId: string) {
 
 // ===== Config =====
 
-export async function getConfigFiles() {
-  const response = await rawApi.get('/admin/config/files');
+export async function getConfigFiles(folder: string = 'query') {
+  const response = await rawApi.get('/admin/config/files', { params: { folder } });
   return response.data;
 }
 
-export async function getConfigFile(filename: string) {
-  const response = await rawApi.get(`/admin/config/files/${filename}`);
+export async function getConfigFile(filename: string, folder: string = 'query') {
+  const response = await rawApi.get(`/admin/config/files/${encodeURIComponent(filename)}`, { params: { folder } });
   return response.data;
 }
 
-export async function updateConfigFile(filename: string, data: Record<string, unknown>) {
-  const response = await rawApi.put(`/admin/config/files/${filename}`, data);
+export async function updateConfigFile(filename: string, content: string, folder: string = 'query') {
+  const response = await rawApi.put(`/admin/config/files/${encodeURIComponent(filename)}`, { content }, { params: { folder } });
   return response.data;
 }
 
@@ -509,13 +426,28 @@ export async function rollbackPatch(patchCode: string, data?: { notes?: string }
 
 // ===== Endpoints =====
 
-export async function getEndpoints() {
-  const response = await rawApi.get('/admin/endpoints');
+export async function getEndpoints(params?: { entity?: string; action?: string; group?: string; method?: string; search?: string }) {
+  const response = await rawApi.get('/admin/endpoints', { params });
+  return response.data;
+}
+
+export async function getEndpointGroups() {
+  const response = await rawApi.get('/admin/endpoint-groups');
   return response.data;
 }
 
 export async function discoverEndpoints() {
   const response = await rawApi.post('/admin/endpoints/discover');
+  return response.data;
+}
+
+export async function getEndpointEntities() {
+  const response = await rawApi.get('/admin/endpoint-entities');
+  return response.data;
+}
+
+export async function getEndpointMethods() {
+  const response = await rawApi.get('/admin/endpoint-methods');
   return response.data;
 }
 
@@ -838,18 +770,6 @@ export async function getInfuseStatus() {
   return response.data;
 }
 
-// ===== OAuth Settings =====
-
-export async function getOAuthSettings() {
-  const response = await rawApi.get('/admin/oauth-settings');
-  return response.data;
-}
-
-export async function updateOAuthSettings(data: Record<string, unknown>) {
-  const response = await rawApi.put('/admin/oauth-settings', data);
-  return response.data;
-}
-
 // ===== Project Types =====
 
 export async function getProjectTypes(): Promise<ApiResponse<ProjectType[]>> {
@@ -1061,7 +981,7 @@ export async function getErpWarehouseBrowse(filter?: string): Promise<ApiRespons
 
 export async function getConnectSyncStatus(): Promise<ConnectSyncStatus> {
   const response = await api.get('/connect/sync/status');
-  return response.data;
+  return unwrapResponse<ConnectSyncStatus>(response);
 }
 
 export async function triggerConnectSync() {
@@ -1084,7 +1004,12 @@ export async function updateConnectConfig(data: Record<string, unknown>) {
   return response.data;
 }
 
-export async function getConnectSyncHistory(params?: { limit?: number; entityType?: string; status?: string; fromDate?: string; toDate?: string }): Promise<{ history: ConnectSyncHistoryEntry[] }> {
+export async function updateConnectEntityConfig(entityType: string, data: Record<string, unknown>) {
+  const response = await api.put(`/connect/config/${entityType}`, data);
+  return response.data;
+}
+
+export async function getConnectSyncHistory(params?: { limit?: number; entityType?: string; status?: string; fromDate?: string; toDate?: string }): Promise<{ data: ConnectSyncHistoryEntry[] }> {
   const response = await api.get('/connect/history', { params });
   return response.data;
 }
@@ -1189,6 +1114,50 @@ export async function deleteStage(id: string) {
   return response.data;
 }
 
+// ── Case Types ──────────────────────────────────────────────────────
+
+export async function getCaseTypes(params?: { includeInactive?: boolean }) {
+  const response = await api.get('/connect/case-types', { params });
+  return response.data;
+}
+
+export async function createCaseType(data: Partial<CaseType>) {
+  const response = await api.post('/connect/case-types', data);
+  return response.data;
+}
+
+export async function updateCaseType(id: string, data: Partial<CaseType>) {
+  const response = await api.put(`/connect/case-types/${id}`, data);
+  return response.data;
+}
+
+export async function deleteCaseType(id: string) {
+  const response = await api.delete(`/connect/case-types/${id}`);
+  return response.data;
+}
+
+// ── Case Type Steps ─────────────────────────────────────────────────
+
+export async function getCaseTypeSteps(params?: { caseTypeId?: string; includeInactive?: boolean }) {
+  const response = await api.get('/connect/case-type-steps', { params });
+  return response.data;
+}
+
+export async function createCaseTypeStep(data: Partial<CaseTypeStep>) {
+  const response = await api.post('/connect/case-type-steps', data);
+  return response.data;
+}
+
+export async function updateCaseTypeStep(id: string, data: Partial<CaseTypeStep>) {
+  const response = await api.put(`/connect/case-type-steps/${id}`, data);
+  return response.data;
+}
+
+export async function deleteCaseTypeStep(id: string) {
+  const response = await api.delete(`/connect/case-type-steps/${id}`);
+  return response.data;
+}
+
 export async function getRateCards(): Promise<ApiResponse<RateCard[]>> {
   const response = await api.get('/connect/rate-cards');
   return response.data;
@@ -1199,7 +1168,7 @@ export async function getRateCard(id: string): Promise<ApiResponse<RateCard>> {
   return response.data;
 }
 
-export async function createRateCard(data: { name: string; description?: string; status?: string; notes?: string }) {
+export async function createRateCard(data: Partial<RateCard>) {
   const response = await api.post('/connect/rate-cards', data);
   return response.data;
 }
@@ -1229,12 +1198,12 @@ export async function activateRateCardVersion(cardId: string, versionId: string)
   return response.data;
 }
 
-export async function addRateCardLineItem(cardId: string, versionId: string, data: { roleId: string; currencyId: string; rate: number; unit: string; notes?: string }) {
+export async function addRateCardLineItem(cardId: string, versionId: string, data: { RoleId: string; CurrencyId: string; Rate: number; Unit: string; Notes?: string }) {
   const response = await api.post(`/connect/rate-cards/${cardId}/versions/${versionId}/roles`, data);
   return response.data;
 }
 
-export async function updateRateCardLineItem(cardId: string, versionId: string, lineId: string, data: { roleId?: string; currencyId?: string; rate?: number; unit?: string; notes?: string }) {
+export async function updateRateCardLineItem(cardId: string, versionId: string, lineId: string, data: Partial<RateCardLineItem>) {
   const response = await api.put(`/connect/rate-cards/${cardId}/versions/${versionId}/roles/${lineId}`, data);
   return response.data;
 }
@@ -1249,20 +1218,6 @@ export async function getBillingRoles(): Promise<ApiResponse<BillingRole[]>> {
   return response.data;
 }
 
-export async function createBillingRole(data: Partial<BillingRole>) {
-  const response = await api.post('/connect/billing-roles', data);
-  return response.data;
-}
-
-export async function updateBillingRole(id: string, data: Partial<BillingRole>) {
-  const response = await api.put(`/connect/billing-roles/${id}`, data);
-  return response.data;
-}
-
-export async function deleteBillingRole(id: string) {
-  const response = await api.delete(`/connect/billing-roles/${id}`);
-  return response.data;
-}
 
 export async function getConnectMappings(entity?: string) {
   const url = entity ? `/connect/config/mappings/${entity}` : '/connect/config/mappings';
@@ -1276,22 +1231,43 @@ export async function updateConnectMappings(entity: string, data: Record<string,
 }
 
 export async function getConnectSysproFields(entityType: string, subEntity?: string) {
-  const response = await api.get(`/connect/config/fields/syspro/${entityType}`, { params: { subEntity } });
+  const response = await api.get(`/connect/config/mappings/fields/syspro/${entityType}`, { params: { subEntity } });
   return response.data;
 }
 
-export async function getConnectFields(entityType: string) {
-  const response = await api.get(`/connect/config/fields/connect/${entityType}`);
+export async function getConnectFields(entityType: string, subEntity?: string) {
+  const response = await api.get(`/connect/config/mappings/fields/connect/${entityType}`, {
+    params: subEntity ? { subEntity } : undefined
+  });
   return response.data;
 }
 
-export async function saveConnectMappingOverrides(entityType: string, data: { overrides: Record<string, unknown>; disabled: string[]; custom: Record<string, unknown> }) {
+export async function saveConnectMappingOverrides(entityType: string, data: { overrides: Record<string, unknown>; disabled: string[]; custom: Record<string, unknown>; fieldDirections?: Record<string, string>; writebackFields?: Record<string, unknown> }) {
   const response = await api.put(`/connect/config/mappings/${entityType}`, data);
   return response.data;
 }
 
 export async function resetConnectMapping(entityType: string) {
   const response = await api.post(`/connect/config/mappings/${entityType}/reset`);
+  return response.data;
+}
+
+// ===== Sync Link Mappings (adm_CrmSyncMapping) =====
+
+export async function getSyncMappings(entityType?: string) {
+  const params: Record<string, unknown> = { limit: 500 };
+  if (entityType) params.entityType = entityType;
+  const response = await api.get('/connect/mappings', { params });
+  return response.data;
+}
+
+export async function createSyncMapping(data: { entityType: string; connectId: string; erpId: string; erpTable?: string }) {
+  const response = await api.post('/connect/mappings', data);
+  return response.data;
+}
+
+export async function deleteSyncMapping(id: string) {
+  const response = await api.delete(`/connect/mappings/${id}`);
   return response.data;
 }
 
@@ -1356,25 +1332,50 @@ export async function getMcpDefaultConfig() {
   return response.data;
 }
 
+export async function getInfuseDashboard(): Promise<ApiResponse<InfuseDashboardData>> {
+  const response = await rawApi.get('/admin/infuse/dashboard');
+  return response.data;
+}
+
+// ===== Internal Services =====
+
+export async function getInternalServices(): Promise<ApiResponse<InternalServicesResponse>> {
+  const response = await api.get('/admin/providers/internal-services');
+  return response.data;
+}
+
+// ===== Service Versions =====
+
+export async function getServiceVersions(): Promise<ApiResponse<Record<string, string>>> {
+  const response = await rawApi.get('/admin/services/versions');
+  return response.data;
+}
+
 // ===== Work (N8N) Admin =====
 
 // Work service is proxied through nginx at /work/ to avoid CORS issues
 async function workApiFetch(endpoint: string, options?: { method?: string; data?: unknown }) {
   const method = options?.method || 'GET';
-  const config: Record<string, unknown> = { params: {} };
-  if (options?.data) config.data = options.data;
-  let response;
-  switch (method) {
-    case 'POST': response = await rawApi.post(`/work${endpoint}`, options?.data); break;
-    case 'PUT': response = await rawApi.put(`/work${endpoint}`, options?.data); break;
-    case 'DELETE': response = await rawApi.delete(`/work${endpoint}`); break;
-    default: response = await rawApi.get(`/work${endpoint}`);
+  try {
+    let response;
+    switch (method) {
+      case 'POST': response = await rawApi.post(`/work${endpoint}`, options?.data); break;
+      case 'PUT': response = await rawApi.put(`/work${endpoint}`, options?.data); break;
+      case 'DELETE': response = await rawApi.delete(`/work${endpoint}`); break;
+      default: response = await rawApi.get(`/work${endpoint}`);
+    }
+    return unwrapResponse(response);
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err)) {
+      const serverMessage = err.response?.data?.error?.message;
+      if (serverMessage) throw new Error(serverMessage);
+    }
+    throw err;
   }
-  return response.data;
 }
 
 export async function getWorkHealth() {
-  return workApiFetch('/api/health');
+  return workApiFetch('/health');
 }
 
 export async function getWorkWorkflows() {
@@ -1454,51 +1455,107 @@ export async function deleteWorkApiKey(id: number) {
   return workApiFetch(`/api/api-keys/${id}`, { method: 'DELETE' });
 }
 
+// ===== Work Templates =====
+
+export async function getWorkTemplates(params?: { category?: string }) {
+  const qs = params?.category ? `?category=${encodeURIComponent(params.category)}` : '';
+  return workApiFetch(`/api/templates${qs}`);
+}
+
+export async function getWorkTemplateInstances(params?: { templateId?: number; status?: string }) {
+  const parts: string[] = [];
+  if (params?.templateId) parts.push(`templateId=${params.templateId}`);
+  if (params?.status) parts.push(`status=${encodeURIComponent(params.status)}`);
+  const qs = parts.length ? `?${parts.join('&')}` : '';
+  return workApiFetch(`/api/templates/instances${qs}`);
+}
+
+export async function getWorkTemplateInstance(id: number) {
+  return workApiFetch(`/api/templates/instances/${id}`);
+}
+
+export async function instantiateWorkTemplate(templateId: number, data: { name: string; configuration?: Record<string, unknown>; providerId?: string }) {
+  return workApiFetch(`/api/templates/${templateId}/instantiate`, { method: 'POST', data });
+}
+
+export async function updateWorkTemplateInstance(id: number, data: Record<string, unknown>) {
+  return workApiFetch(`/api/templates/instances/${id}`, { method: 'PUT', data });
+}
+
+export async function provisionWorkTemplate(instanceId: number) {
+  return workApiFetch(`/api/templates/instances/${instanceId}/provision`, { method: 'POST' });
+}
+
+export async function testWorkTemplate(instanceId: number) {
+  return workApiFetch(`/api/templates/instances/${instanceId}/test`, { method: 'POST' });
+}
+
+export async function activateWorkTemplate(instanceId: number) {
+  return workApiFetch(`/api/templates/instances/${instanceId}/activate`, { method: 'POST' });
+}
+
+export async function pauseWorkTemplate(instanceId: number) {
+  return workApiFetch(`/api/templates/instances/${instanceId}/pause`, { method: 'POST' });
+}
+
+export async function archiveWorkTemplateInstance(instanceId: number) {
+  return workApiFetch(`/api/templates/instances/${instanceId}`, { method: 'DELETE' });
+}
+
+export async function getWorkTemplatePreview(templateId: number) {
+  return workApiFetch(`/api/templates/${templateId}/preview`);
+}
+
 // ===== PulpIT (Documents) Admin =====
 
 export async function getDocumentStats(): Promise<DocumentStats> {
   const response = await api.get('/documents/config/stats');
-  return response.data;
+  return unwrapResponse<DocumentStats>(response);
 }
 
 export async function getStorageProviders(): Promise<StorageProvider[]> {
   const response = await api.get('/documents/config/providers');
-  return response.data;
+  return unwrapResponse<StorageProvider[]>(response);
 }
 
 export async function getStagedDocuments(limit = 50): Promise<StagedDocument[]> {
   const response = await api.get('/documents/staged', { params: { limit } });
-  return response.data;
+  return unwrapResponse<StagedDocument[]>(response);
 }
 
 export async function approveStagedDocument(id: string) {
   const response = await api.put(`/documents/staged/${id}/approve`, {});
-  return response.data;
+  return unwrapResponse(response);
 }
 
 export async function rejectStagedDocument(id: string, notes?: string) {
   const response = await api.put(`/documents/staged/${id}/reject`, { notes });
-  return response.data;
+  return unwrapResponse(response);
 }
 
 export async function getRetentionPolicies(): Promise<RetentionPolicy[]> {
   const response = await api.get('/documents/retention/policies');
-  return response.data;
+  return unwrapResponse<RetentionPolicy[]>(response);
 }
 
-export async function createRetentionPolicy(data: { policyName: string; documentType?: string | null; retentionPeriodDays: number; action: string; notifyDaysBefore: number }) {
+export async function createRetentionPolicy(data: { policyName: string; documentType?: string | null; retentionPeriodDays: number; action: string; notifyRoles?: string | null; notifyDaysBefore: number }) {
   const response = await api.post('/documents/retention/policies', data);
-  return response.data;
+  return unwrapResponse(response);
+}
+
+export async function updateRetentionPolicy(id: string, data: Partial<{ policyName: string; documentType: string | null; retentionPeriodDays: number; action: string; notifyRoles: string | null; notifyDaysBefore: number }>) {
+  const response = await api.put(`/documents/retention/policies/${id}`, data);
+  return unwrapResponse(response);
 }
 
 export async function deleteRetentionPolicy(id: string) {
   const response = await api.delete(`/documents/retention/policies/${id}`);
-  return response.data;
+  return unwrapResponse(response);
 }
 
 export async function getExpiringDocuments(days = 30): Promise<ExpiringDocument[]> {
   const response = await api.get('/documents/retention/expiring', { params: { days } });
-  return response.data;
+  return unwrapResponse<ExpiringDocument[]>(response);
 }
 
 export async function extendDocumentRetention(documentId: string, newExpiryDate: string) {
@@ -1513,25 +1570,397 @@ export async function exemptDocumentRetention(documentId: string) {
 
 export async function getRetentionLog(limit = 50): Promise<RetentionLogEntry[]> {
   const response = await api.get('/documents/retention/log', { params: { limit } });
-  return response.data;
+  return unwrapResponse<RetentionLogEntry[]>(response);
 }
 
 export async function triggerRetentionEnforcement() {
   const response = await api.post('/documents/retention/enforce', {});
-  return response.data;
+  return unwrapResponse(response);
+}
+
+export async function getArchivedDocuments(params?: { limit?: number; offset?: number; search?: string }) {
+  const response = await api.get('/documents/archive', { params });
+  return unwrapResponse(response);
 }
 
 export async function getApprovalWorkflows(): Promise<ApprovalWorkflow[]> {
   const response = await api.get('/documents/approval/workflows');
-  return response.data;
+  return unwrapResponse<ApprovalWorkflow[]>(response);
 }
 
 export async function createApprovalWorkflow(data: { workflowName: string; documentType?: string | null; requiredApprovals: number; approvalRoles: string[]; sequentialApproval: boolean; autoPublishOnApproval: boolean }) {
   const response = await api.post('/documents/approval/workflows', data);
-  return response.data;
+  return unwrapResponse(response);
 }
 
 export async function deleteApprovalWorkflow(id: string) {
   const response = await api.delete(`/documents/approval/workflows/${id}`);
+  return unwrapResponse(response);
+}
+
+// ===== Document Types =====
+
+export async function getDocumentTypes(includeInactive = false): Promise<DocumentTypeConfig[]> {
+  const response = await api.get('/documents/types', { params: includeInactive ? { all: true } : {} });
+  return unwrapResponse<DocumentTypeConfig[]>(response);
+}
+
+export async function getDocumentType(id: number): Promise<DocumentTypeConfig> {
+  const response = await api.get(`/documents/types/${id}`);
+  return unwrapResponse<DocumentTypeConfig>(response);
+}
+
+export async function updateDocumentType(id: number, data: Partial<DocumentTypeConfig>): Promise<DocumentTypeConfig> {
+  const response = await api.put(`/documents/types/${id}`, data);
+  return unwrapResponse<DocumentTypeConfig>(response);
+}
+
+export async function createDocumentType(data: Partial<DocumentTypeConfig>): Promise<DocumentTypeConfig> {
+  const response = await api.post('/documents/types', data);
+  return unwrapResponse<DocumentTypeConfig>(response);
+}
+
+export async function deleteDocumentType(id: number): Promise<void> {
+  await api.delete(`/documents/types/${id}`);
+}
+
+// ===== Providers =====
+
+export async function getProviders(params?: { category?: string; typeCode?: string; isActive?: boolean }): Promise<ApiResponse<Provider[]>> {
+  const response = await api.get('/admin/providers', { params });
   return response.data;
+}
+
+export async function getProviderTypes(category?: string): Promise<ApiResponse<ProviderType[]>> {
+  const response = await api.get('/admin/providers/types', { params: category ? { category } : {} });
+  return response.data;
+}
+
+export async function getProvidersByType(typeCode: string): Promise<ApiResponse<Provider[]>> {
+  const response = await api.get(`/admin/providers/by-type/${encodeURIComponent(typeCode)}`);
+  return response.data;
+}
+
+export async function getProvidersByApp(appCode: string): Promise<ApiResponse<Provider[]>> {
+  const response = await api.get(`/admin/providers/by-app/${encodeURIComponent(appCode)}`);
+  return response.data;
+}
+
+export async function getProvider(id: string): Promise<ApiResponse<Provider>> {
+  const response = await api.get(`/admin/providers/${id}`);
+  return response.data;
+}
+
+export async function createProvider(data: Record<string, unknown>): Promise<ApiResponse<Provider>> {
+  const response = await api.post('/admin/providers', data);
+  return response.data;
+}
+
+export async function updateProvider(id: string, data: Record<string, unknown>): Promise<ApiResponse<Provider>> {
+  const response = await api.put(`/admin/providers/${id}`, data);
+  return response.data;
+}
+
+export async function deleteProvider(id: string): Promise<ApiResponse<Provider>> {
+  const response = await api.delete(`/admin/providers/${id}`);
+  return response.data;
+}
+
+export async function destroyProvider(id: string): Promise<ApiResponse<{ deleted: boolean; name: string }>> {
+  const response = await api.delete(`/admin/providers/${id}/permanent`);
+  return response.data;
+}
+
+export async function testProvider(id: string): Promise<{ ok: boolean; message: string }> {
+  const response = await api.post(`/admin/providers/${id}/test`);
+  return unwrapResponse<{ ok: boolean; message: string }>(response);
+}
+
+export async function setProviderDefault(id: string): Promise<ApiResponse<Provider>> {
+  const response = await api.put(`/admin/providers/${id}/default`);
+  return response.data;
+}
+
+export async function updateProviderApplications(id: string, applications: string[]) {
+  const response = await api.put(`/admin/providers/${id}/applications`, { applications });
+  return response.data;
+}
+
+export async function getProviderApiDetails(id: string) {
+  const response = await api.get(`/admin/providers/${id}/api-details`);
+  return response.data;
+}
+
+// ===== System Settings =====
+
+export async function getSystemSettings(): Promise<ApiResponse<SystemSetting[]>> {
+  const response = await rawApi.get('/admin/settings');
+  return response.data;
+}
+
+export async function getSystemSetting(key: string): Promise<ApiResponse<SystemSetting>> {
+  const response = await rawApi.get(`/admin/settings/${encodeURIComponent(key)}`);
+  return response.data;
+}
+
+export async function updateSystemSetting(key: string, data: { value: string; description?: string }): Promise<ApiResponse<SystemSetting>> {
+  const response = await rawApi.put(`/admin/settings/${encodeURIComponent(key)}`, data);
+  return response.data;
+}
+
+export async function createSystemSetting(data: { key: string; value: string; description?: string; dataType?: string }): Promise<ApiResponse<SystemSetting>> {
+  const response = await rawApi.post('/admin/settings', data);
+  return response.data;
+}
+
+export async function deleteSystemSetting(key: string): Promise<ApiResponse<unknown>> {
+  const response = await rawApi.delete(`/admin/settings/${encodeURIComponent(key)}`);
+  return response.data;
+}
+
+export async function reloadSettingsCache(): Promise<ApiResponse<{ message: string; count: number }>> {
+  const response = await rawApi.post('/admin/settings/reload');
+  return response.data;
+}
+
+// ===== Email Poller =====
+
+export async function getEmailPollerStatus() {
+  const response = await api.get('/admin/email-poller');
+  return response.data;
+}
+
+export async function getEmailPollerRoutingRules(providerId: string) {
+  const response = await api.get('/admin/email-poller/routing-rules', { params: { providerId } });
+  return response.data;
+}
+
+export async function createEmailPollerRoutingRule(rule: Record<string, unknown>) {
+  const response = await api.post('/admin/email-poller/routing-rules', rule);
+  return response.data;
+}
+
+export async function updateEmailPollerRoutingRule(ruleId: string, updates: Record<string, unknown>) {
+  const response = await api.put(`/admin/email-poller/routing-rules/${ruleId}`, updates);
+  return response.data;
+}
+
+export async function deleteEmailPollerRoutingRule(ruleId: string) {
+  const response = await api.delete(`/admin/email-poller/routing-rules/${ruleId}`);
+  return response.data;
+}
+
+export async function getEmailPollerWorkflows() {
+  const response = await api.get('/admin/email-poller/workflows');
+  return response.data;
+}
+
+export async function getEmailPollerSecurityEvents(params?: { providerId?: string; eventType?: string; limit?: number }) {
+  const response = await api.get('/admin/email-poller/security-events', { params });
+  return response.data;
+}
+
+export async function getEmailPollerSecuritySummary(params?: { providerId?: string; days?: number }) {
+  const response = await api.get('/admin/email-poller/security-events/summary', { params });
+  return response.data;
+}
+
+export async function getEmailPollerCircuitBreakers() {
+  const response = await api.get('/admin/email-poller/circuit-breakers');
+  return response.data;
+}
+
+export async function triggerEmailPoll(providerId?: string) {
+  const url = providerId
+    ? `/admin/email-poller/trigger/${providerId}`
+    : '/admin/email-poller/trigger';
+  const response = await api.post(url);
+  return response.data;
+}
+
+export async function getEmailPollerPollerStatus(): Promise<{ running: boolean }> {
+  const response = await api.get('/admin/email-poller/poller-status');
+  return unwrapResponse<{ running: boolean }>(response);
+}
+
+// ===== EdIT (EDI Integration) Admin =====
+
+export async function getEditHealth() {
+  const response = await api.get('/admin/edit/health');
+  return unwrapResponse(response);
+}
+
+// Dashboard
+export async function getEditDashboardSummary(): Promise<EditDashboardSummary> {
+  const response = await api.get('/admin/edit/dashboard/summary');
+  return unwrapResponse<EditDashboardSummary>(response);
+}
+
+export async function getEditDashboardStats(): Promise<EditDashboardStats> {
+  const response = await api.get('/admin/edit/dashboard/stats');
+  return unwrapResponse<EditDashboardStats>(response);
+}
+
+export async function getEditRecentErrors(limit = 10): Promise<EditErrorLog[]> {
+  const response = await api.get('/admin/edit/errors', { params: { limit, unresolved: true } });
+  return unwrapResponse<EditErrorLog[]>(response);
+}
+
+// VAN Providers
+export async function getEditVanProviders(): Promise<EditVanProvider[]> {
+  const response = await api.get('/admin/edit/vans');
+  return unwrapResponse(response);
+}
+
+export async function createEditVanProvider(data: Record<string, unknown>) {
+  const response = await api.post('/admin/edit/vans', data);
+  return unwrapResponse(response);
+}
+
+export async function updateEditVanProvider(id: string, data: Record<string, unknown>) {
+  const response = await api.put(`/admin/edit/vans/${id}`, data);
+  return unwrapResponse(response);
+}
+
+export async function deleteEditVanProvider(id: string) {
+  const response = await api.delete(`/admin/edit/vans/${id}`);
+  return unwrapResponse(response);
+}
+
+export async function testEditVanProvider(id: string) {
+  const response = await api.post(`/admin/edit/vans/${id}/test`);
+  return unwrapResponse(response);
+}
+
+export async function pollEditVanProvider(id: string) {
+  const response = await api.post(`/admin/edit/vans/${id}/poll`);
+  return unwrapResponse(response);
+}
+
+// VAN & Partner Health
+export async function getEditVanHealth() {
+  const response = await api.get('/admin/edit/vans/health');
+  return unwrapResponse(response);
+}
+
+export async function getEditPartnerHealth() {
+  const response = await api.get('/admin/edit/partners/health');
+  return unwrapResponse(response);
+}
+
+// Trading Partners
+export async function getEditTradingPartners(): Promise<EditTradingPartner[]> {
+  const response = await api.get('/admin/edit/partners');
+  return unwrapResponse(response);
+}
+
+export async function createEditTradingPartner(data: Record<string, unknown>) {
+  const response = await api.post('/admin/edit/partners', data);
+  return unwrapResponse(response);
+}
+
+export async function updateEditTradingPartner(id: string, data: Record<string, unknown>) {
+  const response = await api.put(`/admin/edit/partners/${id}`, data);
+  return unwrapResponse(response);
+}
+
+export async function deleteEditTradingPartner(id: string) {
+  const response = await api.delete(`/admin/edit/partners/${id}`);
+  return unwrapResponse(response);
+}
+
+// Transactions
+export async function getEditTransactions(params?: Record<string, string>): Promise<EditTransaction[]> {
+  const response = await api.get('/admin/edit/transactions', { params });
+  return unwrapResponse(response);
+}
+
+export async function getEditTransaction(id: number): Promise<EditTransaction> {
+  const response = await api.get(`/admin/edit/transactions/${id}`);
+  return unwrapResponse(response);
+}
+
+export async function getEditTransactionFlow(id: number): Promise<EditDocumentStage[]> {
+  const response = await api.get(`/admin/edit/transactions/${id}/flow`);
+  return unwrapResponse(response);
+}
+
+export async function retryEditTransaction(id: number) {
+  const response = await api.post(`/admin/edit/transactions/${id}/retry`);
+  return unwrapResponse(response);
+}
+
+export async function reprocessEditTransaction(id: number) {
+  const response = await api.post(`/admin/edit/transactions/${id}/reprocess`);
+  return unwrapResponse(response);
+}
+
+// Transaction Types
+export async function getEditTransactionTypes(): Promise<EditTransactionType[]> {
+  const response = await api.get('/admin/edit/transaction-types');
+  return unwrapResponse(response);
+}
+
+// Format Specs
+export async function getEditFormatSpecs(): Promise<EditFormatSpec[]> {
+  const response = await api.get('/admin/edit/format-specs');
+  return unwrapResponse(response);
+}
+
+export async function getEditFormatSpecFields(specId: string): Promise<EditFormatSpecField[]> {
+  const response = await api.get(`/admin/edit/format-specs/${specId}/fields`);
+  return unwrapResponse(response);
+}
+
+export async function importEditFormatSpec(data: { fileName: string; fileContent: string; partnerCode?: string; typeCode?: string }) {
+  const response = await api.post('/admin/edit/format-specs/import', data);
+  return unwrapResponse(response);
+}
+
+export async function autoMapEditFormatSpec(specId: string) {
+  const response = await api.post(`/admin/edit/format-specs/${specId}/auto-map`);
+  return unwrapResponse(response);
+}
+
+export async function generateEditFieldMaps(specId: string) {
+  const response = await api.post(`/admin/edit/format-specs/${specId}/generate-maps`);
+  return unwrapResponse(response);
+}
+
+export async function deleteEditFormatSpec(specId: string) {
+  const response = await api.delete(`/admin/edit/format-specs/${specId}`);
+  return unwrapResponse(response);
+}
+
+// Workflow Providers
+export async function getEditWorkflowProviders(): Promise<EditWorkflowProviderConfig[]> {
+  const response = await api.get('/admin/edit/workflow-providers');
+  return unwrapResponse(response);
+}
+
+export async function testEditWorkflowProvider(id: string) {
+  const response = await api.post(`/admin/edit/workflow-providers/${id}/test`);
+  return unwrapResponse(response);
+}
+
+// ===== EdIT (EDI Integration) API =====
+
+async function editApiFetch(endpoint: string, options?: { method?: string; data?: unknown }) {
+  const method = options?.method || 'GET';
+  try {
+    let response;
+    switch (method) {
+      case 'POST': response = await rawApi.post(`/edit${endpoint}`, options?.data); break;
+      case 'PUT': response = await rawApi.put(`/edit${endpoint}`, options?.data); break;
+      case 'DELETE': response = await rawApi.delete(`/edit${endpoint}`); break;
+      default: response = await rawApi.get(`/edit${endpoint}`);
+    }
+    return unwrapResponse(response);
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err)) {
+      const serverMessage = err.response?.data?.error?.message;
+      if (serverMessage) throw new Error(serverMessage);
+    }
+    throw err;
+  }
 }

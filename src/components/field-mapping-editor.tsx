@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Save, RotateCcw, Trash2, Plus, X, Link2 } from 'lucide-react';
+import { Save, RotateCcw, Trash2, Plus, X, Link2, ArrowLeft, ArrowRight, ArrowLeftRight } from 'lucide-react';
 import { Card, Button, StatusBadge, Modal } from '@/components/shared';
 import { useModal } from '@shared/hooks';
 import {
@@ -30,6 +30,7 @@ interface EntityDef {
   sysproTable: string;
   connectTable: string;
   keyField?: { syspro: string; connect: string };
+  customForm?: { formType: string; table: string; keyFieldName?: string };
   fields: Record<string, FieldDef>;
 }
 
@@ -43,6 +44,8 @@ interface FieldMappingEditorProps {
   entityType: string;
   baseMapping: BaseMapping;
   customOverrides: unknown;
+  fieldDirections?: Record<string, string> | null;
+  defaultWritebackByEntity?: Record<string, WritebackConfig> | null;
 }
 
 interface WorkingMapping {
@@ -56,6 +59,9 @@ interface WorkingMapping {
   defaultValue: string;
   isCustom: boolean;
   isDisabled: boolean;
+  syncDirection: string;
+  isCustomForm?: boolean;
+  isWriteback?: boolean;
 }
 
 interface SysproFieldInfo {
@@ -64,6 +70,9 @@ interface SysproFieldInfo {
   type?: string;
   required?: boolean;
   description?: string;
+  isCustomForm?: boolean;
+  prompt?: string;
+  length?: number;
 }
 
 interface ConnectFieldInfo {
@@ -82,12 +91,47 @@ interface LinePosition {
   sysproField: string;
 }
 
+interface WritebackConfig {
+  enabled: boolean;
+  formType: string;
+  keyFieldName?: string;
+  fields: Record<string, { connectField: string; type?: string; description?: string }>;
+}
+
 interface CustomOverrides {
   overrides?: Record<string, Partial<FieldDef>>;
   disabled?: string[];
   custom?: Record<string, FieldDef>;
+  fieldDirections?: Record<string, string>;
+  writebackFields?: WritebackConfig;
   updatedAt?: string;
 }
+
+/** Display-friendly names for entity tab labels (raw keys like "cmsAccount" are ugly) */
+const ENTITY_DISPLAY_NAMES: Record<string, string> = {
+  cmsAccount: 'Account',
+  crmContact: 'Contact',
+  crmOrganization: 'Organization',
+  customerHeaderSoldTo: 'Customer Sold-To',
+  customerHeaderShipTo: 'Customer Ship-To',
+  customerMultiAddress: 'Multi Address',
+  supplierAddress: 'Supplier Address',
+  accountHeaderSoldTo: 'Account Sold-To',
+  accountHeaderShipTo: 'Account Ship-To',
+  cmsAddress: 'CMS Address',
+  contactWorkAddress: 'Contact Work',
+  contactHomeAddress: 'Contact Home',
+  contactMultiAddress: 'Contact Multi',
+};
+
+const ENRICHED_FIELDS = [
+  { name: '[Enriched] ConnectId', value: 'Id', description: 'Connect account UUID' },
+  { name: '[Enriched] SyncStatus', value: 'SyncStatus', description: 'Sync status from mapping table' },
+  { name: '[Enriched] LastSyncedAt', value: 'SyncUpdatedAt', description: 'Last sync timestamp' },
+  { name: '[Enriched] SyncCreatedAt', value: 'SyncCreatedAt', description: 'First sync timestamp' },
+  { name: '[Enriched] TerritoryId', value: 'TerritoryId', description: 'Territory GUID' },
+  { name: '[Enriched] TerritoryName', value: 'TerritoryName', description: 'Territory name (resolved)' },
+];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -99,6 +143,7 @@ function buildWorkingMappings(
 ): Record<string, WorkingMapping> {
   const result: Record<string, WorkingMapping> = {};
   const disabled = new Set(overrides?.disabled ?? []);
+  const fieldDirections = overrides?.fieldDirections ?? {};
 
   // Base fields
   for (const [sysproField, def] of Object.entries(entityFields)) {
@@ -114,6 +159,7 @@ function buildWorkingMappings(
       defaultValue: override?.defaultValue ?? def.defaultValue ?? '',
       isCustom: false,
       isDisabled: disabled.has(sysproField),
+      syncDirection: fieldDirections[sysproField] ?? '',
     };
   }
 
@@ -131,7 +177,35 @@ function buildWorkingMappings(
         defaultValue: def.defaultValue ?? '',
         isCustom: true,
         isDisabled: false,
+        syncDirection: fieldDirections[sysproField] ?? '',
       };
+    }
+  }
+
+  // Import writeback fields as custom form mappings
+  if (overrides?.writebackFields?.fields) {
+    for (const [sysproField, wbField] of Object.entries(overrides.writebackFields.fields)) {
+      if (!result[sysproField]) {
+        result[sysproField] = {
+          connect: wbField.connectField ?? '',
+          type: wbField.type ?? 'alpha',
+          required: false,
+          description: wbField.description ?? '',
+          transform: '',
+          valueMap: {},
+          fixedValue: '',
+          defaultValue: '',
+          isCustom: false,
+          isDisabled: false,
+          syncDirection: 'to_erp',
+          isCustomForm: true,
+          isWriteback: true,
+        };
+      } else {
+        // Field already exists — mark it as writeback
+        result[sysproField].isWriteback = true;
+        result[sysproField].isCustomForm = true;
+      }
     }
   }
 
@@ -140,13 +214,25 @@ function buildWorkingMappings(
 
 function computeOverridesPayload(
   baseFields: Record<string, FieldDef>,
-  working: Record<string, WorkingMapping>
-): { overrides: Record<string, Partial<FieldDef>>; disabled: string[]; custom: Record<string, FieldDef> } {
+  working: Record<string, WorkingMapping>,
+  customFormMeta?: { formType: string; table: string; keyFieldName?: string } | null
+): { overrides: Record<string, Partial<FieldDef>>; disabled: string[]; custom: Record<string, FieldDef>; fieldDirections: Record<string, string>; writebackFields?: WritebackConfig } {
   const overrides: Record<string, Partial<FieldDef>> = {};
   const disabled: string[] = [];
   const custom: Record<string, FieldDef> = {};
+  const fieldDirections: Record<string, string> = {};
 
   for (const [field, wm] of Object.entries(working)) {
+    // Collect field direction overrides (non-empty means override)
+    if (wm.syncDirection) {
+      fieldDirections[field] = wm.syncDirection;
+    }
+
+    if (wm.isCustomForm) {
+      // Custom form fields handled by writebackFields
+      continue;
+    }
+
     if (wm.isCustom) {
       custom[field] = {
         connect: wm.connect,
@@ -181,7 +267,29 @@ function computeOverridesPayload(
     }
   }
 
-  return { overrides, disabled, custom };
+  // Build writebackFields from custom form mappings marked as writeback
+  const writebackEntries = Object.entries(working).filter(
+    ([, wm]) => wm.isCustomForm && wm.isWriteback && wm.connect
+  );
+
+  let writebackFields: WritebackConfig | undefined;
+  if (writebackEntries.length > 0 && customFormMeta?.formType) {
+    writebackFields = {
+      enabled: true,
+      formType: customFormMeta.formType,
+      keyFieldName: customFormMeta.keyFieldName,
+      fields: {},
+    };
+    for (const [field, wm] of writebackEntries) {
+      writebackFields.fields[field] = {
+        connectField: wm.connect,
+        type: wm.type || 'alpha',
+        description: wm.description || '',
+      };
+    }
+  }
+
+  return { overrides, disabled, custom, fieldDirections, writebackFields };
 }
 
 // ---------------------------------------------------------------------------
@@ -202,6 +310,27 @@ function TypeBadge({ type }: { type: string }) {
   return (
     <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${cls}`}>
       {type || 'string'}
+    </span>
+  );
+}
+
+function DirectionBadge({ direction, hasOverride }: { direction?: string; hasOverride?: boolean }) {
+  if (!direction) return null;
+
+  const config: Record<string, { icon: typeof ArrowLeft; label: string; cls: string }> = {
+    from_erp: { icon: ArrowLeft, label: 'From ERP', cls: 'bg-blue-500/10 text-blue-400' },
+    to_erp: { icon: ArrowRight, label: 'To ERP', cls: 'bg-orange-500/10 text-orange-400' },
+    bidirectional: { icon: ArrowLeftRight, label: 'Bidirectional', cls: 'bg-purple-500/10 text-purple-400' },
+  };
+
+  const { icon: Icon, label, cls } = config[direction] || config.from_erp;
+
+  return (
+    <span
+      className={`inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded ${cls} ${hasOverride ? 'ring-1 ring-current/30' : ''}`}
+      title={`${label}${hasOverride ? ' (override)' : ''}`}
+    >
+      <Icon className="w-2.5 h-2.5" />
     </span>
   );
 }
@@ -278,7 +407,41 @@ function DetailPanel({ sysproField, mapping, onUpdate, onDelete, onClose }: Deta
             : <span className="text-semantic-text-disabled text-xs">No</span>
           }
         </div>
+        <div className="col-span-2">
+          <span className="text-semantic-text-faint text-xs block mb-1">Sync Direction Override</span>
+          <select
+            value={mapping.syncDirection}
+            onChange={(e) => onUpdate(sysproField, { syncDirection: e.target.value })}
+            className="text-xs bg-surface-overlay text-semantic-text-default border border-border rounded px-2 py-1.5 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
+          >
+            <option value="">Inherit (entity default)</option>
+            <option value="from_erp">From ERP</option>
+            <option value="to_erp">To ERP</option>
+            <option value="bidirectional">Bidirectional</option>
+          </select>
+          {mapping.syncDirection && (
+            <DirectionBadge direction={mapping.syncDirection} hasOverride />
+          )}
+        </div>
       </div>
+
+      {/* Writeback toggle — only for custom form fields */}
+      {mapping.isCustomForm && (
+        <div className="mt-3 space-y-1.5">
+          <label className="text-[10px] font-semibold text-semantic-text-faint uppercase tracking-wider">
+            Writeback
+          </label>
+          <label className="flex items-center gap-2 text-xs cursor-pointer">
+            <input
+              type="checkbox"
+              checked={mapping.isWriteback || false}
+              onChange={(e) => onUpdate(sysproField, { isWriteback: e.target.checked })}
+              className="rounded border-border text-primary focus:ring-primary/30"
+            />
+            <span className="text-semantic-text-secondary">Write back to ERP on sync</span>
+          </label>
+        </div>
+      )}
 
       {mapping.description && (
         <div className="mt-3">
@@ -417,6 +580,8 @@ interface EntityMappingViewProps {
   selectedSysproField: string | null;
   sysproFields: SysproFieldInfo[];
   connectFields: ConnectFieldInfo[];
+  customFormFields: SysproFieldInfo[];
+  customFormMeta: { formType: string; table: string } | null;
   onSelectMapping: (field: string | null) => void;
   onSelectSysproForLink: (field: string) => void;
   onSelectConnectForLink: (field: string) => void;
@@ -432,6 +597,8 @@ function EntityMappingView({
   selectedSysproField,
   sysproFields,
   connectFields,
+  customFormFields,
+  customFormMeta,
   onSelectMapping,
   onSelectSysproForLink,
   onSelectConnectForLink,
@@ -448,16 +615,26 @@ function EntityMappingView({
   const connectKeyField = entity.keyField?.connect || '';
 
   // All SYSPRO field names: from API fields + any from working mappings (custom ones)
+  // Exclude custom form fields — they render in their own section
+  const customFormFieldNames = useMemo(() => {
+    return new Set(customFormFields.map(f => f.name));
+  }, [customFormFields]);
+
   const allSysproFieldNames = useMemo(() => {
     const fromApi = new Set(sysproFields.map(f => f.name));
-    const fromMappings = new Set(Object.keys(workingMappings));
-    return [...new Set([...fromApi, ...fromMappings])];
-  }, [sysproFields, workingMappings]);
+    const fromMappings = new Set(
+      Object.entries(workingMappings)
+        .filter(([, wm]) => !wm.isCustomForm)
+        .map(([field]) => field)
+    );
+    return [...new Set([...fromApi, ...fromMappings])].filter(f => !customFormFieldNames.has(f));
+  }, [sysproFields, workingMappings, customFormFieldNames]);
 
-  // All Connect field names: from API fields
+  // All Connect field names: from API fields (exclude enriched — they render separately)
+  const enrichedFieldValues = useMemo(() => new Set(ENRICHED_FIELDS.map(ef => ef.value)), []);
   const allConnectFieldNames = useMemo(() => {
-    return connectFields.map(f => f.name);
-  }, [connectFields]);
+    return connectFields.map(f => f.name).filter(f => !enrichedFieldValues.has(f));
+  }, [connectFields, enrichedFieldValues]);
 
   // Which connect fields are mapped
   const mappedConnectFields = useMemo(() => {
@@ -572,7 +749,7 @@ function EntityMappingView({
         </div>
       )}
 
-      <div ref={containerRef} className="relative flex gap-0 min-h-[200px]">
+      <div ref={containerRef} className="relative flex gap-0 min-h-[200px] max-h-[70vh] overflow-y-auto">
         {/* Left panel — ERP / SYSPRO fields */}
         <div className="w-[280px] shrink-0 space-y-1.5 py-2 pr-4 z-10">
           <div className="text-[10px] font-semibold text-semantic-text-faint uppercase tracking-wider mb-2 px-1">
@@ -615,17 +792,69 @@ function EntityMappingView({
                   {wm?.required && <span className="text-[10px] text-danger shrink-0">*</span>}
                   {wm?.isCustom && <span className="text-[9px] bg-primary/20 text-primary px-1 rounded shrink-0">custom</span>}
                 </div>
-                <TypeBadge type={wm?.type || 'string'} />
+                <div className="flex items-center gap-1">
+                  {wm?.syncDirection && <DirectionBadge direction={wm.syncDirection} hasOverride />}
+                  <TypeBadge type={wm?.type || 'string'} />
+                </div>
               </div>
             );
           })}
+
+          {/* Custom Form Fields */}
+          {customFormFields.length > 0 && (
+            <>
+              <div className="text-[9px] font-semibold text-amber-400/70 uppercase tracking-wider mt-3 mb-1.5 px-1 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400/50" />
+                Custom Form ({customFormMeta?.table || 'ERP+'})
+              </div>
+              {customFormFields.map(cf => {
+                const wm = workingMappings[cf.name];
+                const isMapped = wm?.connect && !wm?.isDisabled;
+                const isSelected = selectedMapping === cf.name;
+                const isLinkSource = linkMode && selectedSysproField === cf.name;
+                const isWriteback = wm?.isWriteback;
+
+                return (
+                  <button
+                    key={cf.name}
+                    ref={el => { if (el) leftRefs.current[cf.name] = el; }}
+                    type="button"
+                    onClick={() => handleLeftClick(cf.name)}
+                    className={[
+                      'w-full text-left px-2 py-1 rounded text-xs transition-all border',
+                      isSelected ? 'bg-amber-500/20 border-amber-500/50 ring-1 ring-amber-500/30' :
+                      isLinkSource ? 'bg-primary/10 border-primary/30 ring-1 ring-primary/30' :
+                      isMapped ? 'bg-amber-500/10 border-amber-500/20 hover:border-amber-500/40' :
+                      'bg-surface-overlay/50 border-border/50 hover:border-border opacity-60 hover:opacity-100',
+                    ].join(' ')}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span className={`font-mono truncate ${isMapped ? 'text-amber-300' : 'text-semantic-text-faint'}`}>
+                        {cf.name}
+                      </span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {isWriteback && (
+                          <span className="text-[8px] bg-green-500/20 text-green-400 px-1 rounded">WB</span>
+                        )}
+                        <span className="text-[8px] bg-amber-500/15 text-amber-400/80 px-1 rounded">
+                          {customFormMeta?.formType || 'CF'}
+                        </span>
+                      </div>
+                    </div>
+                    {cf.prompt && cf.prompt !== cf.name && (
+                      <div className="text-[10px] text-semantic-text-faint truncate">{cf.prompt}</div>
+                    )}
+                  </button>
+                );
+              })}
+            </>
+          )}
         </div>
 
         {/* SVG connection lines */}
         <svg
           ref={svgRef}
-          className="absolute inset-0 w-full h-full pointer-events-none z-0"
-          style={{ overflow: 'visible' }}
+          className="absolute inset-0 w-full h-full pointer-events-none z-0 overflow-visible"
         >
           {lines.map(line => {
             const isSelected = selectedMapping === line.sysproField;
@@ -715,6 +944,46 @@ function EntityMappingView({
               </div>
             );
           })}
+
+          {/* Enriched fields for writeback */}
+          <div className="text-[9px] font-semibold text-green-400/70 uppercase tracking-wider mt-3 mb-1.5 px-1 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400/50" />
+            Enriched (Sync)
+          </div>
+          {ENRICHED_FIELDS.map(ef => {
+            const isMapped = mappedConnectFields.has(ef.value);
+            const isLinkTarget = linkMode && selectedSysproField;
+            const mappedEntry = Object.entries(workingMappings).find(
+              ([, wm]) => wm.connect === ef.value && !wm.isDisabled
+            );
+            const isSelected = mappedEntry ? selectedMapping === mappedEntry[0] : false;
+
+            return (
+              <div
+                key={ef.value}
+                ref={el => { rightRefs.current[ef.value] = el; }}
+                role="button"
+                tabIndex={0}
+                onClick={() => handleRightClick(ef.value)}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') handleRightClick(ef.value); }}
+                className={[
+                  'flex flex-col px-3 py-1.5 rounded-md border cursor-pointer transition-all text-sm',
+                  isSelected ? 'bg-green-500/20 border-green-500/50 ring-1 ring-green-500/30' :
+                  isLinkTarget ? 'bg-primary/5 border-primary/20 hover:bg-primary/10 hover:border-primary/40 cursor-crosshair' :
+                  isMapped ? 'bg-green-500/10 border-green-500/20' :
+                  'bg-surface-overlay/50 border-border/50 hover:border-border opacity-60 hover:opacity-100',
+                ].join(' ')}
+              >
+                <div className="flex items-center justify-between gap-1">
+                  <code className={`text-xs font-medium truncate ${isMapped ? 'text-green-300' : 'text-semantic-text-faint'}`}>
+                    {ef.value}
+                  </code>
+                  <span className="text-[8px] bg-green-500/15 text-green-400/80 px-1 rounded">Sync</span>
+                </div>
+                <div className="text-[10px] text-semantic-text-faint truncate">{ef.description}</div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -736,20 +1005,18 @@ function EntityMappingView({
 // Main component
 // ---------------------------------------------------------------------------
 
-export function FieldMappingEditor({ entityType, baseMapping, customOverrides }: FieldMappingEditorProps) {
+export function FieldMappingEditor({ entityType, baseMapping, customOverrides, defaultWritebackByEntity }: FieldMappingEditorProps) {
   const queryClient = useQueryClient();
   const resetModal = useModal();
 
   const entities = baseMapping?.entities || {};
   const entityNames = Object.keys(entities);
   const [activeEntity, setActiveEntity] = useState<string>(entityNames[0] || '');
-
-  // Working state
-  const [workingMappings, setWorkingMappings] = useState<Record<string, WorkingMapping>>({});
   const [isDirty, setIsDirty] = useState(false);
   const [selectedMapping, setSelectedMapping] = useState<string | null>(null);
   const [selectedSysproField, setSelectedSysproField] = useState<string | null>(null);
   const [linkMode, setLinkMode] = useState(false);
+  const [workingMappings, setWorkingMappings] = useState<Record<string, WorkingMapping>>({});
 
   // Initialize working mappings when entity or overrides change
   useEffect(() => {
@@ -763,12 +1030,22 @@ export function FieldMappingEditor({ entityType, baseMapping, customOverrides }:
     const currentEntity = entities[activeEntity];
     if (!currentEntity) return;
     const overrides = (customOverrides as CustomOverrides) ?? null;
-    setWorkingMappings(buildWorkingMappings(currentEntity.fields, overrides));
+
+    // Merge per-entity default writeback fields if no DB writeback config exists
+    let effectiveOverrides = overrides;
+    if (!overrides?.writebackFields && defaultWritebackByEntity?.[activeEntity]) {
+      effectiveOverrides = {
+        ...(overrides || {}),
+        writebackFields: defaultWritebackByEntity[activeEntity],
+      };
+    }
+
+    setWorkingMappings(buildWorkingMappings(currentEntity.fields, effectiveOverrides));
     setIsDirty(false);
     setSelectedMapping(null);
     setSelectedSysproField(null);
     setLinkMode(false);
-  }, [activeEntity, baseMapping, customOverrides, entities]);
+  }, [activeEntity, baseMapping, customOverrides, entities, defaultWritebackByEntity]);
 
   // Fetch SYSPRO fields for current entity
   const { data: sysproFieldsRes } = useQuery({
@@ -777,10 +1054,12 @@ export function FieldMappingEditor({ entityType, baseMapping, customOverrides }:
     enabled: !!activeEntity,
   });
 
-  // Fetch Connect fields for current entity type
+  // Fetch Connect fields for current entity type and active sub-entity.
+  // When multiple sub-entities exist (e.g. activity: standard/opportunity/case/project),
+  // pass activeEntity so the endpoint returns fields from the correct source table.
   const { data: connectFieldsRes } = useQuery({
-    queryKey: ['connect', 'connect-fields', entityType],
-    queryFn: () => getConnectFields(entityType),
+    queryKey: ['connect', 'connect-fields', entityType, activeEntity],
+    queryFn: () => getConnectFields(entityType, activeEntity || undefined),
     enabled: !!entityType,
   });
 
@@ -789,8 +1068,48 @@ export function FieldMappingEditor({ entityType, baseMapping, customOverrides }:
     return data?.fields ?? data?.queryFields ?? [];
   }, [sysproFieldsRes]);
 
+  const customFormFields: SysproFieldInfo[] = useMemo(() => {
+    const data = sysproFieldsRes?.data;
+    const fromApi = (data?.customFormFields ?? []).map((f: SysproFieldInfo) => ({
+      ...f,
+      isCustomForm: true,
+    }));
+
+    // If COMQFM returned fields, use those
+    if (fromApi.length > 0) return fromApi;
+
+    // Otherwise, synthesize from writeback entries in workingMappings
+    // This covers cases where SYSPRO is unreachable but defaults are loaded
+    const fromMappings = Object.entries(workingMappings)
+      .filter(([, wm]) => wm.isCustomForm)
+      .map(([name, wm]) => ({
+        name,
+        prompt: wm.description || name,
+        type: wm.type || 'alpha',
+        isCustomForm: true,
+      }));
+
+    return fromMappings;
+  }, [sysproFieldsRes, workingMappings]);
+
+  const customFormMeta = useMemo(() => {
+    // From API response, or fall back to base mapping entity definition
+    const fromApi = sysproFieldsRes?.data?.customForm;
+    if (fromApi) return fromApi;
+    const currentEntity = entities[activeEntity];
+    return currentEntity?.customForm ?? null;
+  }, [sysproFieldsRes, entities, activeEntity]);
+
   const connectFieldsList: ConnectFieldInfo[] = useMemo(() => {
-    return connectFieldsRes?.data?.fields ?? [];
+    const dbFields = connectFieldsRes?.data?.fields ?? [];
+    const enriched = ENRICHED_FIELDS.map(ef => ({
+      name: ef.value,
+      type: 'string',
+      sqlType: 'enriched',
+      maxLength: 0,
+      nullable: true,
+    }));
+    return [...dbFields, ...enriched];
   }, [connectFieldsRes]);
 
   // Save mutation
@@ -798,7 +1117,7 @@ export function FieldMappingEditor({ entityType, baseMapping, customOverrides }:
     mutationFn: () => {
       const currentEntity = entities[activeEntity];
       if (!currentEntity) throw new Error('No active entity');
-      const payload = computeOverridesPayload(currentEntity.fields, workingMappings);
+      const payload = computeOverridesPayload(currentEntity.fields, workingMappings, customFormMeta);
       return saveConnectMappingOverrides(entityType, payload);
     },
     onSuccess: () => {
@@ -840,8 +1159,8 @@ export function FieldMappingEditor({ entityType, baseMapping, customOverrides }:
       const wm = prev[field];
       if (!wm) return prev;
 
-      if (wm.isCustom) {
-        // Remove custom mappings entirely
+      if (wm.isCustom || wm.isCustomForm) {
+        // Remove custom / custom form mappings entirely
         const next = { ...prev };
         delete next[field];
         return next;
@@ -873,11 +1192,18 @@ export function FieldMappingEditor({ entityType, baseMapping, customOverrides }:
     if (!selectedSysproField || !linkMode) return;
 
     const existing = workingMappings[selectedSysproField];
+    const isCustomFormField = customFormFields.some(cf => cf.name === selectedSysproField);
+
     if (existing) {
       // Update existing mapping's connect target
-      handleUpdateMapping(selectedSysproField, { connect: connectField, isDisabled: false });
+      const updates: Partial<WorkingMapping> = { connect: connectField, isDisabled: false };
+      if (isCustomFormField) {
+        updates.isCustomForm = true;
+        updates.isWriteback = existing.isWriteback ?? true;
+      }
+      handleUpdateMapping(selectedSysproField, updates);
     } else {
-      // Create new custom mapping
+      // Create new mapping
       setWorkingMappings(prev => ({
         ...prev,
         [selectedSysproField]: {
@@ -889,8 +1215,11 @@ export function FieldMappingEditor({ entityType, baseMapping, customOverrides }:
           valueMap: {},
           fixedValue: '',
           defaultValue: '',
-          isCustom: true,
+          isCustom: !isCustomFormField,
           isDisabled: false,
+          syncDirection: isCustomFormField ? 'to_erp' : '',
+          isCustomForm: isCustomFormField,
+          isWriteback: isCustomFormField,
         },
       }));
       setIsDirty(true);
@@ -899,7 +1228,7 @@ export function FieldMappingEditor({ entityType, baseMapping, customOverrides }:
     setSelectedSysproField(null);
     setLinkMode(false);
     setSelectedMapping(selectedSysproField);
-  }, [selectedSysproField, linkMode, workingMappings, handleUpdateMapping]);
+  }, [selectedSysproField, linkMode, workingMappings, handleUpdateMapping, customFormFields]);
 
   const handleSelectMapping = useCallback((field: string | null) => {
     setSelectedMapping(field);
@@ -981,7 +1310,7 @@ export function FieldMappingEditor({ entityType, baseMapping, customOverrides }:
                     : 'border-transparent text-semantic-text-subtle hover:text-semantic-text-default hover:border-border'
                 }`}
               >
-                {name.charAt(0).toUpperCase() + name.slice(1)}
+                {ENTITY_DISPLAY_NAMES[name] || name.charAt(0).toUpperCase() + name.slice(1)}
                 <span className="ml-1.5 text-xs text-semantic-text-faint">{count}</span>
               </button>
             );
@@ -1004,6 +1333,8 @@ export function FieldMappingEditor({ entityType, baseMapping, customOverrides }:
             selectedSysproField={selectedSysproField}
             sysproFields={sysproFields}
             connectFields={connectFieldsList}
+            customFormFields={customFormFields}
+            customFormMeta={customFormMeta}
             onSelectMapping={handleSelectMapping}
             onSelectSysproForLink={handleSelectSysproForLink}
             onSelectConnectForLink={handleSelectConnectForLink}

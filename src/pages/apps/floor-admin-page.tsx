@@ -10,8 +10,6 @@ import {
   StatusBadge,
   Tabs,
   LoadingSpinner,
-  PageHeader,
-  TableCard,
 } from '@/components/shared';
 import type { ColumnDef, TabItem } from '@/components/shared';
 import {
@@ -149,6 +147,7 @@ export default function FloorAdminPage() {
   const { data: dashboardData, isLoading: dashboardLoading } = useQuery({
     queryKey: ['admin', 'floor', 'dashboard'],
     queryFn: getFloorDashboard,
+    enabled: activeTab === 'dashboard',
     refetchInterval: 15000,
   });
 
@@ -373,33 +372,33 @@ export default function FloorAdminPage() {
   // ---- Column Definitions ----
 
   const operatorColumns: ColumnDef<FloorActiveOperator>[] = [
-    { key: 'employeeCode', label: 'Employee', sortable: true, render: (_v, row) => <span className="font-medium text-semantic-text-default">{row.employeeCode} - {row.employeeName || ''}</span> },
-    { key: 'workCentre', label: 'Work Centre', sortable: true, render: (val) => <span className="text-semantic-text-faint">{val || '-'}</span> },
-    { key: 'clockInTime', label: 'Clock In', width: 100, render: (val) => <span className="text-semantic-text-faint">{val ? new Date(val).toLocaleTimeString() : '-'}</span> },
-    { key: 'currentJob', label: 'Current Job', sortable: true, render: (val) => <span className="text-semantic-text-faint">{val || '-'}</span> },
+    { key: 'employeeCode', label: 'Employee', sortable: true, render: (_v, row) => <span className="font-medium text-dark-700">{row.employeeCode} - {row.employeeName || ''}</span> },
+    { key: 'workCentre', label: 'Work Centre', sortable: true, render: (val) => <span className="text-dark-400">{val || '-'}</span> },
+    { key: 'clockInTime', label: 'Clock In', width: 100, render: (val) => <span className="text-dark-400">{val ? new Date(val).toLocaleTimeString() : '-'}</span> },
+    { key: 'currentJob', label: 'Current Job', sortable: true, render: (val) => <span className="text-dark-400">{val || '-'}</span> },
     { key: 'status', label: 'Status', width: 100, render: (val) => <StatusBadge status={val === 'Working' ? 'success' : val === 'Break' ? 'warning' : 'neutral'} label={val || 'Unknown'} size="sm" /> },
   ];
 
   const jobColumns: ColumnDef<FloorActiveJob>[] = [
-    { key: 'jobNumber', label: 'Job #', width: 120, sortable: true, render: (val) => <span className="font-medium text-semantic-text-default">{val || '-'}</span> },
-    { key: 'stockCode', label: 'Stock Code', sortable: true, render: (val) => <span className="text-semantic-text-faint">{val || '-'}</span> },
-    { key: 'workCentre', label: 'Work Centre', sortable: true, render: (val) => <span className="text-semantic-text-faint">{val || '-'}</span> },
-    { key: 'operator', label: 'Operator', render: (val) => <span className="text-semantic-text-faint">{val || '-'}</span> },
-    { key: 'qtyDone', label: 'Qty Done', width: 80, render: (val) => <span className="text-semantic-text-faint">{val || 0}</span> },
+    { key: 'jobNumber', label: 'Job #', width: 120, sortable: true, render: (val) => <span className="font-medium text-dark-700">{val || '-'}</span> },
+    { key: 'stockCode', label: 'Stock Code', sortable: true, render: (val) => <span className="text-dark-400">{val || '-'}</span> },
+    { key: 'workCentre', label: 'Work Centre', sortable: true, render: (val) => <span className="text-dark-400">{val || '-'}</span> },
+    { key: 'operator', label: 'Operator', render: (val) => <span className="text-dark-400">{val || '-'}</span> },
+    { key: 'qtyDone', label: 'Qty Done', width: 80, render: (val) => <span className="text-dark-400">{val || 0}</span> },
     { key: 'status', label: 'Status', width: 110, render: (val) => <StatusBadge status={val === 'In Progress' ? 'success' : val === 'Paused' ? 'warning' : 'neutral'} label={val || 'Unknown'} size="sm" /> },
   ];
 
   const reasonCodeColumns: ColumnDef<FloorReasonCode>[] = [
-    { key: 'ReasonCode', label: 'Code', width: 120, sortable: true, filterable: true, render: (val) => <span className="font-semibold text-semantic-text-default">{val}</span> },
-    { key: 'Description', label: 'Description', sortable: true, render: (val) => <span className="text-semantic-text-subtle">{val || '-'}</span> },
+    { key: 'ReasonCode', label: 'Code', width: 120, sortable: true, filterable: true, render: (val) => <span className="font-semibold text-dark-700">{val}</span> },
+    { key: 'Description', label: 'Description', sortable: true, render: (val) => <span className="text-dark-500">{val || '-'}</span> },
     { key: 'ReasonType', label: 'Type', width: 140, sortable: true, filterable: true, filterType: 'select', filterOptions: REASON_TYPES.map(t => ({ value: t, label: t })), render: (val) => <StatusBadge status={getReasonTypeBadge(val)} label={val} size="sm" /> },
     { key: 'IsActive', label: 'Status', width: 90, sortable: true, render: (val) => <StatusBadge status={val ? 'success' : 'neutral'} label={val ? 'Active' : 'Inactive'} size="sm" /> },
     {
       key: 'ReasonCode', label: 'Actions', width: 100, sortable: false,
       render: (_val, row) => (
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={() => openEditReason(row)} className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors" title="Edit"><Edit className="w-4 h-4" /></button>
-          <button type="button" onClick={() => deleteReasonModal.open(row)} className="p-1.5 text-semantic-text-faint hover:text-danger rounded hover:bg-interactive-hover transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+          <button type="button" onClick={() => openEditReason(row)} className="p-1.5 text-dark-400 hover:text-primary rounded hover:bg-dark-100 transition-colors" title="Edit"><Edit className="w-4 h-4" /></button>
+          <button type="button" onClick={() => deleteReasonModal.open(row)} className="p-1.5 text-dark-400 hover:text-danger rounded hover:bg-dark-100 transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
         </div>
       ),
     },
@@ -407,35 +406,35 @@ export default function FloorAdminPage() {
 
   const lotSerialColumns: ColumnDef<FloorLotSerialRule>[] = [
     { key: 'RuleType', label: 'Type', width: 90, sortable: true, render: (val) => <StatusBadge status={val === 'LOT' ? 'info' : 'success'} label={val} size="sm" /> },
-    { key: 'StockCode', label: 'Stock Code', sortable: true, render: (val) => <span className={val ? 'text-semantic-text-default' : 'text-semantic-text-faint'}>{val || 'Any'}</span> },
-    { key: 'ProductClass', label: 'Product Class', sortable: true, render: (val) => <span className={val ? 'text-semantic-text-default' : 'text-semantic-text-faint'}>{val || 'Any'}</span> },
-    { key: 'Prefix', label: 'Pattern', render: (_val, row) => <span className="font-mono text-semantic-text-faint">{row.Prefix || ''}{row.DateFormat ? `[${row.DateFormat}]` : ''}[{row.SequenceDigits || 4}]</span> },
-    { key: 'ResetFrequency', label: 'Reset', width: 100, render: (val) => <span className="text-semantic-text-faint text-xs">{val || 'NEVER'}</span> },
+    { key: 'StockCode', label: 'Stock Code', sortable: true, render: (val) => <span className={val ? 'text-dark-700' : 'text-dark-400'}>{val || 'Any'}</span> },
+    { key: 'ProductClass', label: 'Product Class', sortable: true, render: (val) => <span className={val ? 'text-dark-700' : 'text-dark-400'}>{val || 'Any'}</span> },
+    { key: 'Prefix', label: 'Pattern', render: (_val, row) => <span className="font-mono text-dark-400">{row.Prefix || ''}{row.DateFormat ? `[${row.DateFormat}]` : ''}[{row.SequenceDigits || 4}]</span> },
+    { key: 'ResetFrequency', label: 'Reset', width: 100, render: (val) => <span className="text-dark-400 text-xs">{val || 'NEVER'}</span> },
     { key: 'IsActive', label: 'Status', width: 90, render: (val) => <StatusBadge status={val ? 'success' : 'neutral'} label={val ? 'Active' : 'Inactive'} size="sm" /> },
     {
       key: 'RuleId', label: 'Actions', width: 100, sortable: false,
       render: (_val, row) => (
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={() => openEditLotSerial(row)} className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors" title="Edit"><Edit className="w-4 h-4" /></button>
-          <button type="button" onClick={() => deleteLotSerialModal.open(row)} className="p-1.5 text-semantic-text-faint hover:text-danger rounded hover:bg-interactive-hover transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+          <button type="button" onClick={() => openEditLotSerial(row)} className="p-1.5 text-dark-400 hover:text-primary rounded hover:bg-dark-100 transition-colors" title="Edit"><Edit className="w-4 h-4" /></button>
+          <button type="button" onClick={() => deleteLotSerialModal.open(row)} className="p-1.5 text-dark-400 hover:text-danger rounded hover:bg-dark-100 transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
         </div>
       ),
     },
   ];
 
   const checkpointColumns: ColumnDef<FloorCheckpoint>[] = [
-    { key: 'CheckpointName', label: 'Name', sortable: true, filterable: true, render: (val) => <span className="font-semibold text-semantic-text-default">{val}</span> },
+    { key: 'CheckpointName', label: 'Name', sortable: true, filterable: true, render: (val) => <span className="font-semibold text-dark-700">{val}</span> },
     { key: 'CheckpointType', label: 'Type', width: 130, sortable: true, filterable: true, filterType: 'select', filterOptions: CHECKPOINT_TYPES.map(t => ({ value: t, label: t })), render: (val) => <StatusBadge status="info" label={val} size="sm" /> },
-    { key: 'WorkCentreCode', label: 'Work Centre', width: 120, render: (val) => <span className={val ? 'text-semantic-text-default' : 'text-semantic-text-faint'}>{val || 'Any'}</span> },
-    { key: 'StockCode', label: 'Stock Code', width: 120, render: (val) => <span className={val ? 'text-semantic-text-default' : 'text-semantic-text-faint'}>{val || 'Any'}</span> },
-    { key: 'IsMandatory', label: 'Mandatory', width: 90, render: (val) => <span className={val ? 'text-danger font-medium' : 'text-semantic-text-faint'}>{val ? 'Yes' : 'No'}</span> },
+    { key: 'WorkCentreCode', label: 'Work Centre', width: 120, render: (val) => <span className={val ? 'text-dark-700' : 'text-dark-400'}>{val || 'Any'}</span> },
+    { key: 'StockCode', label: 'Stock Code', width: 120, render: (val) => <span className={val ? 'text-dark-700' : 'text-dark-400'}>{val || 'Any'}</span> },
+    { key: 'IsMandatory', label: 'Mandatory', width: 90, render: (val) => <span className={val ? 'text-danger font-medium' : 'text-dark-400'}>{val ? 'Yes' : 'No'}</span> },
     { key: 'IsActive', label: 'Status', width: 90, render: (val) => <StatusBadge status={val ? 'success' : 'neutral'} label={val ? 'Active' : 'Inactive'} size="sm" /> },
     {
       key: 'CheckpointId', label: 'Actions', width: 100, sortable: false,
       render: (_val, row) => (
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={() => openEditCheckpoint(row)} className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors" title="Edit"><Edit className="w-4 h-4" /></button>
-          <button type="button" onClick={() => deleteCheckpointModal.open(row)} className="p-1.5 text-semantic-text-faint hover:text-danger rounded hover:bg-interactive-hover transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+          <button type="button" onClick={() => openEditCheckpoint(row)} className="p-1.5 text-dark-400 hover:text-primary rounded hover:bg-dark-100 transition-colors" title="Edit"><Edit className="w-4 h-4" /></button>
+          <button type="button" onClick={() => deleteCheckpointModal.open(row)} className="p-1.5 text-dark-400 hover:text-danger rounded hover:bg-dark-100 transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
         </div>
       ),
     },
@@ -444,37 +443,22 @@ export default function FloorAdminPage() {
   // ---- Render ----
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="FloorIT"
-        description="Shop floor labor tracking configuration"
-      />
-
-      {/* Status Bar — pill style matching Licensing */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 p-4 bg-surface-raised border border-border rounded-xl">
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Service</p>
-          <StatusBadge status={status.enabled !== false ? 'success' : 'danger'} label={status.enabled !== false ? 'Connected' : 'Offline'} size="sm" />
+    <div className="p-6 space-y-6 overflow-y-auto h-full">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Factory className="w-5 h-5 text-primary" />
+          <h1 className="text-lg font-semibold text-dark-700">FloorIT Admin</h1>
+          <StatusBadge
+            status={status.enabled !== false ? 'success' : 'neutral'}
+            label={status.enabled !== false ? 'Connected' : 'Offline'}
+            size="sm"
+          />
         </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Active Operators</p>
-          <p className="text-sm font-semibold text-semantic-text-default tabular-nums">{status.activeOperators ?? '-'}</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Active Jobs</p>
-          <p className="text-sm font-semibold text-semantic-text-default tabular-nums">{status.activeJobs ?? '-'}</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Hours Today</p>
-          <p className="text-sm font-semibold text-semantic-text-default tabular-nums">{dashboard.laborStats?.totalHoursToday?.toFixed(1) || '-'}</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Qty Completed</p>
-          <p className="text-sm font-semibold text-semantic-text-default tabular-nums">{dashboard.laborStats?.qtyCompletedToday ?? '-'}</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">On Break</p>
-          <p className="text-sm font-semibold text-semantic-text-default tabular-nums">{dashboard.laborStats?.onBreak ?? '-'}</p>
+        <div className="flex items-center gap-4 text-sm text-dark-400">
+          <span><Users className="w-3.5 h-3.5 inline mr-1" />{status.activeOperators ?? '-'} operators</span>
+          <span><Briefcase className="w-3.5 h-3.5 inline mr-1" />{status.activeJobs ?? '-'} jobs</span>
+          <span>Sync: {status.syncStatus || '-'}</span>
         </div>
       </div>
 
@@ -492,14 +476,9 @@ export default function FloorAdminPage() {
           </div>
 
           {/* Active Operators */}
-          <TableCard
-            title="Active Operators"
-            icon={<Users className="w-4 h-4" />}
-            count={Array.isArray(dashboard.activeOperators) ? dashboard.activeOperators.length : 0}
-            headerActions={
-              <Button variant="ghost" size="sm" icon={<RefreshCw className="w-3.5 h-3.5" />} onClick={() => queryClient.invalidateQueries({ queryKey: ['admin', 'floor', 'dashboard'] })}>Refresh</Button>
-            }
-          >
+          <Card title="Active Operators" headerAction={
+            <Button variant="ghost" size="sm" icon={<RefreshCw className="w-3.5 h-3.5" />} onClick={() => queryClient.invalidateQueries({ queryKey: ['admin', 'floor', 'dashboard'] })}>Refresh</Button>
+          }>
             {dashboardLoading ? <div className="flex justify-center py-8"><LoadingSpinner /></div> : (
               <DataTable<FloorActiveOperator>
                 id="floor-active-operators"
@@ -508,18 +487,12 @@ export default function FloorAdminPage() {
                 rowKey="employeeCode"
                 emptyMessage="No active operators"
                 emptyIcon={Users}
-                embedded
-                showColumnPicker={false}
               />
             )}
-          </TableCard>
+          </Card>
 
           {/* Active Jobs */}
-          <TableCard
-            title="Active Jobs"
-            icon={<Briefcase className="w-4 h-4" />}
-            count={Array.isArray(dashboard.activeJobs) ? dashboard.activeJobs.length : 0}
-          >
+          <Card title="Active Jobs">
             {dashboardLoading ? <div className="flex justify-center py-8"><LoadingSpinner /></div> : (
               <DataTable<FloorActiveJob>
                 id="floor-active-jobs"
@@ -528,24 +501,19 @@ export default function FloorAdminPage() {
                 rowKey="jobNumber"
                 emptyMessage="No active jobs"
                 emptyIcon={Briefcase}
-                embedded
-                showColumnPicker={false}
               />
             )}
-          </TableCard>
+          </Card>
         </div>
       )}
 
       {/* Tab: Reason Codes */}
       {activeTab === 'reason-codes' && (
-        <TableCard
-          title="Reason Codes"
-          icon={<AlertTriangle className="w-4 h-4" />}
-          count={reasonCodes.length}
-          headerActions={
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-dark-400">{reasonCodes.length} codes</span>
             <Button icon={<Plus className="w-4 h-4" />} onClick={openCreateReason}>Add Reason Code</Button>
-          }
-        >
+          </div>
           {reasonCodesLoading ? <div className="flex justify-center py-8"><LoadingSpinner /></div> : (
             <DataTable<FloorReasonCode>
               id="floor-reason-codes"
@@ -556,23 +524,18 @@ export default function FloorAdminPage() {
               emptyMessage="No reason codes configured"
               emptyIcon={AlertTriangle}
               showFilters
-              embedded
-              showColumnPicker={false}
             />
           )}
-        </TableCard>
+        </div>
       )}
 
       {/* Tab: Lot/Serial Rules */}
       {activeTab === 'lot-serial' && (
-        <TableCard
-          title="Lot/Serial Rules"
-          icon={<Briefcase className="w-4 h-4" />}
-          count={lotSerialRules.length}
-          headerActions={
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-dark-400">{lotSerialRules.length} rules</span>
             <Button icon={<Plus className="w-4 h-4" />} onClick={openCreateLotSerial}>Add Rule</Button>
-          }
-        >
+          </div>
           {lotSerialLoading ? <div className="flex justify-center py-8"><LoadingSpinner /></div> : (
             <DataTable<FloorLotSerialRule>
               id="floor-lot-serial-rules"
@@ -582,23 +545,18 @@ export default function FloorAdminPage() {
               onRowClick={openEditLotSerial}
               emptyMessage="No lot/serial rules configured"
               emptyIcon={Briefcase}
-              embedded
-              showColumnPicker={false}
             />
           )}
-        </TableCard>
+        </div>
       )}
 
       {/* Tab: Checkpoints */}
       {activeTab === 'checkpoints' && (
-        <TableCard
-          title="Quality Checkpoints"
-          icon={<Clock className="w-4 h-4" />}
-          count={checkpoints.length}
-          headerActions={
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-dark-400">{checkpoints.length} checkpoints</span>
             <Button icon={<Plus className="w-4 h-4" />} onClick={openCreateCheckpoint}>Add Checkpoint</Button>
-          }
-        >
+          </div>
           {checkpointsLoading ? <div className="flex justify-center py-8"><LoadingSpinner /></div> : (
             <DataTable<FloorCheckpoint>
               id="floor-checkpoints"
@@ -609,11 +567,9 @@ export default function FloorAdminPage() {
               emptyMessage="No quality checkpoints configured"
               emptyIcon={Clock}
               showFilters
-              embedded
-              showColumnPicker={false}
             />
           )}
-        </TableCard>
+        </div>
       )}
 
       {/* Reason Code Modal */}
@@ -643,8 +599,8 @@ export default function FloorAdminPage() {
               {REASON_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </FormField>
-          <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer">
-            <input type="checkbox" checked={reasonForm.isActive} onChange={(e) => setReasonForm({ ...reasonForm, isActive: e.target.checked })} className="rounded border-border bg-surface-subtle text-primary focus:ring-interactive-focus-ring" />
+          <label className="flex items-center gap-2 text-sm text-dark-600 cursor-pointer">
+            <input type="checkbox" checked={reasonForm.isActive} onChange={(e) => setReasonForm({ ...reasonForm, isActive: e.target.checked })} className="rounded border-dark-300 bg-dark-200 text-primary focus:ring-primary/50" />
             Active
           </label>
         </div>
@@ -657,7 +613,7 @@ export default function FloorAdminPage() {
           <Button variant="danger" onClick={() => deleteReasonModal.data && deleteReasonMutation.mutate(deleteReasonModal.data.ReasonCode)} loading={deleteReasonMutation.isPending}>Delete</Button>
         </>
       }>
-        <p className="text-sm text-semantic-text-subtle">Are you sure you want to delete <strong className="text-semantic-text-default">{deleteReasonModal.data?.ReasonCode}</strong>?</p>
+        <p className="text-sm text-dark-500">Are you sure you want to delete <strong className="text-dark-700">{deleteReasonModal.data?.ReasonCode}</strong>?</p>
       </Modal>
 
       {/* Lot/Serial Rule Modal */}
@@ -697,8 +653,8 @@ export default function FloorAdminPage() {
             <FormField label="Date Format"><input type="text" value={lotSerialForm.dateFormat} onChange={(e) => setLotSerialForm({ ...lotSerialForm, dateFormat: e.target.value })} className="form-input" placeholder="YYYYMMDD" /></FormField>
             <FormField label="Seq. Digits"><input type="number" value={lotSerialForm.sequenceDigits} onChange={(e) => setLotSerialForm({ ...lotSerialForm, sequenceDigits: parseInt(e.target.value) || 4 })} className="form-input" min={1} max={10} /></FormField>
           </div>
-          <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer">
-            <input type="checkbox" checked={lotSerialForm.isActive} onChange={(e) => setLotSerialForm({ ...lotSerialForm, isActive: e.target.checked })} className="rounded border-border bg-surface-subtle text-primary focus:ring-interactive-focus-ring" />
+          <label className="flex items-center gap-2 text-sm text-dark-600 cursor-pointer">
+            <input type="checkbox" checked={lotSerialForm.isActive} onChange={(e) => setLotSerialForm({ ...lotSerialForm, isActive: e.target.checked })} className="rounded border-dark-300 bg-dark-200 text-primary focus:ring-primary/50" />
             Active
           </label>
         </div>
@@ -711,7 +667,7 @@ export default function FloorAdminPage() {
           <Button variant="danger" onClick={() => deleteLotSerialModal.data && deleteLotSerialMutation.mutate(deleteLotSerialModal.data.RuleId)} loading={deleteLotSerialMutation.isPending}>Delete</Button>
         </>
       }>
-        <p className="text-sm text-semantic-text-subtle">Are you sure you want to delete this {deleteLotSerialModal.data?.RuleType} rule?</p>
+        <p className="text-sm text-dark-500">Are you sure you want to delete this {deleteLotSerialModal.data?.RuleType} rule?</p>
       </Modal>
 
       {/* Checkpoint Modal */}
@@ -743,12 +699,12 @@ export default function FloorAdminPage() {
             <FormField label="Stock Code"><input type="text" value={checkpointForm.stockCode} onChange={(e) => setCheckpointForm({ ...checkpointForm, stockCode: e.target.value })} className="form-input" placeholder="Any" /></FormField>
           </div>
           <div className="flex items-center gap-6">
-            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer">
-              <input type="checkbox" checked={checkpointForm.isMandatory} onChange={(e) => setCheckpointForm({ ...checkpointForm, isMandatory: e.target.checked })} className="rounded border-border bg-surface-subtle text-primary focus:ring-interactive-focus-ring" />
+            <label className="flex items-center gap-2 text-sm text-dark-600 cursor-pointer">
+              <input type="checkbox" checked={checkpointForm.isMandatory} onChange={(e) => setCheckpointForm({ ...checkpointForm, isMandatory: e.target.checked })} className="rounded border-dark-300 bg-dark-200 text-primary focus:ring-primary/50" />
               Mandatory
             </label>
-            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer">
-              <input type="checkbox" checked={checkpointForm.isActive} onChange={(e) => setCheckpointForm({ ...checkpointForm, isActive: e.target.checked })} className="rounded border-border bg-surface-subtle text-primary focus:ring-interactive-focus-ring" />
+            <label className="flex items-center gap-2 text-sm text-dark-600 cursor-pointer">
+              <input type="checkbox" checked={checkpointForm.isActive} onChange={(e) => setCheckpointForm({ ...checkpointForm, isActive: e.target.checked })} className="rounded border-dark-300 bg-dark-200 text-primary focus:ring-primary/50" />
               Active
             </label>
           </div>
@@ -762,7 +718,7 @@ export default function FloorAdminPage() {
           <Button variant="danger" onClick={() => deleteCheckpointModal.data && deleteCheckpointMutation.mutate(deleteCheckpointModal.data.CheckpointId)} loading={deleteCheckpointMutation.isPending}>Delete</Button>
         </>
       }>
-        <p className="text-sm text-semantic-text-subtle">Are you sure you want to delete <strong className="text-semantic-text-default">{deleteCheckpointModal.data?.CheckpointName}</strong>?</p>
+        <p className="text-sm text-dark-500">Are you sure you want to delete <strong className="text-dark-700">{deleteCheckpointModal.data?.CheckpointName}</strong>?</p>
       </Modal>
     </div>
   );
@@ -774,9 +730,9 @@ export default function FloorAdminPage() {
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-surface-raised border border-border rounded-xl p-4">
-      <p className="text-xs text-semantic-text-faint mb-1">{label}</p>
-      <p className="text-xl font-semibold text-semantic-text-default">{value}</p>
+    <div className="bg-dark-50 border border-dark-200 rounded-xl p-4">
+      <p className="text-xs text-dark-400 mb-1">{label}</p>
+      <p className="text-xl font-semibold text-dark-700">{value}</p>
     </div>
   );
 }
@@ -784,7 +740,7 @@ function StatCard({ label, value }: { label: string; value: string }) {
 function FormField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-semantic-text-subtle mb-1">
+      <label className="block text-xs font-medium text-dark-500 mb-1">
         {label}
         {required && <span className="text-danger ml-0.5">*</span>}
       </label>

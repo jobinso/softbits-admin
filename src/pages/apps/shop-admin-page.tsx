@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  ShoppingCart, Plus, Edit, Trash2, RefreshCw, Settings, Link2, BarChart3, Mail, Users,
+  ShoppingCart, Plus, Edit, Trash2, RefreshCw, Settings, Link2, BarChart3, Mail,
   Play, Square, Zap, Wifi, WifiOff, Copy,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -13,8 +13,6 @@ import {
   StatusBadge,
   Tabs,
   LoadingSpinner,
-  PageHeader,
-  TableCard,
 } from '@/components/shared';
 import type { ColumnDef, TabItem } from '@/components/shared';
 import {
@@ -436,13 +434,13 @@ export default function ShopAdminPage() {
 
   const ecomColumns: ColumnDef<ShopConnection>[] = [
     { key: 'PlatformCode', label: 'Platform', width: 120, sortable: true, render: (val) => <StatusBadge status={String(val).toLowerCase() === 'shopify' ? 'success' : 'info'} label={val || '-'} size="sm" /> },
-    { key: 'StoreName', label: 'Store', sortable: true, render: (val, row) => <span className="font-medium text-semantic-text-default">{val || row.ShopDomain || '-'}</span> },
+    { key: 'StoreName', label: 'Store', sortable: true, render: (val, row) => <span className="font-medium text-dark-700">{val || row.ShopDomain || '-'}</span> },
     { key: 'IsActive', label: 'Status', width: 90, render: (val) => <StatusBadge status={val ? 'success' : 'neutral'} label={val ? 'Active' : 'Inactive'} size="sm" /> },
-    { key: 'LastSyncAt', label: 'Last Sync', width: 150, render: (val) => <span className="text-semantic-text-faint text-xs">{val ? new Date(val).toLocaleString() : 'Never'}</span> },
+    { key: 'LastSyncAt', label: 'Last Sync', width: 150, render: (val) => <span className="text-dark-400 text-xs">{val ? new Date(val).toLocaleString() : 'Never'}</span> },
     {
       key: 'stats', label: 'Stats', width: 200,
       render: (_val, row) => (
-        <span className="text-semantic-text-faint text-xs">
+        <span className="text-dark-400 text-xs">
           Orders: {row.stats?.orders?.total || 0} | Products: {row.stats?.products?.total || 0} | Customers: {row.stats?.customers?.total || 0}
         </span>
       ),
@@ -451,10 +449,10 @@ export default function ShopAdminPage() {
       key: 'ConnectionId', label: 'Actions', width: 180, sortable: false,
       render: (_val, row) => (
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={() => syncEcomMutation.mutate({ id: row.ConnectionId, type: 'all' })} className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors" title="Sync"><RefreshCw className="w-4 h-4" /></button>
-          <button type="button" onClick={() => openEditEcom(row)} className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors" title="Edit"><Edit className="w-4 h-4" /></button>
-          <button type="button" onClick={() => handleTestEcom(row.ConnectionId)} className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors" title="Test"><Wifi className="w-4 h-4" /></button>
-          <button type="button" onClick={() => deleteEcomModal.open(row)} className="p-1.5 text-semantic-text-faint hover:text-danger rounded hover:bg-interactive-hover transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+          <button type="button" onClick={() => syncEcomMutation.mutate({ id: row.ConnectionId, type: 'all' })} className="p-1.5 text-dark-400 hover:text-primary rounded hover:bg-dark-100 transition-colors" title="Sync"><RefreshCw className="w-4 h-4" /></button>
+          <button type="button" onClick={() => openEditEcom(row)} className="p-1.5 text-dark-400 hover:text-primary rounded hover:bg-dark-100 transition-colors" title="Edit"><Edit className="w-4 h-4" /></button>
+          <button type="button" onClick={() => handleTestEcom(row.ConnectionId)} className="p-1.5 text-dark-400 hover:text-primary rounded hover:bg-dark-100 transition-colors" title="Test"><Wifi className="w-4 h-4" /></button>
+          <button type="button" onClick={() => deleteEcomModal.open(row)} className="p-1.5 text-dark-400 hover:text-danger rounded hover:bg-dark-100 transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
         </div>
       ),
     },
@@ -462,51 +460,51 @@ export default function ShopAdminPage() {
 
   const markitConnectionColumns: ColumnDef<ShopMarkitConnection>[] = [
     { key: 'PlatformCode', label: 'Platform', width: 120, sortable: true, render: (val) => <StatusBadge status={val === 'brevo' ? 'info' : 'warning'} label={val} size="sm" /> },
-    { key: 'Name', label: 'Name', sortable: true, render: (val) => <span className="font-medium text-semantic-text-default">{val}</span> },
+    { key: 'Name', label: 'Name', sortable: true, render: (val) => <span className="font-medium text-dark-700">{val}</span> },
     { key: 'IsActive', label: 'Status', width: 90, render: (val) => <StatusBadge status={val ? 'success' : 'neutral'} label={val ? 'Active' : 'Inactive'} size="sm" /> },
-    { key: 'LastSyncAt', label: 'Last Sync', width: 150, render: (val) => <span className="text-semantic-text-faint text-xs">{val ? new Date(val).toLocaleString() : 'Never'}</span> },
+    { key: 'LastSyncAt', label: 'Last Sync', width: 150, render: (val) => <span className="text-dark-400 text-xs">{val ? new Date(val).toLocaleString() : 'Never'}</span> },
     {
       key: 'ConnectionId', label: 'Actions', width: 140, sortable: false,
       render: (_val, row) => (
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={() => handleTestMarkit(row.ConnectionId)} className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors" title="Test"><Wifi className="w-4 h-4" /></button>
-          <button type="button" onClick={() => openEditMarkit(row)} className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors" title="Edit"><Edit className="w-4 h-4" /></button>
-          <button type="button" onClick={() => deleteMarkitModal.open(row)} className="p-1.5 text-semantic-text-faint hover:text-danger rounded hover:bg-interactive-hover transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+          <button type="button" onClick={() => handleTestMarkit(row.ConnectionId)} className="p-1.5 text-dark-400 hover:text-primary rounded hover:bg-dark-100 transition-colors" title="Test"><Wifi className="w-4 h-4" /></button>
+          <button type="button" onClick={() => openEditMarkit(row)} className="p-1.5 text-dark-400 hover:text-primary rounded hover:bg-dark-100 transition-colors" title="Edit"><Edit className="w-4 h-4" /></button>
+          <button type="button" onClick={() => deleteMarkitModal.open(row)} className="p-1.5 text-dark-400 hover:text-danger rounded hover:bg-dark-100 transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
         </div>
       ),
     },
   ];
 
   const markitListColumns: ColumnDef<ShopMarkitList>[] = [
-    { key: 'Name', label: 'Name', sortable: true, render: (val) => <span className="font-medium text-semantic-text-default">{val}</span> },
-    { key: 'ConnectionId', label: 'Connection', render: (val) => { const c = markitConnections.find(mc => mc.ConnectionId === val); return <span className="text-semantic-text-faint">{c ? c.Name : val}</span>; } },
-    { key: 'ContactCount', label: 'Contacts', width: 90, render: (val) => <span className="text-semantic-text-faint">{val || 0}</span> },
+    { key: 'Name', label: 'Name', sortable: true, render: (val) => <span className="font-medium text-dark-700">{val}</span> },
+    { key: 'ConnectionId', label: 'Connection', render: (val) => { const c = markitConnections.find(mc => mc.ConnectionId === val); return <span className="text-dark-400">{c ? c.Name : val}</span>; } },
+    { key: 'ContactCount', label: 'Contacts', width: 90, render: (val) => <span className="text-dark-400">{val || 0}</span> },
     { key: 'SyncStatus', label: 'Status', width: 100, render: (val) => <StatusBadge status={val === 'synced' || val === 'completed' ? 'success' : val === 'pending' || val === 'running' ? 'warning' : 'neutral'} label={val || '-'} size="sm" /> },
-    { key: 'LastSyncAt', label: 'Last Sync', width: 150, render: (val) => <span className="text-semantic-text-faint text-xs">{val ? new Date(val).toLocaleString() : 'Never'}</span> },
+    { key: 'LastSyncAt', label: 'Last Sync', width: 150, render: (val) => <span className="text-dark-400 text-xs">{val ? new Date(val).toLocaleString() : 'Never'}</span> },
     {
       key: 'ListId', label: 'Actions', width: 80, sortable: false,
       render: (_val, row) => (
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={() => syncListMutation.mutate(row.ListId)} className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors" title="Sync Now"><RefreshCw className="w-4 h-4" /></button>
+          <button type="button" onClick={() => syncListMutation.mutate(row.ListId)} className="p-1.5 text-dark-400 hover:text-primary rounded hover:bg-dark-100 transition-colors" title="Sync Now"><RefreshCw className="w-4 h-4" /></button>
         </div>
       ),
     },
   ];
 
   const exportColumns: ColumnDef<ShopMarkitExport>[] = [
-    { key: 'CreatedAt', label: 'Date', width: 170, sortable: true, render: (val) => <span className="text-semantic-text-subtle">{new Date(val).toLocaleString()}</span> },
-    { key: 'ListName', label: 'List', sortable: true, render: (val, row) => <span className="text-semantic-text-secondary">{val || row.ListId || '-'}</span> },
+    { key: 'CreatedAt', label: 'Date', width: 170, sortable: true, render: (val) => <span className="text-dark-500">{new Date(val).toLocaleString()}</span> },
+    { key: 'ListName', label: 'List', sortable: true, render: (val, row) => <span className="text-dark-600">{val || row.ListId || '-'}</span> },
     { key: 'Status', label: 'Status', width: 100, render: (val) => <StatusBadge status={val === 'completed' || val === 'success' ? 'success' : val === 'running' || val === 'pending' ? 'warning' : val === 'failed' || val === 'error' ? 'danger' : 'neutral'} label={val} size="sm" /> },
-    { key: 'ProcessedContacts', label: 'Progress', width: 120, render: (val, row) => <span className="text-semantic-text-faint">{val || 0} / {row.TotalContacts || 0}</span> },
-    { key: 'SuccessCount', label: 'Result', width: 140, render: (val, row) => <span className="text-semantic-text-faint">{val || 0} success, {row.ErrorCount || 0} errors</span> },
+    { key: 'ProcessedContacts', label: 'Progress', width: 120, render: (val, row) => <span className="text-dark-400">{val || 0} / {row.TotalContacts || 0}</span> },
+    { key: 'SuccessCount', label: 'Result', width: 140, render: (val, row) => <span className="text-dark-400">{val || 0} success, {row.ErrorCount || 0} errors</span> },
   ];
 
   const campaignColumns: ColumnDef<ShopMarkitCampaign>[] = [
-    { key: 'Name', label: 'Name', sortable: true, render: (val) => <span className="font-medium text-semantic-text-default">{val}</span> },
+    { key: 'Name', label: 'Name', sortable: true, render: (val) => <span className="font-medium text-dark-700">{val}</span> },
     { key: 'Channel', label: 'Channel', width: 100, render: (val) => <StatusBadge status={val === 'email' ? 'info' : val === 'sms' ? 'success' : 'warning'} label={val} size="sm" /> },
-    { key: 'Status', label: 'Status', width: 100, render: (val) => <span className="text-semantic-text-subtle">{val}</span> },
-    { key: 'SentAt', label: 'Sent', width: 150, render: (val) => <span className="text-semantic-text-faint text-xs">{val ? new Date(val).toLocaleString() : '-'}</span> },
-    { key: 'Stats', label: 'Stats', width: 160, render: (val) => val ? <span className="text-semantic-text-faint">Opens: {val.opens || 0} | Clicks: {val.clicks || 0}</span> : <span className="text-semantic-text-faint">-</span> },
+    { key: 'Status', label: 'Status', width: 100, render: (val) => <span className="text-dark-500">{val}</span> },
+    { key: 'SentAt', label: 'Sent', width: 150, render: (val) => <span className="text-dark-400 text-xs">{val ? new Date(val).toLocaleString() : '-'}</span> },
+    { key: 'Stats', label: 'Stats', width: 160, render: (val) => val ? <span className="text-dark-400">Opens: {val.opens || 0} | Clicks: {val.clicks || 0}</span> : <span className="text-dark-400">-</span> },
   ];
 
   // ---- Render ----
@@ -515,37 +513,16 @@ export default function ShopAdminPage() {
   const markitStatus = status.markit || {};
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="ShopIT"
-        description="E-commerce and ordering configuration"
-      />
-
-      {/* Status Bar — pill style matching Licensing */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 p-4 bg-surface-raised border border-border rounded-xl">
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Service</p>
-          <StatusBadge status={statusData ? 'success' : 'danger'} label={statusData ? 'Connected' : 'Offline'} size="sm" />
+    <div className="p-6 space-y-6 overflow-y-auto h-full">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <ShoppingCart className="w-5 h-5 text-primary" />
+          <h1 className="text-lg font-semibold text-dark-700">ShopIT Admin</h1>
         </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">E-commerce</p>
-          <StatusBadge status={ecomStatus.enabled ? 'success' : 'neutral'} label={ecomStatus.enabled ? 'Enabled' : 'Disabled'} size="sm" />
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Marketing</p>
-          <StatusBadge status={markitStatus.enabled ? 'success' : 'neutral'} label={markitStatus.enabled ? 'Enabled' : 'Disabled'} size="sm" />
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Sync</p>
-          <StatusBadge status={ecomStatus.sync?.running ? 'warning' : 'success'} label={ecomStatus.sync?.running ? 'Running' : 'Idle'} size="sm" />
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Orders Pending</p>
-          <p className={`text-sm font-semibold tabular-nums ${(ecomStatus.queue?.ordersPending || 0) > 0 ? 'text-warning' : 'text-semantic-text-faint'}`}>{ecomStatus.queue?.ordersPending || 0}</p>
-        </div>
-        <div>
-          <p className="text-xs text-semantic-text-faint mb-1">Connections</p>
-          <p className="text-sm font-semibold text-semantic-text-default tabular-nums">{ecomStatus.connections?.active || 0}</p>
+        <div className="flex items-center gap-4 text-sm text-dark-400">
+          <span>E-com: <StatusBadge status={ecomStatus.enabled ? 'success' : 'neutral'} label={ecomStatus.enabled ? 'Enabled' : 'Disabled'} size="sm" /></span>
+          <span>Marketing: <StatusBadge status={markitStatus.enabled ? 'success' : 'neutral'} label={markitStatus.enabled ? 'Enabled' : 'Disabled'} size="sm" /></span>
         </div>
       </div>
 
@@ -564,9 +541,9 @@ export default function ShopAdminPage() {
                 <StatCard label="Products Synced" value={String(ecomStatus.queue?.productsSynced || 0)} />
               </div>
               <div className="mt-3 flex items-center gap-2 text-sm">
-                <span className={`w-2 h-2 rounded-full ${ecomStatus.sync?.running ? 'bg-success animate-pulse' : 'bg-semantic-text-disabled'}`} />
-                <span className="text-semantic-text-faint">Sync: {ecomStatus.sync?.running ? 'Running' : 'Idle'}</span>
-                {ecomStatus.sync?.lastRun && <span className="text-semantic-text-faint text-xs">| Last: {new Date(ecomStatus.sync.lastRun).toLocaleString()}</span>}
+                <span className={`w-2 h-2 rounded-full ${ecomStatus.sync?.running ? 'bg-success animate-pulse' : 'bg-dark-300'}`} />
+                <span className="text-dark-400">Sync: {ecomStatus.sync?.running ? 'Running' : 'Idle'}</span>
+                {ecomStatus.sync?.lastRun && <span className="text-dark-400 text-xs">| Last: {new Date(ecomStatus.sync.lastRun).toLocaleString()}</span>}
               </div>
             </Card>
 
@@ -579,8 +556,8 @@ export default function ShopAdminPage() {
                 <StatCard label="Contacts Synced" value={String(markitStatus.sync?.stats?.contactsSynced || 0)} />
               </div>
               <div className="mt-3 flex items-center gap-2 text-sm">
-                <span className={`w-2 h-2 rounded-full ${markitStatus.sync?.running ? 'bg-success animate-pulse' : 'bg-semantic-text-disabled'}`} />
-                <span className="text-semantic-text-faint">Sync: {markitStatus.sync?.running ? 'Running' : 'Idle'}</span>
+                <span className={`w-2 h-2 rounded-full ${markitStatus.sync?.running ? 'bg-success animate-pulse' : 'bg-dark-300'}`} />
+                <span className="text-dark-400">Sync: {markitStatus.sync?.running ? 'Running' : 'Idle'}</span>
               </div>
             </Card>
           </div>
@@ -600,14 +577,11 @@ export default function ShopAdminPage() {
 
       {/* Tab: E-commerce */}
       {activeTab === 'ecommerce' && (
-        <TableCard
-          title="E-commerce Connections"
-          icon={<Link2 className="w-4 h-4" />}
-          count={connections.length}
-          headerActions={
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-dark-400">{connections.length} connections</span>
             <Button icon={<Plus className="w-4 h-4" />} onClick={openCreateEcom}>Add Connection</Button>
-          }
-        >
+          </div>
           {connectionsLoading ? <div className="flex justify-center py-8"><LoadingSpinner /></div> : (
             <DataTable<ShopConnection>
               id="shop-ecom-connections"
@@ -617,25 +591,20 @@ export default function ShopAdminPage() {
               onRowClick={openEditEcom}
               emptyMessage="No e-commerce connections configured"
               emptyIcon={Link2}
-              embedded
-              showColumnPicker={false}
             />
           )}
-        </TableCard>
+        </div>
       )}
 
       {/* Tab: Marketing */}
       {activeTab === 'marketing' && (
         <div className="space-y-6">
           {/* Marketing Connections */}
-          <TableCard
-            title="Marketing Connections"
-            icon={<Mail className="w-4 h-4" />}
-            count={markitConnections.length}
-            headerActions={
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium text-dark-600">Marketing Connections</h3>
               <Button icon={<Plus className="w-4 h-4" />} size="sm" onClick={openCreateMarkit}>Add Connection</Button>
-            }
-          >
+            </div>
             {markitConnectionsLoading ? <div className="flex justify-center py-8"><LoadingSpinner /></div> : (
               <DataTable<ShopMarkitConnection>
                 id="shop-markit-connections"
@@ -645,67 +614,50 @@ export default function ShopAdminPage() {
                 onRowClick={openEditMarkit}
                 emptyMessage="No marketing connections configured"
                 emptyIcon={Mail}
-                embedded
-                showColumnPicker={false}
               />
             )}
-          </TableCard>
+          </div>
 
           {/* Audience Lists */}
           {markitLists.length > 0 && (
-            <TableCard
-              title="Audience Lists"
-              icon={<Users className="w-4 h-4" />}
-              count={markitLists.length}
-            >
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-dark-600">Audience Lists</h3>
               <DataTable<ShopMarkitList>
                 id="shop-markit-lists"
                 columns={markitListColumns}
                 data={markitLists}
                 rowKey="ListId"
                 emptyMessage="No audience lists"
-                embedded
-                showColumnPicker={false}
               />
-            </TableCard>
+            </div>
           )}
 
           {/* Export History */}
           {markitExports.length > 0 && (
-            <TableCard
-              title="Export History"
-              icon={<RefreshCw className="w-4 h-4" />}
-              count={markitExports.length}
-            >
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-dark-600">Export History</h3>
               <DataTable<ShopMarkitExport>
                 id="shop-markit-exports"
                 columns={exportColumns}
                 data={markitExports}
                 rowKey="CreatedAt"
                 emptyMessage="No export history"
-                embedded
-                showColumnPicker={false}
               />
-            </TableCard>
+            </div>
           )}
 
           {/* Campaigns */}
           {markitCampaigns.length > 0 && (
-            <TableCard
-              title="Campaigns"
-              icon={<Mail className="w-4 h-4" />}
-              count={markitCampaigns.length}
-            >
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-dark-600">Campaigns</h3>
               <DataTable<ShopMarkitCampaign>
                 id="shop-markit-campaigns"
                 columns={campaignColumns}
                 data={markitCampaigns}
                 rowKey="Name"
                 emptyMessage="No campaigns"
-                embedded
-                showColumnPicker={false}
               />
-            </TableCard>
+            </div>
           )}
         </div>
       )}
@@ -720,14 +672,14 @@ export default function ShopAdminPage() {
               <Button variant="secondary" size="sm" icon={<Square className="w-3.5 h-3.5" />} onClick={() => stopSyncMutation.mutate()} loading={stopSyncMutation.isPending}>Stop</Button>
               <Button variant="secondary" size="sm" icon={<Zap className="w-3.5 h-3.5" />} onClick={() => triggerSyncMutation.mutate()} loading={triggerSyncMutation.isPending}>Sync Now</Button>
             </div>
-            <p className="text-xs text-semantic-text-faint">Changes to settings below require a restart to take effect.</p>
+            <p className="text-xs text-dark-400">Changes to settings below require a restart to take effect.</p>
           </Card>
 
           {/* E-commerce Settings */}
           <Card title="E-commerce Settings">
             <div className="space-y-4">
-              <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer">
-                <input type="checkbox" defaultChecked={config.ecommerce?.syncEnabled !== false} className="rounded border-border bg-surface-subtle text-primary focus:ring-interactive-focus-ring" />
+              <label className="flex items-center gap-2 text-sm text-dark-600 cursor-pointer">
+                <input type="checkbox" defaultChecked={config.ecommerce?.syncEnabled !== false} className="rounded border-dark-300 bg-dark-200 text-primary focus:ring-primary/50" />
                 Enable automatic sync
               </label>
               <div className="grid grid-cols-2 gap-4">
@@ -755,9 +707,9 @@ export default function ShopAdminPage() {
               <div className="space-y-3">
                 {Object.entries(config.webhookUrls).map(([key, url]) => (
                   <div key={key} className="flex items-center gap-2">
-                    <span className="text-sm text-semantic-text-subtle w-32 capitalize">{key}</span>
+                    <span className="text-sm text-dark-500 w-32 capitalize">{key}</span>
                     <input type="text" value={url} readOnly className="form-input flex-1 text-xs" />
-                    <button type="button" onClick={() => copyToClipboard(url)} className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors" title="Copy"><Copy className="w-4 h-4" /></button>
+                    <button type="button" onClick={() => copyToClipboard(url)} className="p-1.5 text-dark-400 hover:text-primary rounded hover:bg-dark-100 transition-colors" title="Copy"><Copy className="w-4 h-4" /></button>
                   </div>
                 ))}
               </div>
@@ -780,13 +732,12 @@ export default function ShopAdminPage() {
         footer={
           <>
             <Button variant="secondary" onClick={ecomModal.close}>Cancel</Button>
-            <Button type="submit" form="ecom-connection-form" loading={createEcomMutation.isPending || updateEcomMutation.isPending}>
+            <Button onClick={handleSaveEcom} loading={createEcomMutation.isPending || updateEcomMutation.isPending}>
               {isEditingEcom ? 'Save Changes' : 'Create'}
             </Button>
           </>
         }
       >
-        <form id="ecom-connection-form" onSubmit={(e) => { e.preventDefault(); handleSaveEcom(); }}>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Platform" required>
@@ -806,20 +757,20 @@ export default function ShopAdminPage() {
             <input type="password" value={ecomForm.accessToken} onChange={(e) => setEcomForm({ ...ecomForm, accessToken: e.target.value })} className="form-input" placeholder="Enter API key" />
           </FormField>
 
-          <div className="border-t border-border pt-4">
-            <h4 className="text-xs font-medium text-semantic-text-subtle mb-3">Sync Settings</h4>
+          <div className="border-t border-dark-200 pt-4">
+            <h4 className="text-xs font-medium text-dark-500 mb-3">Sync Settings</h4>
             <div className="flex flex-wrap gap-4">
               {(['syncEnabled', 'syncOrders', 'syncProducts', 'syncCustomers', 'syncInventory'] as const).map(field => (
-                <label key={field} className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer">
-                  <input type="checkbox" checked={ecomForm[field]} onChange={(e) => setEcomForm({ ...ecomForm, [field]: e.target.checked })} className="rounded border-border bg-surface-subtle text-primary focus:ring-interactive-focus-ring" />
+                <label key={field} className="flex items-center gap-2 text-sm text-dark-600 cursor-pointer">
+                  <input type="checkbox" checked={ecomForm[field]} onChange={(e) => setEcomForm({ ...ecomForm, [field]: e.target.checked })} className="rounded border-dark-300 bg-dark-200 text-primary focus:ring-primary/50" />
                   {field.replace('sync', 'Sync ').replace('Enabled', 'Enabled')}
                 </label>
               ))}
             </div>
           </div>
 
-          <div className="border-t border-border pt-4">
-            <h4 className="text-xs font-medium text-semantic-text-subtle mb-3">ERP Defaults</h4>
+          <div className="border-t border-dark-200 pt-4">
+            <h4 className="text-xs font-medium text-dark-500 mb-3">ERP Defaults</h4>
             <div className="grid grid-cols-2 gap-4">
               <FormField label="Default Warehouse"><input type="text" value={ecomForm.defaultWarehouse} onChange={(e) => setEcomForm({ ...ecomForm, defaultWarehouse: e.target.value })} className="form-input" placeholder="WH01" /></FormField>
               <FormField label="Default Branch"><input type="text" value={ecomForm.defaultBranch} onChange={(e) => setEcomForm({ ...ecomForm, defaultBranch: e.target.value })} className="form-input" placeholder="B1" /></FormField>
@@ -828,12 +779,11 @@ export default function ShopAdminPage() {
             </div>
           </div>
 
-          <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer">
-            <input type="checkbox" checked={ecomForm.isActive} onChange={(e) => setEcomForm({ ...ecomForm, isActive: e.target.checked })} className="rounded border-border bg-surface-subtle text-primary focus:ring-interactive-focus-ring" />
+          <label className="flex items-center gap-2 text-sm text-dark-600 cursor-pointer">
+            <input type="checkbox" checked={ecomForm.isActive} onChange={(e) => setEcomForm({ ...ecomForm, isActive: e.target.checked })} className="rounded border-dark-300 bg-dark-200 text-primary focus:ring-primary/50" />
             Connection Active
           </label>
         </div>
-        </form>
       </Modal>
 
       {/* Delete E-commerce Modal */}
@@ -843,7 +793,7 @@ export default function ShopAdminPage() {
           <Button variant="danger" onClick={() => deleteEcomModal.data && deleteEcomMutation.mutate(deleteEcomModal.data.ConnectionId)} loading={deleteEcomMutation.isPending}>Delete</Button>
         </>
       }>
-        <p className="text-sm text-semantic-text-subtle">Are you sure you want to delete <strong className="text-semantic-text-default">{deleteEcomModal.data?.StoreName}</strong>? This action cannot be undone.</p>
+        <p className="text-sm text-dark-500">Are you sure you want to delete <strong className="text-dark-700">{deleteEcomModal.data?.StoreName}</strong>? This action cannot be undone.</p>
       </Modal>
 
       {/* Marketing Connection Modal */}
@@ -855,13 +805,12 @@ export default function ShopAdminPage() {
         footer={
           <>
             <Button variant="secondary" onClick={markitModal.close}>Cancel</Button>
-            <Button type="submit" form="markit-connection-form" loading={createMarkitMutation.isPending || updateMarkitMutation.isPending}>
+            <Button onClick={handleSaveMarkit} loading={createMarkitMutation.isPending || updateMarkitMutation.isPending}>
               {isEditingMarkit ? 'Save Changes' : 'Create'}
             </Button>
           </>
         }
       >
-        <form id="markit-connection-form" onSubmit={(e) => { e.preventDefault(); handleSaveMarkit(); }}>
         <div className="space-y-4">
           <FormField label="Platform" required>
             <select value={markitForm.platformCode} onChange={(e) => setMarkitForm({ ...markitForm, platformCode: e.target.value })} className="form-input" title="Platform">
@@ -879,12 +828,11 @@ export default function ShopAdminPage() {
               <input type="text" value={markitForm.apiUrl} onChange={(e) => setMarkitForm({ ...markitForm, apiUrl: e.target.value })} className="form-input" placeholder="https://usX.api.mailchimp.com" />
             </FormField>
           )}
-          <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer">
-            <input type="checkbox" checked={markitForm.isActive} onChange={(e) => setMarkitForm({ ...markitForm, isActive: e.target.checked })} className="rounded border-border bg-surface-subtle text-primary focus:ring-interactive-focus-ring" />
+          <label className="flex items-center gap-2 text-sm text-dark-600 cursor-pointer">
+            <input type="checkbox" checked={markitForm.isActive} onChange={(e) => setMarkitForm({ ...markitForm, isActive: e.target.checked })} className="rounded border-dark-300 bg-dark-200 text-primary focus:ring-primary/50" />
             Active
           </label>
         </div>
-        </form>
       </Modal>
 
       {/* Delete Marketing Modal */}
@@ -894,7 +842,7 @@ export default function ShopAdminPage() {
           <Button variant="danger" onClick={() => deleteMarkitModal.data && deleteMarkitMutation.mutate(deleteMarkitModal.data.ConnectionId)} loading={deleteMarkitMutation.isPending}>Delete</Button>
         </>
       }>
-        <p className="text-sm text-semantic-text-subtle">Are you sure you want to delete <strong className="text-semantic-text-default">{deleteMarkitModal.data?.Name}</strong>?</p>
+        <p className="text-sm text-dark-500">Are you sure you want to delete <strong className="text-dark-700">{deleteMarkitModal.data?.Name}</strong>?</p>
       </Modal>
     </div>
   );
@@ -906,9 +854,9 @@ export default function ShopAdminPage() {
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-interactive-hover border border-border rounded-lg p-3">
-      <p className="text-xs text-semantic-text-faint mb-0.5">{label}</p>
-      <p className="text-lg font-semibold text-semantic-text-default">{value}</p>
+    <div className="bg-dark-100/50 border border-dark-200 rounded-lg p-3">
+      <p className="text-xs text-dark-400 mb-0.5">{label}</p>
+      <p className="text-lg font-semibold text-dark-700">{value}</p>
     </div>
   );
 }
@@ -916,7 +864,7 @@ function StatCard({ label, value }: { label: string; value: string }) {
 function FormField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-semantic-text-subtle mb-1">
+      <label className="block text-xs font-medium text-dark-500 mb-1">
         {label}
         {required && <span className="text-danger ml-0.5">*</span>}
       </label>

@@ -1,7 +1,16 @@
+// Axios error shape for use in React Query onError callbacks.
+// Bridge returns error as a string in the standard envelope: { success: false, error: "message" }
+export interface ApiError extends Error {
+  response?: {
+    data?: {
+      error?: string;
+    };
+  };
+}
+
 export interface User {
   UserId: string;
   UserName: string;
-  FullName?: string;
   Email?: string;
   Role: string;
   AllowedTabs?: string[];
@@ -495,33 +504,13 @@ export interface ConnectSyncConfig {
 
 export interface ConnectSyncHistoryEntry {
   Id?: string;
-  SyncRunId?: string;
   SyncedAt: string;
   EntityType: string;
-  EntityId?: string;
-  ErpId?: string;
-  Operation?: string;
   Direction: string;
   Status: string;
   RecordsAffected: number;
   ErrorMessage?: string;
   Message?: string;
-  DurationMs?: number;
-  SyncedBy?: string;
-  // API tracking
-  ApiMethod?: string;
-  ApiUrl?: string;
-  ApiEndpoint?: string;
-  ApiRequestBody?: string;
-  ApiResponseStatus?: number;
-  ApiResponseBody?: string;
-  // Data payloads
-  SourceData?: string;
-  MappedData?: string;
-  // Error diagnostics
-  FailedField?: string;
-  FailedFieldValue?: string;
-  FailedFieldExpectedType?: string;
 }
 
 export interface Territory {

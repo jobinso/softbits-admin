@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { Database, HardDrive, Cpu, Users, Smartphone, Key, Layers } from 'lucide-react';
+import { Database, HardDrive, Cpu, Users, Smartphone, Key, Layers, Info } from 'lucide-react';
 import { LoadingSpinner, PageHeader } from '@/components/shared';
 import { StatusCard, AppServiceTable } from '@/components/dashboard';
-import { getUsers, getDevices, getTokens, getHealth } from '@/services/admin-service';
+import { getUsers, getDevices, getTokens, getHealth, getAbout } from '@/services/admin-service';
 import type { AppStatus, SystemHealth } from '@/types';
 
 interface HealthResponse {
@@ -96,6 +96,11 @@ export default function DashboardPage() {
       return { count: res.count ?? res.tokens?.length ?? 0 };
     },
     refetchInterval: 30000,
+  });
+
+  const { data: aboutData } = useQuery({
+    queryKey: ['admin', 'about'],
+    queryFn: getAbout,
   });
 
   if (healthLoading) {
@@ -201,8 +206,41 @@ export default function DashboardPage() {
           />
         </div>
       </div>
+
+      {/* Section 4: System Info */}
+      {aboutData?.data && (
+        <div className="bg-surface-raised border border-border rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Info className="w-4 h-4 text-semantic-text-subtle" />
+            <h3 className="text-sm font-semibold text-semantic-text-default">System Info</h3>
+          </div>
+          <div className="space-y-2">
+            {[
+              { label: 'Version', value: aboutData.data.version },
+              { label: 'Node.js', value: aboutData.data.nodeVersion },
+              { label: 'Platform', value: aboutData.data.platform },
+              { label: 'Uptime', value: aboutData.data.uptime ? formatAboutUptime(aboutData.data.uptime) : '-' },
+              { label: 'API Endpoints', value: aboutData.data.endpoints?.total },
+            ].map((item) => (
+              <div key={item.label} className="flex items-center justify-between text-sm">
+                <span className="text-semantic-text-faint">{item.label}</span>
+                <span className="text-semantic-text-secondary font-medium">{item.value ?? '-'}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
+}
+
+function formatAboutUptime(seconds: number): string {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
 }
 
 function QuickStatCard({

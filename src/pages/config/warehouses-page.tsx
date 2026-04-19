@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Warehouse as WarehouseIcon, Plus, Edit, Link2, Unlink, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -8,12 +8,9 @@ import {
   Modal,
   StatusBadge,
   LoadingSpinner,
-  PageHeader,
-  TableCard,
-  TableFilterDropdown,
-  TableColumnPicker,
+  SearchInput,
 } from '@/components/shared';
-import type { ColumnDef, TableFilterField, TableColumnPickerColumn } from '@/components/shared';
+import type { ColumnDef } from '@/components/shared';
 import {
   getWarehouses,
   getWarehouse,
@@ -56,26 +53,6 @@ const INITIAL_FORM: WarehouseForm = {
 export default function WarehousesPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
-  const [filters, setFilters] = useState<Record<string, string>>({});
-  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({});
-  const handleFilterChange = (key: string, value: string) => setFilters((prev) => ({ ...prev, [key]: value }));
-  const handleClearAllFilters = () => setFilters({});
-  const toggleColumnVisibility = (key: string) => setColumnVisibility((prev) => ({ ...prev, [key]: prev[key] === false ? true : false }));
-
-  const filterFields: TableFilterField[] = [
-    { key: 'Status', label: 'Status', type: 'select', options: [{ value: 'Active', label: 'Active' }, { value: 'Inactive', label: 'Inactive' }] },
-    { key: 'WarehouseCode', label: 'Code', type: 'text' },
-    { key: 'WarehouseName', label: 'Name', type: 'text' },
-  ];
-
-  const pickerColumns: TableColumnPickerColumn[] = [
-    { key: 'WarehouseCode', label: 'Code' },
-    { key: 'WarehouseName', label: 'Name' },
-    { key: 'City', label: 'Location' },
-    { key: 'ErpLinkCount', label: 'ERP Links' },
-    { key: 'Status', label: 'Status' },
-  ];
-
   const warehouseModal = useModal<Warehouse>();
   const deactivateModal = useModal<Warehouse>();
   const erpLinksModal = useModal<Warehouse>();
@@ -101,33 +78,16 @@ export default function WarehousesPage() {
 
   const warehouses: Warehouse[] = warehousesResponse?.data ?? [];
 
-  const filteredWarehouses = useMemo(() => {
-    let result = warehouses;
-
-    if (search) {
-      const s = search.toLowerCase();
-      result = result.filter((w) =>
-        w.WarehouseCode.toLowerCase().includes(s) ||
-        w.WarehouseName.toLowerCase().includes(s) ||
-        (w.City && w.City.toLowerCase().includes(s))
-      );
-    }
-
-    const activeFilters = Object.entries(filters).filter(([, v]) => v);
-    if (activeFilters.length > 0) {
-      result = result.filter((row) =>
-        activeFilters.every(([key, value]) => {
-          const rowVal = (row as any)[key];
-          if (rowVal == null) return false;
-          const field = filterFields.find((f) => f.key === key);
-          if (field?.type === 'select') return String(rowVal) === value;
-          return String(rowVal).toLowerCase().includes(value.toLowerCase());
-        })
-      );
-    }
-
-    return result;
-  }, [warehouses, search, filters]);
+  const filteredWarehouses = search
+    ? warehouses.filter((w) => {
+        const s = search.toLowerCase();
+        return (
+          w.WarehouseCode.toLowerCase().includes(s) ||
+          w.WarehouseName.toLowerCase().includes(s) ||
+          (w.City && w.City.toLowerCase().includes(s))
+        );
+      })
+    : warehouses;
 
   // ---- Mutations ----
 
@@ -285,25 +245,24 @@ export default function WarehousesPage() {
       label: 'Code',
       width: 120,
       sortable: true,
-      hidden: columnVisibility.WarehouseCode === false,
-      render: (val) => <span className="font-semibold text-semantic-text-default">{val}</span>,
+      filterable: true,
+      render: (val) => <span className="font-semibold text-dark-700">{val}</span>,
     },
     {
       key: 'WarehouseName',
       label: 'Name',
       sortable: true,
-      hidden: columnVisibility.WarehouseName === false,
-      render: (val) => <span className="text-semantic-text-secondary">{val}</span>,
+      filterable: true,
+      render: (val) => <span className="text-dark-600">{val}</span>,
     },
     {
       key: 'City',
       label: 'Location',
       width: 200,
       sortable: true,
-      hidden: columnVisibility.City === false,
       render: (_val, row) => {
         const parts = [row.City, row.State, row.Country].filter(Boolean);
-        return <span className="text-semantic-text-faint">{parts.length > 0 ? parts.join(', ') : '-'}</span>;
+        return <span className="text-dark-400">{parts.length > 0 ? parts.join(', ') : '-'}</span>;
       },
     },
     {
@@ -311,10 +270,9 @@ export default function WarehousesPage() {
       label: 'ERP Links',
       width: 100,
       sortable: true,
-      hidden: columnVisibility.ErpLinkCount === false,
       render: (val) => {
         const count = val || 0;
-        return <span className="text-semantic-text-faint">{count} link{count !== 1 ? 's' : ''}</span>;
+        return <span className="text-dark-400">{count} link{count !== 1 ? 's' : ''}</span>;
       },
     },
     {
@@ -322,7 +280,12 @@ export default function WarehousesPage() {
       label: 'Status',
       width: 100,
       sortable: true,
-      hidden: columnVisibility.Status === false,
+      filterable: true,
+      filterType: 'select',
+      filterOptions: [
+        { value: 'Active', label: 'Active' },
+        { value: 'Inactive', label: 'Inactive' },
+      ],
       render: (val) => (
         <StatusBadge
           status={val === 'Active' ? 'success' : 'neutral'}
@@ -338,14 +301,14 @@ export default function WarehousesPage() {
       sortable: false,
       render: (_val, row) => (
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={() => openEdit(row)} className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors" title="Edit">
+          <button type="button" onClick={() => openEdit(row)} className="p-1.5 text-dark-400 hover:text-primary rounded hover:bg-dark-100 transition-colors" title="Edit">
             <Edit className="w-4 h-4" />
           </button>
-          <button type="button" onClick={() => openErpLinks(row)} className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors" title="ERP Links">
+          <button type="button" onClick={() => openErpLinks(row)} className="p-1.5 text-dark-400 hover:text-primary rounded hover:bg-dark-100 transition-colors" title="ERP Links">
             <Link2 className="w-4 h-4" />
           </button>
           {row.Status === 'Active' && (
-            <button type="button" onClick={() => deactivateModal.open(row)} className="p-1.5 text-semantic-text-faint hover:text-danger rounded hover:bg-interactive-hover transition-colors" title="Deactivate">
+            <button type="button" onClick={() => deactivateModal.open(row)} className="p-1.5 text-dark-400 hover:text-danger rounded hover:bg-dark-100 transition-colors" title="Deactivate">
               <Trash2 className="w-4 h-4" />
             </button>
           )}
@@ -358,42 +321,45 @@ export default function WarehousesPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="flex items-center justify-center h-full">
         <LoadingSpinner size="lg" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <TableCard
-        title="All Warehouses"
-        icon={<WarehouseIcon className="w-4 h-4" />}
-        count={filteredWarehouses.length}
-        search={{ value: search, onChange: setSearch, placeholder: "Search warehouses by code, name, or city..." }}
-        headerActions={
-          <div className="flex items-center gap-1">
-            <TableFilterDropdown fields={filterFields} values={filters} onChange={handleFilterChange} onClearAll={handleClearAllFilters} />
-            <TableColumnPicker columns={pickerColumns} visibility={columnVisibility} onToggle={toggleColumnVisibility} />
-            <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={openCreate}>
-              New Warehouse
-            </Button>
-          </div>
-        }
-      >
-        <DataTable<Warehouse>
-          id="admin-warehouses"
-          columns={columns}
-          data={filteredWarehouses}
-          rowKey="WarehouseId"
-          onRowClick={openEdit}
-          emptyMessage="No warehouses found"
-          emptyIcon={WarehouseIcon}
-          showFilters={false}
-          embedded
-          showColumnPicker={false}
-        />
-      </TableCard>
+    <div className="p-6 space-y-4 overflow-y-auto h-full">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <WarehouseIcon className="w-5 h-5 text-primary" />
+          <h1 className="text-lg font-semibold text-dark-700">Warehouses</h1>
+          <span className="text-sm text-dark-400">{warehouses.length} total</span>
+        </div>
+        <Button icon={<Plus className="w-4 h-4" />} onClick={openCreate}>
+          New Warehouse
+        </Button>
+      </div>
+
+      {/* Search */}
+      <SearchInput
+        value={search}
+        onChange={setSearch}
+        placeholder="Search warehouses by code, name, or city..."
+        className="max-w-md"
+      />
+
+      {/* Table */}
+      <DataTable<Warehouse>
+        id="admin-warehouses"
+        columns={columns}
+        data={filteredWarehouses}
+        rowKey="WarehouseId"
+        onRowClick={openEdit}
+        emptyMessage="No warehouses found"
+        emptyIcon={WarehouseIcon}
+        showFilters
+      />
 
       {/* Create/Edit Warehouse Modal */}
       <Modal
@@ -522,8 +488,8 @@ export default function WarehousesPage() {
           </>
         }
       >
-        <p className="text-sm text-semantic-text-subtle">
-          Are you sure you want to deactivate <strong className="text-semantic-text-default">{deactivateModal.data?.WarehouseCode}</strong> ({deactivateModal.data?.WarehouseName})?
+        <p className="text-sm text-dark-500">
+          Are you sure you want to deactivate <strong className="text-dark-700">{deactivateModal.data?.WarehouseCode}</strong> ({deactivateModal.data?.WarehouseName})?
         </p>
       </Modal>
 
@@ -539,19 +505,19 @@ export default function WarehousesPage() {
           {erpLinksLoading ? (
             <div className="flex justify-center py-4"><LoadingSpinner /></div>
           ) : erpLinks.length === 0 ? (
-            <div className="text-center text-semantic-text-faint py-4 text-sm">No ERP warehouses linked</div>
+            <div className="text-center text-dark-400 py-4 text-sm">No ERP warehouses linked</div>
           ) : (
             <div>
-              <h4 className="text-xs font-medium text-semantic-text-subtle mb-2">
+              <h4 className="text-xs font-medium text-dark-500 mb-2">
                 Linked ERP Warehouses ({erpLinks.length})
               </h4>
               <div className="space-y-2">
                 {erpLinks.map((link) => (
-                  <div key={link.LinkId} className="flex items-center justify-between px-3 py-2.5 bg-surface-overlay rounded-lg">
+                  <div key={link.LinkId} className="flex items-center justify-between px-3 py-2.5 bg-dark-100 rounded-lg">
                     <div>
-                      <span className="text-sm font-medium text-semantic-text-default">{link.ErpWarehouseCode}</span>
+                      <span className="text-sm font-medium text-dark-700">{link.ErpWarehouseCode}</span>
                       {link.ErpWarehouseName && (
-                        <span className="text-sm text-semantic-text-faint ml-2">{link.ErpWarehouseName}</span>
+                        <span className="text-sm text-dark-400 ml-2">{link.ErpWarehouseName}</span>
                       )}
                     </div>
                     <button
@@ -560,7 +526,7 @@ export default function WarehousesPage() {
                         erpLinksModal.data &&
                         unlinkMutation.mutate({ warehouseId: erpLinksModal.data.WarehouseId, linkId: link.LinkId })
                       }
-                      className="p-1.5 text-semantic-text-faint hover:text-danger rounded hover:bg-accent-secondary-hover transition-colors"
+                      className="p-1.5 text-dark-400 hover:text-danger rounded hover:bg-dark-200 transition-colors"
                       title="Unlink"
                     >
                       <Unlink className="w-4 h-4" />
@@ -572,12 +538,12 @@ export default function WarehousesPage() {
           )}
 
           {/* Divider */}
-          <div className="border-t border-border" />
+          <div className="border-t border-dark-200" />
 
           {/* Link new warehouse */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h4 className="text-xs font-medium text-semantic-text-subtle">Link ERP Warehouse</h4>
+              <h4 className="text-xs font-medium text-dark-500">Link ERP Warehouse</h4>
               <button
                 type="button"
                 onClick={() => setManualMode(!manualMode)}
@@ -653,7 +619,7 @@ export default function WarehousesPage() {
 function FormField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-semantic-text-subtle mb-1">
+      <label className="block text-xs font-medium text-dark-500 mb-1">
         {label}
         {required && <span className="text-danger ml-0.5">*</span>}
       </label>

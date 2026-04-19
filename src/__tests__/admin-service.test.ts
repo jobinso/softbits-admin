@@ -5,52 +5,48 @@
  * - rawApi (no /api prefix) for /admin/* and /health routes
  * - api (baseURL /api) for /api/admin/* routes
  */
-import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
 import axios from 'axios';
 
 // Mock axios.create to track calls
-const mockRawPost = vi.fn().mockResolvedValue({ data: {} });
-const mockRawGet = vi.fn().mockResolvedValue({ data: {} });
-const mockRawPut = vi.fn().mockResolvedValue({ data: {} });
-const mockRawDelete = vi.fn().mockResolvedValue({ data: {} });
-const mockApiGet = vi.fn().mockResolvedValue({ data: {} });
-const mockApiPost = vi.fn().mockResolvedValue({ data: {} });
+const mockRawPost = jest.fn().mockResolvedValue({ data: {} });
+const mockRawGet = jest.fn().mockResolvedValue({ data: {} });
+const mockRawPut = jest.fn().mockResolvedValue({ data: {} });
+const mockRawDelete = jest.fn().mockResolvedValue({ data: {} });
+const mockApiGet = jest.fn().mockResolvedValue({ data: {} });
+const mockApiPost = jest.fn().mockResolvedValue({ data: {} });
 
-vi.mock('axios', async () => {
-  const actualAxios = await vi.importActual<typeof import('axios')>('axios');
+jest.mock('axios', () => {
+  const actualAxios = jest.requireActual('axios');
   return {
     ...actualAxios,
-    default: {
-      ...actualAxios.default,
-      create: vi.fn().mockImplementation((config) => {
-        if (config?.baseURL === '/api') {
-          // This is the `api` instance
-          return {
-            get: mockApiGet,
-            post: mockApiPost,
-            put: vi.fn().mockResolvedValue({ data: {} }),
-            delete: vi.fn().mockResolvedValue({ data: {} }),
-            defaults: { headers: { common: {} } },
-            interceptors: {
-              request: { use: vi.fn() },
-              response: { use: vi.fn() },
-            },
-          };
-        }
-        // This is the rawApi instance
+    create: jest.fn().mockImplementation((config) => {
+      if (config?.baseURL === '/api') {
+        // This is the `api` instance
         return {
-          get: mockRawGet,
-          post: mockRawPost,
-          put: mockRawPut,
-          delete: mockRawDelete,
+          get: mockApiGet,
+          post: mockApiPost,
+          put: jest.fn().mockResolvedValue({ data: {} }),
+          delete: jest.fn().mockResolvedValue({ data: {} }),
           defaults: { headers: { common: {} } },
           interceptors: {
-            request: { use: vi.fn() },
-            response: { use: vi.fn() },
+            request: { use: jest.fn() },
+            response: { use: jest.fn() },
           },
         };
-      }),
-    },
+      }
+      // This is the rawApi instance
+      return {
+        get: mockRawGet,
+        post: mockRawPost,
+        put: mockRawPut,
+        delete: mockRawDelete,
+        defaults: { headers: { common: {} } },
+        interceptors: {
+          request: { use: jest.fn() },
+          response: { use: jest.fn() },
+        },
+      };
+    }),
   };
 });
 
@@ -62,7 +58,7 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  jest.clearAllMocks();
   mockRawGet.mockResolvedValue({ data: {} });
   mockRawPost.mockResolvedValue({ data: {} });
   mockRawPut.mockResolvedValue({ data: {} });

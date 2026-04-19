@@ -8,8 +8,6 @@ import {
   Modal,
   StatusBadge,
   LoadingSpinner,
-  PageHeader,
-  TableCard,
 } from '@/components/shared';
 import type { ColumnDef } from '@/components/shared';
 import {
@@ -260,15 +258,15 @@ export default function OptionSetsPage() {
       sortable: true,
       render: (val) => <code className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">{val}</code>,
     },
-    { key: 'DisplayName', label: 'Display Name', sortable: true, render: (val, row) => <span className="text-semantic-text-secondary">{val || row.Name}</span> },
-    { key: 'Category', label: 'Category', width: 120, sortable: true, render: (val) => <span className="text-semantic-text-faint">{val || '-'}</span> },
-    { key: 'ItemCount', label: 'Items', width: 80, sortable: true, render: (val) => <span className="text-semantic-text-faint">{val || 0}</span> },
+    { key: 'DisplayName', label: 'Display Name', sortable: true, render: (val, row) => <span className="text-dark-600">{val || row.Name}</span> },
+    { key: 'Category', label: 'Category', width: 120, sortable: true, render: (val) => <span className="text-dark-400">{val || '-'}</span> },
+    { key: 'ItemCount', label: 'Items', width: 80, sortable: true, render: (val) => <span className="text-dark-400">{val || 0}</span> },
     {
       key: 'IsSystem',
       label: 'System',
       width: 80,
       sortable: true,
-      render: (val) => val ? <StatusBadge status="warning" label="Yes" size="sm" /> : <span className="text-semantic-text-faint">-</span>,
+      render: (val) => val ? <StatusBadge status="warning" label="Yes" size="sm" /> : <span className="text-dark-400">-</span>,
     },
     {
       key: 'IsActive',
@@ -284,7 +282,7 @@ export default function OptionSetsPage() {
       sortable: false,
       render: (_val, row) => (
         <div onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={() => openEditSet(row)} className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors" title="Edit">
+          <button type="button" onClick={() => openEditSet(row)} className="p-1.5 text-dark-400 hover:text-primary rounded hover:bg-dark-100 transition-colors" title="Edit">
             <Edit className="w-4 h-4" />
           </button>
         </div>
@@ -298,7 +296,7 @@ export default function OptionSetsPage() {
       label: '#',
       width: 60,
       sortable: true,
-      render: (val, row) => <span className="text-semantic-text-faint">{val || items.indexOf(row) + 1}</span>,
+      render: (val, row) => <span className="text-dark-400">{val || items.indexOf(row) + 1}</span>,
     },
     {
       key: 'id',
@@ -307,9 +305,9 @@ export default function OptionSetsPage() {
       sortable: true,
       render: (val) => <code className="text-xs bg-info/10 text-info px-1.5 py-0.5 rounded">{val}</code>,
     },
-    { key: 'name', label: 'Name', sortable: true, render: (val) => <span className="text-semantic-text-default">{val}</span> },
-    { key: 'category', label: 'Category', width: 100, sortable: true, render: (val) => <span className="text-semantic-text-faint">{val || '-'}</span> },
-    { key: 'type', label: 'Type', width: 80, sortable: true, render: (val) => <span className="text-semantic-text-faint">{val || 'text'}</span> },
+    { key: 'name', label: 'Name', sortable: true, render: (val) => <span className="text-dark-700">{val}</span> },
+    { key: 'category', label: 'Category', width: 100, sortable: true, render: (val) => <span className="text-dark-400">{val || '-'}</span> },
+    { key: 'type', label: 'Type', width: 80, sortable: true, render: (val) => <span className="text-dark-400">{val || 'text'}</span> },
     {
       key: 'colour',
       label: 'Value',
@@ -326,7 +324,7 @@ export default function OptionSetsPage() {
                 className="sr-only peer"
                 title="Toggle value"
               />
-              <div className="w-8 h-4 bg-surface-subtle rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-semantic-text-faint after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-accent-primary peer-checked:after:bg-semantic-text-on-primary" />
+              <div className="w-8 h-4 bg-dark-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-dark-400 after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-primary peer-checked:after:bg-dark" />
             </label>
           );
         }
@@ -334,11 +332,11 @@ export default function OptionSetsPage() {
           return (
             <div className="flex items-center gap-1">
               <span className="inline-block w-4 h-4 rounded" style={{ backgroundColor: val }} />
-              <span className="text-xs text-semantic-text-faint">{val}</span>
+              <span className="text-xs text-dark-400">{val}</span>
             </div>
           );
         }
-        return <span className="text-semantic-text-faint">-</span>;
+        return <span className="text-dark-400">-</span>;
       },
     },
     {
@@ -346,7 +344,7 @@ export default function OptionSetsPage() {
       label: 'Default',
       width: 70,
       sortable: true,
-      render: (val) => val ? <StatusBadge status="info" label="Yes" size="sm" /> : <span className="text-semantic-text-faint">-</span>,
+      render: (val) => val ? <StatusBadge status="info" label="Yes" size="sm" /> : <span className="text-dark-400">-</span>,
     },
     {
       key: 'isActive',
@@ -367,7 +365,7 @@ export default function OptionSetsPage() {
           <button
             type="button"
             onClick={() => moveItem(idx, 'up')}
-            className="p-1 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors"
+            className="p-1 text-dark-400 hover:text-primary rounded hover:bg-dark-100 transition-colors"
             title="Move up"
             disabled={idx === 0}
           >
@@ -376,16 +374,16 @@ export default function OptionSetsPage() {
           <button
             type="button"
             onClick={() => moveItem(idx, 'down')}
-            className="p-1 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors"
+            className="p-1 text-dark-400 hover:text-primary rounded hover:bg-dark-100 transition-colors"
             title="Move down"
             disabled={idx === items.length - 1}
           >
             <ArrowDown className="w-3.5 h-3.5" />
           </button>
-          <button type="button" onClick={() => openEditItem(row)} className="p-1 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors" title="Edit">
+          <button type="button" onClick={() => openEditItem(row)} className="p-1 text-dark-400 hover:text-primary rounded hover:bg-dark-100 transition-colors" title="Edit">
             <Edit className="w-3.5 h-3.5" />
           </button>
-          <button type="button" onClick={() => deleteItemModal.open(row)} className="p-1 text-semantic-text-faint hover:text-danger rounded hover:bg-interactive-hover transition-colors" title="Deactivate">
+          <button type="button" onClick={() => deleteItemModal.open(row)} className="p-1 text-dark-400 hover:text-danger rounded hover:bg-dark-100 transition-colors" title="Deactivate">
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -398,69 +396,63 @@ export default function OptionSetsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="flex items-center justify-center h-full">
         <LoadingSpinner size="lg" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Option Sets"
-        description="Manage configurable option sets"
-        actions={
-          <Button icon={<Plus className="w-4 h-4" />} onClick={openCreateSet}>
-            New Option Set
-          </Button>
-        }
-      />
+    <div className="p-6 space-y-4 overflow-y-auto h-full">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <ListTree className="w-5 h-5 text-primary" />
+          <h1 className="text-lg font-semibold text-dark-700">Option Sets</h1>
+          <span className="text-sm text-dark-400">{optionSets.length} sets</span>
+        </div>
+        <Button icon={<Plus className="w-4 h-4" />} onClick={openCreateSet}>
+          New Option Set
+        </Button>
+      </div>
 
       {/* Two-panel layout */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* Left: Option sets list */}
         <div className="lg:col-span-2">
-          <TableCard
-            title="Option Sets"
-            icon={<ListTree className="w-4 h-4" />}
-            count={optionSets.length}
-          >
-            <DataTable<OptionSet>
-              id="admin-option-sets"
-              columns={setColumns}
-              data={optionSets}
-              rowKey="Name"
-              onRowClick={(row) => setSelectedSetName(row.Name)}
-              emptyMessage="No option sets found"
-              emptyIcon={ListTree}
-              embedded
-              showColumnPicker={false}
-            />
-          </TableCard>
+          <DataTable<OptionSet>
+            id="admin-option-sets"
+            columns={setColumns}
+            data={optionSets}
+            rowKey="Name"
+            onRowClick={(row) => setSelectedSetName(row.Name)}
+            emptyMessage="No option sets found"
+            emptyIcon={ListTree}
+          />
         </div>
 
         {/* Right: Items panel */}
         <div className="lg:col-span-3">
           {!selectedSetName ? (
-            <div className="rounded-lg border border-border bg-surface-raised p-12 text-center">
-              <ListTree className="w-12 h-12 text-semantic-text-disabled mx-auto mb-3" />
-              <p className="text-semantic-text-faint">Select an option set to view and manage its items.</p>
+            <div className="rounded-lg border border-dark-200 bg-dark-50 p-12 text-center">
+              <ListTree className="w-12 h-12 text-dark-300 mx-auto mb-3" />
+              <p className="text-dark-400">Select an option set to view and manage its items.</p>
             </div>
           ) : (
             <div className="space-y-3">
               {/* Info bar */}
               {selectedSet && (
-                <div className="rounded-lg border border-border bg-surface-raised px-4 py-3">
+                <div className="rounded-lg border border-dark-200 bg-dark-50 px-4 py-3">
                   <div className="flex items-center justify-between mb-2">
-                    <h2 className="text-sm font-semibold text-semantic-text-default">{selectedSet.DisplayName || selectedSet.Name}</h2>
+                    <h2 className="text-sm font-semibold text-dark-700">{selectedSet.DisplayName || selectedSet.Name}</h2>
                     <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={openCreateItem}>
                       Add Item
                     </Button>
                   </div>
-                  <div className="flex items-center gap-4 text-xs text-semantic-text-faint">
-                    <span>Category: <strong className="text-semantic-text-subtle">{selectedSet.Category || '-'}</strong></span>
-                    <span>Version: <strong className="text-semantic-text-subtle">{selectedSet.Version || 1}</strong></span>
-                    <span>Custom Items: <strong className="text-semantic-text-subtle">{selectedSet.AllowCustomItems ? 'Yes' : 'No'}</strong></span>
+                  <div className="flex items-center gap-4 text-xs text-dark-400">
+                    <span>Category: <strong className="text-dark-500">{selectedSet.Category || '-'}</strong></span>
+                    <span>Version: <strong className="text-dark-500">{selectedSet.Version || 1}</strong></span>
+                    <span>Custom Items: <strong className="text-dark-500">{selectedSet.AllowCustomItems ? 'Yes' : 'No'}</strong></span>
                   </div>
                 </div>
               )}
@@ -469,21 +461,14 @@ export default function OptionSetsPage() {
               {detailLoading ? (
                 <div className="flex justify-center py-8"><LoadingSpinner /></div>
               ) : (
-                <TableCard
-                  title="Items"
-                  count={items.length}
-                >
-                  <DataTable<OptionSetItem>
-                    id="admin-option-set-items"
-                    columns={itemColumns}
-                    data={items}
-                    rowKey="_id"
-                    onRowClick={openEditItem}
-                    emptyMessage="No items in this option set"
-                    embedded
-                    showColumnPicker={false}
-                  />
-                </TableCard>
+                <DataTable<OptionSetItem>
+                  id="admin-option-set-items"
+                  columns={itemColumns}
+                  data={items}
+                  rowKey="_id"
+                  onRowClick={openEditItem}
+                  emptyMessage="No items in this option set"
+                />
               )}
             </div>
           )}
@@ -546,30 +531,30 @@ export default function OptionSetsPage() {
             />
           </FormField>
           <div className="flex items-center gap-6">
-            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer">
+            <label className="flex items-center gap-2 text-sm text-dark-600 cursor-pointer">
               <input
                 type="checkbox"
                 checked={setForm.allowCustomItems}
                 onChange={(e) => setSetForm({ ...setForm, allowCustomItems: e.target.checked })}
-                className="w-4 h-4 rounded border-border"
+                className="w-4 h-4 rounded border-dark-300"
               />
               Allow custom items
             </label>
-            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer">
+            <label className="flex items-center gap-2 text-sm text-dark-600 cursor-pointer">
               <input
                 type="checkbox"
                 checked={setForm.allowMultiSelect}
                 onChange={(e) => setSetForm({ ...setForm, allowMultiSelect: e.target.checked })}
-                className="w-4 h-4 rounded border-border"
+                className="w-4 h-4 rounded border-dark-300"
               />
               Allow multi-select
             </label>
-            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer">
+            <label className="flex items-center gap-2 text-sm text-dark-600 cursor-pointer">
               <input
                 type="checkbox"
                 checked={setForm.isActive}
                 onChange={(e) => setSetForm({ ...setForm, isActive: e.target.checked })}
-                className="w-4 h-4 rounded border-border"
+                className="w-4 h-4 rounded border-dark-300"
               />
               Active
             </label>
@@ -661,7 +646,7 @@ export default function OptionSetsPage() {
             <FormField label="Color">
               <div className="flex items-center gap-2">
                 {itemForm.colour && (
-                  <span className="w-6 h-6 rounded border border-border" style={{ backgroundColor: itemForm.colour }} />
+                  <span className="w-6 h-6 rounded border border-dark-300" style={{ backgroundColor: itemForm.colour }} />
                 )}
                 <input
                   type="text"
@@ -692,21 +677,21 @@ export default function OptionSetsPage() {
             </FormField>
           </div>
           <div className="flex items-center gap-6">
-            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer">
+            <label className="flex items-center gap-2 text-sm text-dark-600 cursor-pointer">
               <input
                 type="checkbox"
                 checked={itemForm.isDefault}
                 onChange={(e) => setItemForm({ ...itemForm, isDefault: e.target.checked })}
-                className="w-4 h-4 rounded border-border"
+                className="w-4 h-4 rounded border-dark-300"
               />
               Default
             </label>
-            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer">
+            <label className="flex items-center gap-2 text-sm text-dark-600 cursor-pointer">
               <input
                 type="checkbox"
                 checked={itemForm.isActive}
                 onChange={(e) => setItemForm({ ...itemForm, isActive: e.target.checked })}
-                className="w-4 h-4 rounded border-border"
+                className="w-4 h-4 rounded border-dark-300"
               />
               Active
             </label>
@@ -733,8 +718,8 @@ export default function OptionSetsPage() {
           </>
         }
       >
-        <p className="text-sm text-semantic-text-subtle">
-          Are you sure you want to deactivate <strong className="text-semantic-text-default">{deleteItemModal.data?.name}</strong>?
+        <p className="text-sm text-dark-500">
+          Are you sure you want to deactivate <strong className="text-dark-700">{deleteItemModal.data?.name}</strong>?
           This will mark the item as inactive.
         </p>
       </Modal>
@@ -749,7 +734,7 @@ export default function OptionSetsPage() {
 function FormField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-semantic-text-subtle mb-1">
+      <label className="block text-xs font-medium text-dark-500 mb-1">
         {label}
         {required && <span className="text-danger ml-0.5">*</span>}
       </label>

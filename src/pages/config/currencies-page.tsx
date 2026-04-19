@@ -9,8 +9,6 @@ import {
   StatusBadge,
   LoadingSpinner,
   Tabs,
-  PageHeader,
-  TableCard,
 } from '@/components/shared';
 import type { ColumnDef, TabItem } from '@/components/shared';
 import {
@@ -286,9 +284,9 @@ export default function CurrenciesPage() {
       sortable: true,
       render: (val) => <code className="text-xs bg-info/10 text-info px-1.5 py-0.5 rounded font-semibold">{val}</code>,
     },
-    { key: 'Name', label: 'Name', sortable: true, render: (val) => <span className="text-semantic-text-default">{val}</span> },
-    { key: 'Symbol', label: 'Symbol', width: 80, sortable: true, render: (val) => <span className="text-semantic-text-subtle">{val || '-'}</span> },
-    { key: 'DecimalPlaces', label: 'Decimals', width: 80, sortable: true, render: (val) => <span className="text-semantic-text-faint">{val ?? 2}</span> },
+    { key: 'Name', label: 'Name', sortable: true, render: (val) => <span className="text-dark-700">{val}</span> },
+    { key: 'Symbol', label: 'Symbol', width: 80, sortable: true, render: (val) => <span className="text-dark-500">{val || '-'}</span> },
+    { key: 'DecimalPlaces', label: 'Decimals', width: 80, sortable: true, render: (val) => <span className="text-dark-400">{val ?? 2}</span> },
     {
       key: 'IsDefault',
       label: 'Default',
@@ -301,7 +299,7 @@ export default function CurrenciesPage() {
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); setDefaultMutation.mutate(row.Id); }}
-            className="text-xs text-semantic-text-faint hover:text-primary transition-colors"
+            className="text-xs text-dark-400 hover:text-primary transition-colors"
           >
             Set Default
           </button>
@@ -321,11 +319,11 @@ export default function CurrenciesPage() {
       sortable: false,
       render: (_val, row) => (
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={() => openEditCurrency(row)} className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors" title="Edit">
+          <button type="button" onClick={() => openEditCurrency(row)} className="p-1.5 text-dark-400 hover:text-primary rounded hover:bg-dark-100 transition-colors" title="Edit">
             <Edit className="w-4 h-4" />
           </button>
           {!row.IsDefault && (
-            <button type="button" onClick={() => deleteModal.open(row)} className="p-1.5 text-semantic-text-faint hover:text-danger rounded hover:bg-interactive-hover transition-colors" title="Delete">
+            <button type="button" onClick={() => deleteModal.open(row)} className="p-1.5 text-dark-400 hover:text-danger rounded hover:bg-dark-100 transition-colors" title="Delete">
               <Trash2 className="w-4 h-4" />
             </button>
           )}
@@ -342,15 +340,15 @@ export default function CurrenciesPage() {
       sortable: true,
       render: (val) => <code className="text-xs bg-info/10 text-info px-1.5 py-0.5 rounded">{val}</code>,
     },
-    { key: 'CurrencyName', label: 'Name', sortable: true, render: (val) => <span className="text-semantic-text-subtle">{val || '-'}</span> },
+    { key: 'CurrencyName', label: 'Name', sortable: true, render: (val) => <span className="text-dark-500">{val || '-'}</span> },
     {
       key: 'Rate',
       label: 'Rate',
       width: 120,
       sortable: true,
-      render: (val) => <span className="font-mono text-semantic-text-default">{parseFloat(val).toFixed(6)}</span>,
+      render: (val) => <span className="font-mono text-dark-700">{parseFloat(val).toFixed(6)}</span>,
     },
-    { key: 'RateDate', label: 'Date', width: 120, sortable: true, render: (val) => <span className="text-semantic-text-faint">{val || '-'}</span> },
+    { key: 'RateDate', label: 'Date', width: 120, sortable: true, render: (val) => <span className="text-dark-400">{val || '-'}</span> },
     {
       key: 'Source',
       label: 'Source',
@@ -365,10 +363,10 @@ export default function CurrenciesPage() {
       sortable: false,
       render: (_val, row) => (
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={() => openEditRate(row)} className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors" title="Edit">
+          <button type="button" onClick={() => openEditRate(row)} className="p-1.5 text-dark-400 hover:text-primary rounded hover:bg-dark-100 transition-colors" title="Edit">
             <Edit className="w-4 h-4" />
           </button>
-          <button type="button" onClick={() => deleteRateModal.open(row)} className="p-1.5 text-semantic-text-faint hover:text-danger rounded hover:bg-interactive-hover transition-colors" title="Delete">
+          <button type="button" onClick={() => deleteRateModal.open(row)} className="p-1.5 text-dark-400 hover:text-danger rounded hover:bg-dark-100 transition-colors" title="Delete">
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
@@ -380,32 +378,30 @@ export default function CurrenciesPage() {
 
   if (currenciesLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="flex items-center justify-center h-full">
         <LoadingSpinner size="lg" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Currencies"
-        description="Manage currency settings"
-      />
+    <div className="p-6 space-y-4 overflow-y-auto h-full">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <Coins className="w-5 h-5 text-primary" />
+        <h1 className="text-lg font-semibold text-dark-700">Currencies & Exchange Rates</h1>
+      </div>
 
-      {/* Sub-tabs for currencies sections */}
+      {/* Tabs */}
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
       {/* Currencies Tab */}
       {activeTab === 'currencies' && (
-        <TableCard
-          title="All Currencies"
-          icon={<Coins className="w-4 h-4" />}
-          count={currencies.length}
-          headerActions={
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-dark-400">{currencies.length} currencies</span>
             <Button icon={<Plus className="w-4 h-4" />} onClick={openCreateCurrency}>Add Currency</Button>
-          }
-        >
+          </div>
           <DataTable<Currency>
             id="admin-currencies"
             columns={currencyColumns}
@@ -414,18 +410,15 @@ export default function CurrenciesPage() {
             onRowClick={openEditCurrency}
             emptyMessage="No currencies configured"
             emptyIcon={Coins}
-            embedded
-            showColumnPicker={false}
           />
-        </TableCard>
+        </div>
       )}
 
       {/* Provider Tab */}
       {activeTab === 'provider' && (
         <div className="space-y-4">
-          <form id="provider-config-form" onSubmit={(e) => { e.preventDefault(); handleSaveProvider(); }}>
-          <div className="rounded-lg border border-border bg-surface-raised p-6 space-y-4">
-            <h2 className="text-sm font-medium text-semantic-text-secondary">Exchange Rate Provider</h2>
+          <div className="rounded-lg border border-dark-200 bg-dark-50 p-6 space-y-4">
+            <h2 className="text-sm font-medium text-dark-600">Exchange Rate Provider</h2>
             <div className="grid grid-cols-2 gap-4">
               <FormField label="Provider Name">
                 <input
@@ -504,13 +497,13 @@ export default function CurrenciesPage() {
                   className="sr-only peer"
                   title="Enabled"
                 />
-                <div className="w-9 h-5 bg-surface-subtle peer-focus:ring-2 peer-focus:ring-interactive-focus-ring rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-semantic-text-faint after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent-primary peer-checked:after:bg-semantic-text-on-primary" />
+                <div className="w-9 h-5 bg-dark-200 peer-focus:ring-2 peer-focus:ring-primary/50 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-dark-400 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-dark" />
               </label>
-              <span className="text-sm text-semantic-text-secondary">Enabled</span>
+              <span className="text-sm text-dark-600">Enabled</span>
             </div>
             {/* Last fetch status */}
             {provider?.LastFetchedAt && (
-              <div className="text-xs text-semantic-text-faint">
+              <div className="text-xs text-dark-400">
                 Last fetched: {new Date(provider.LastFetchedAt).toLocaleString()}
                 {provider.LastFetchStatus === 'error' ? (
                   <span className="ml-2"><StatusBadge status="danger" label="Error" size="sm" /></span>
@@ -523,11 +516,10 @@ export default function CurrenciesPage() {
               </div>
             )}
             <div className="flex items-center gap-3 pt-2">
-              <Button type="submit" loading={saveProviderMutation.isPending}>
+              <Button onClick={handleSaveProvider} loading={saveProviderMutation.isPending}>
                 Save Settings
               </Button>
               <Button
-                type="button"
                 variant="secondary"
                 icon={<RefreshCw className="w-4 h-4" />}
                 onClick={() => fetchRatesMutation.mutate()}
@@ -537,7 +529,6 @@ export default function CurrenciesPage() {
               </Button>
             </div>
           </div>
-          </form>
         </div>
       )}
 
@@ -556,8 +547,8 @@ export default function CurrenciesPage() {
                 />
               </FormField>
               {rates.length > 0 && rates[0].BaseCurrency && (
-                <span className="text-sm text-semantic-text-faint mt-5">
-                  Base: <strong className="text-semantic-text-secondary">{rates[0].BaseCurrency}</strong>
+                <span className="text-sm text-dark-400 mt-5">
+                  Base: <strong className="text-dark-600">{rates[0].BaseCurrency}</strong>
                   {rates[0].BaseCurrencyName && ` -- ${rates[0].BaseCurrencyName}`}
                 </span>
               )}
@@ -579,23 +570,15 @@ export default function CurrenciesPage() {
           {ratesLoading ? (
             <div className="flex justify-center py-8"><LoadingSpinner /></div>
           ) : (
-            <TableCard
-              title="Exchange Rates"
-              icon={<Coins className="w-4 h-4" />}
-              count={rates.length}
-            >
-              <DataTable<ExchangeRate>
-                id="admin-exchange-rates"
-                columns={rateColumns}
-                data={rates}
-                rowKey="Id"
-                onRowClick={openEditRate}
-                emptyMessage="No exchange rates for this date"
-                emptyIcon={Coins}
-                embedded
-                showColumnPicker={false}
-              />
-            </TableCard>
+            <DataTable<ExchangeRate>
+              id="admin-exchange-rates"
+              columns={rateColumns}
+              data={rates}
+              rowKey="Id"
+              onRowClick={openEditRate}
+              emptyMessage="No exchange rates for this date"
+              emptyIcon={Coins}
+            />
           )}
         </div>
       )}
@@ -667,9 +650,9 @@ export default function CurrenciesPage() {
                 className="sr-only peer"
                 title="Default"
               />
-              <div className="w-9 h-5 bg-surface-subtle peer-focus:ring-2 peer-focus:ring-interactive-focus-ring rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-semantic-text-faint after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent-primary peer-checked:after:bg-semantic-text-on-primary" />
+              <div className="w-9 h-5 bg-dark-200 peer-focus:ring-2 peer-focus:ring-primary/50 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-dark-400 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-dark" />
             </label>
-            <span className="text-sm text-semantic-text-secondary">Set as default</span>
+            <span className="text-sm text-dark-600">Set as default</span>
           </div>
         </div>
       </Modal>
@@ -689,8 +672,8 @@ export default function CurrenciesPage() {
           </>
         }
       >
-        <p className="text-sm text-semantic-text-subtle">
-          Are you sure you want to delete <strong className="text-semantic-text-default">{deleteModal.data?.Code}</strong> ({deleteModal.data?.Name})?
+        <p className="text-sm text-dark-500">
+          Are you sure you want to delete <strong className="text-dark-700">{deleteModal.data?.Code}</strong> ({deleteModal.data?.Name})?
         </p>
       </Modal>
 
@@ -761,8 +744,8 @@ export default function CurrenciesPage() {
           </>
         }
       >
-        <p className="text-sm text-semantic-text-subtle">
-          Delete the <strong className="text-semantic-text-default">{deleteRateModal.data?.ToCurrency}</strong> rate for {deleteRateModal.data?.RateDate}?
+        <p className="text-sm text-dark-500">
+          Delete the <strong className="text-dark-700">{deleteRateModal.data?.ToCurrency}</strong> rate for {deleteRateModal.data?.RateDate}?
         </p>
       </Modal>
     </div>
@@ -776,7 +759,7 @@ export default function CurrenciesPage() {
 function FormField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-semantic-text-subtle mb-1">
+      <label className="block text-xs font-medium text-dark-500 mb-1">
         {label}
         {required && <span className="text-danger ml-0.5">*</span>}
       </label>
