@@ -1,0 +1,20 @@
+# Temporary override: run the cached softbits-admin:latest image instead of
+# rebuilding from source.
+#
+# Why: the React codebase is mid-migration. 53 missing-export errors across
+# 14 files (EdIT admin, providers/endpoints, billing-role CRUD, ERP config
+# file manager, exchange rates, configuration pages) currently fail the Vite
+# build. The last successfully-built image (~10 days ago) is tagged
+# softbits-admin:latest and is sufficient for AdminIT operation while the
+# in-flight work is completed.
+#
+# Remove this file once `docker compose build` succeeds from clean source.
+# See: projects/plans/plan-2026-04-19-restart-softbits-admin.md
+#
+# Related override: softbits-bridge/docker-compose.override.yml shifts
+# Bridge's legacy admin UI off :3080 so this console can bind its canonical
+# port. Both overrides should be removed together once the migration lands.
+services:
+  softbits-admin:
+    image: softbits-admin:latest
+    build: !reset null
