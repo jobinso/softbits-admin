@@ -1,58 +1,46 @@
-import { lazy, Suspense, useState, useEffect } from 'react';
+import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { AdminLayout } from '@/components/layout';
-import { LoadingSpinner } from '@/components/shared';
-
-// Eager: login + dashboard (always needed)
+import { ErrorBoundary } from '@/components/shared/error-boundary';
+import { FullPageSpinner } from '@shared/components';
 import LoginPage from '@/pages/login-page';
-import DashboardPage from '@/pages/dashboard-page';
-import OAuthCallbackPage from '@/pages/oauth-callback-page';
 
-// Lazy: Bridge pages (loaded on demand)
-const SecurityPage = lazy(() => import('@/pages/security-page'));
+// Lazy-loaded pages — grouped by section
+const DashboardPage = lazy(() => import('@/pages/dashboard-page'));
+const NotFoundPage = lazy(() => import('@/pages/not-found-page'));
+
+// Security pages
+const UsersPage = lazy(() => import('@/pages/security').then(m => ({ default: m.UsersPage })));
+const RolesPage = lazy(() => import('@/pages/security').then(m => ({ default: m.RolesPage })));
+const TokensPage = lazy(() => import('@/pages/security').then(m => ({ default: m.TokensPage })));
+const DevicesPage = lazy(() => import('@/pages/security').then(m => ({ default: m.DevicesPage })));
+
+// Infrastructure pages
 const ServicesPage = lazy(() => import('@/pages/services-page'));
 const CachePage = lazy(() => import('@/pages/cache-page'));
-const ConfigPage = lazy(() => import('@/pages/config-page'));
-const ErpConfigPage = lazy(() => import('@/pages/erp-config-page'));
 const LicensingPage = lazy(() => import('@/pages/licensing-page'));
 const PatchesPage = lazy(() => import('@/pages/patches-page'));
-const ProvidersPage = lazy(() => import('@/pages/providers-page'));
 
-// Lazy: App admin pages (loaded on demand)
-const ConnectAdminPage = lazy(() => import('@/pages/apps/connect-admin-page'));
-const StackAdminPage = lazy(() => import('@/pages/apps/stack-admin-page'));
-const FlipAdminPage = lazy(() => import('@/pages/apps/flip-admin-page'));
-const FloorAdminPage = lazy(() => import('@/pages/apps/floor-admin-page'));
-const LabelAdminPage = lazy(() => import('@/pages/apps/label-admin-page'));
-const ShopAdminPage = lazy(() => import('@/pages/apps/shop-admin-page'));
-const InfuseAdminPage = lazy(() => import('@/pages/apps/infuse-admin-page'));
-const WorkAdminPage = lazy(() => import('@/pages/apps/work-admin-page'));
-const PulpAdminPage = lazy(() => import('@/pages/apps/pulp-admin-page'));
-const EmailPollerAdminPage = lazy(() => import('@/pages/apps/email-poller-admin-page'));
-const EditAdminPage = lazy(() => import('@/pages/apps/edit-admin-page'));
+// Config pages
+const ProjectTypesPage = lazy(() => import('@/pages/config').then(m => ({ default: m.ProjectTypesPage })));
+const CurrenciesPage = lazy(() => import('@/pages/config').then(m => ({ default: m.CurrenciesPage })));
+const OptionSetsPage = lazy(() => import('@/pages/config').then(m => ({ default: m.OptionSetsPage })));
+const WarehousesPage = lazy(() => import('@/pages/config').then(m => ({ default: m.WarehousesPage })));
+
+// App admin pages
+const ConnectAdminPage = lazy(() => import('@/pages/apps').then(m => ({ default: m.ConnectAdminPage })));
+const StackAdminPage = lazy(() => import('@/pages/apps').then(m => ({ default: m.StackAdminPage })));
+const FlipAdminPage = lazy(() => import('@/pages/apps').then(m => ({ default: m.FlipAdminPage })));
+const FloorAdminPage = lazy(() => import('@/pages/apps').then(m => ({ default: m.FloorAdminPage })));
+const LabelAdminPage = lazy(() => import('@/pages/apps').then(m => ({ default: m.LabelAdminPage })));
+const ShopAdminPage = lazy(() => import('@/pages/apps').then(m => ({ default: m.ShopAdminPage })));
+const InfuseAdminPage = lazy(() => import('@/pages/apps').then(m => ({ default: m.InfuseAdminPage })));
+const WorkAdminPage = lazy(() => import('@/pages/apps').then(m => ({ default: m.WorkAdminPage })));
+const PulpAdminPage = lazy(() => import('@/pages/apps').then(m => ({ default: m.PulpAdminPage })));
 
 function App() {
   const { isAuthenticated } = useAuth();
-  const [hydrated, setHydrated] = useState(useAuth.persist.hasHydrated());
-
-  useEffect(() => {
-    const unsub = useAuth.persist.onFinishHydration(() => setHydrated(true));
-    return unsub;
-  }, []);
-
-  // Wait for Zustand persist to rehydrate before rendering routes.
-  // This prevents queries from firing before auth state is known.
-  if (!hydrated) return null;
-
-  // OAuth callback — must render in popup regardless of auth state
-  if (window.location.pathname === '/oauth/callback') {
-    return (
-      <Routes>
-        <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
-      </Routes>
-    );
-  }
 
   if (!isAuthenticated) {
     return (
@@ -64,33 +52,37 @@ function App() {
   }
 
   return (
-    <Suspense fallback={<div className="flex items-center justify-center h-screen"><LoadingSpinner size="lg" /></div>}>
-      <Routes>
-        <Route element={<AdminLayout />}>
-          <Route path="/" element={<DashboardPage />} />
-          <Route path="/security" element={<SecurityPage />} />
-          <Route path="/services" element={<ServicesPage />} />
-          <Route path="/cache" element={<CachePage />} />
-          <Route path="/config" element={<ConfigPage />} />
-          <Route path="/erp-config" element={<ErpConfigPage />} />
-          <Route path="/licensing" element={<LicensingPage />} />
-          <Route path="/patches" element={<PatchesPage />} />
-          <Route path="/providers" element={<ProvidersPage />} />
-          <Route path="/apps/connect" element={<ConnectAdminPage />} />
-          <Route path="/apps/stack" element={<StackAdminPage />} />
-          <Route path="/apps/flip" element={<FlipAdminPage />} />
-          <Route path="/apps/floor" element={<FloorAdminPage />} />
-          <Route path="/apps/labels" element={<LabelAdminPage />} />
-          <Route path="/apps/shop" element={<ShopAdminPage />} />
-          <Route path="/apps/infuse" element={<InfuseAdminPage />} />
-          <Route path="/apps/work" element={<WorkAdminPage />} />
-          <Route path="/apps/pulp" element={<PulpAdminPage />} />
-          <Route path="/apps/email-poller" element={<EmailPollerAdminPage />} />
-          <Route path="/apps/edit" element={<EditAdminPage />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Suspense>
+    <ErrorBoundary>
+      <Suspense fallback={<FullPageSpinner />}>
+        <Routes>
+          <Route element={<AdminLayout />}>
+            <Route path="/" element={<DashboardPage />} />
+            <Route path="/security/users" element={<UsersPage />} />
+            <Route path="/security/roles" element={<RolesPage />} />
+            <Route path="/security/tokens" element={<TokensPage />} />
+            <Route path="/security/devices" element={<DevicesPage />} />
+            <Route path="/services" element={<ServicesPage />} />
+            <Route path="/cache" element={<CachePage />} />
+            <Route path="/config/project-types" element={<ProjectTypesPage />} />
+            <Route path="/config/currencies" element={<CurrenciesPage />} />
+            <Route path="/config/option-sets" element={<OptionSetsPage />} />
+            <Route path="/config/warehouses" element={<WarehousesPage />} />
+            <Route path="/licensing" element={<LicensingPage />} />
+            <Route path="/patches" element={<PatchesPage />} />
+            <Route path="/apps/connect" element={<ConnectAdminPage />} />
+            <Route path="/apps/stack" element={<StackAdminPage />} />
+            <Route path="/apps/flip" element={<FlipAdminPage />} />
+            <Route path="/apps/floor" element={<FloorAdminPage />} />
+            <Route path="/apps/labels" element={<LabelAdminPage />} />
+            <Route path="/apps/shop" element={<ShopAdminPage />} />
+            <Route path="/apps/infuse" element={<InfuseAdminPage />} />
+            <Route path="/apps/work" element={<WorkAdminPage />} />
+            <Route path="/apps/pulp" element={<PulpAdminPage />} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Route>
+        </Routes>
+      </Suspense>
+    </ErrorBoundary>
   );
 }
 

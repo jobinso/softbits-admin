@@ -9,8 +9,6 @@ import {
   StatusBadge,
   LoadingSpinner,
   Tabs,
-  PageHeader,
-  TableCard,
 } from '@/components/shared';
 import type { ColumnDef, TabItem } from '@/components/shared';
 import {
@@ -277,7 +275,7 @@ export default function ProjectTypesPage() {
       key: 'DisplayLabel',
       label: 'Label',
       sortable: true,
-      render: (val) => <span className="font-medium text-semantic-text-default">{val}</span>,
+      render: (val) => <span className="font-medium text-dark-700">{val}</span>,
     },
     {
       key: 'StatusValue',
@@ -301,14 +299,14 @@ export default function ProjectTypesPage() {
       label: 'Default',
       width: 80,
       sortable: true,
-      render: (val) => val ? <StatusBadge status="info" label="Yes" size="sm" /> : <span className="text-semantic-text-faint">-</span>,
+      render: (val) => val ? <StatusBadge status="info" label="Yes" size="sm" /> : <span className="text-dark-400">-</span>,
     },
     {
       key: 'IsFinal',
       label: 'Terminal',
       width: 80,
       sortable: true,
-      render: (val, row) => (val || row.IsTerminal) ? <StatusBadge status="warning" label="Yes" size="sm" /> : <span className="text-semantic-text-faint">-</span>,
+      render: (val, row) => (val || row.IsTerminal) ? <StatusBadge status="warning" label="Yes" size="sm" /> : <span className="text-dark-400">-</span>,
     },
     {
       key: 'StatusId',
@@ -317,10 +315,10 @@ export default function ProjectTypesPage() {
       sortable: false,
       render: (_val, row) => (
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={() => openEditStatus(row)} className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors" title="Edit">
+          <button type="button" onClick={() => openEditStatus(row)} className="p-1.5 text-dark-400 hover:text-primary rounded hover:bg-dark-100 transition-colors" title="Edit">
             <Edit className="w-4 h-4" />
           </button>
-          <button type="button" onClick={() => deleteStatusModal.open(row)} className="p-1.5 text-semantic-text-faint hover:text-danger rounded hover:bg-interactive-hover transition-colors" title="Delete">
+          <button type="button" onClick={() => deleteStatusModal.open(row)} className="p-1.5 text-dark-400 hover:text-danger rounded hover:bg-dark-100 transition-colors" title="Delete">
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
@@ -332,28 +330,37 @@ export default function ProjectTypesPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="flex items-center justify-center h-full">
         <LoadingSpinner size="lg" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-4 overflow-y-auto h-full">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <FolderKanban className="w-5 h-5 text-primary" />
+          <h1 className="text-lg font-semibold text-dark-700">Project Types</h1>
+          <span className="text-sm text-dark-400">{projectTypes.length} total</span>
+        </div>
+        <Button icon={<Plus className="w-4 h-4" />} onClick={openCreateType}>
+          Add Type
+        </Button>
+      </div>
+
       {/* Main content: two-panel layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Left: Types list */}
         <div className="lg:col-span-1">
-          <div className="rounded-lg border border-border bg-surface-raised overflow-hidden">
-            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-semantic-text-default">Project Types</h2>
-              <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={openCreateType}>
-                Add Type
-              </Button>
+          <div className="rounded-lg border border-dark-200 bg-dark-50 overflow-hidden">
+            <div className="px-4 py-3 border-b border-dark-200">
+              <h2 className="text-sm font-medium text-dark-600">Types</h2>
             </div>
-            <div className="divide-y divide-border max-h-[600px] overflow-y-auto">
+            <div className="divide-y divide-dark-200 max-h-[600px] overflow-y-auto">
               {projectTypes.length === 0 ? (
-                <div className="p-6 text-center text-semantic-text-faint text-sm">No project types. Click "Add Type" to create one.</div>
+                <div className="p-6 text-center text-dark-400 text-sm">No project types. Click "Add Type" to create one.</div>
               ) : (
                 projectTypes.map((t) => (
                   <button
@@ -361,16 +368,16 @@ export default function ProjectTypesPage() {
                     type="button"
                     onClick={() => { setSelectedType(t); setSelectedTaskType('task'); }}
                     className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors ${
-                      selectedType?.Id === t.Id ? 'bg-primary/10 border-l-2 border-primary' : 'hover:bg-interactive-hover'
+                      selectedType?.Id === t.Id ? 'bg-primary/10 border-l-2 border-primary' : 'hover:bg-dark-100'
                     }`}
                   >
                     <div>
-                      <div className={`text-sm font-medium ${selectedType?.Id === t.Id ? 'text-primary' : 'text-semantic-text-secondary'}`}>
+                      <div className={`text-sm font-medium ${selectedType?.Id === t.Id ? 'text-primary' : 'text-dark-600'}`}>
                         {t.Name}
                       </div>
                       {t.IsDefault && <span className="text-xs text-primary">(Default)</span>}
                     </div>
-                    <ChevronRight className="w-4 h-4 text-semantic-text-faint" />
+                    <ChevronRight className="w-4 h-4 text-dark-400" />
                   </button>
                 ))
               )}
@@ -381,16 +388,16 @@ export default function ProjectTypesPage() {
         {/* Right: Detail panel */}
         <div className="lg:col-span-2">
           {!selectedType ? (
-            <div className="rounded-lg border border-border bg-surface-raised p-12 text-center">
-              <FolderKanban className="w-12 h-12 text-semantic-text-disabled mx-auto mb-3" />
-              <p className="text-semantic-text-faint">Select a project type to configure its statuses and fields.</p>
+            <div className="rounded-lg border border-dark-200 bg-dark-50 p-12 text-center">
+              <FolderKanban className="w-12 h-12 text-dark-300 mx-auto mb-3" />
+              <p className="text-dark-400">Select a project type to configure its statuses and fields.</p>
             </div>
           ) : (
             <div className="space-y-4">
               {/* Type header */}
-              <div className="rounded-lg border border-border bg-surface-raised px-4 py-3 flex items-center justify-between">
+              <div className="rounded-lg border border-dark-200 bg-dark-50 px-4 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <h2 className="text-base font-semibold text-semantic-text-default">{selectedType.Name}</h2>
+                  <h2 className="text-base font-semibold text-dark-700">{selectedType.Name}</h2>
                   {selectedType.IsDefault && <StatusBadge status="info" label="Default" size="sm" />}
                 </div>
                 <div className="flex items-center gap-2">
@@ -407,42 +414,42 @@ export default function ProjectTypesPage() {
               <Tabs tabs={taskTypeTabs} activeTab={selectedTaskType} onChange={setSelectedTaskType} />
 
               {/* Statuses section */}
-              <TableCard
-                title={`Statuses — ${TASK_TYPE_LABELS[selectedTaskType]}`}
-                count={statuses.length}
-                headerActions={
+              <div className="rounded-lg border border-dark-200 bg-dark-50 overflow-hidden">
+                <div className="px-4 py-3 border-b border-dark-200 flex items-center justify-between">
+                  <h3 className="text-sm font-medium text-dark-600">
+                    Statuses — {TASK_TYPE_LABELS[selectedTaskType]}
+                  </h3>
                   <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={openCreateStatus}>
                     Add Status
                   </Button>
-                }
-              >
-                {statusesLoading ? (
-                  <div className="flex justify-center py-8"><LoadingSpinner /></div>
-                ) : (
-                  <DataTable<ProjectTypeStatus>
-                    id="project-type-statuses"
-                    columns={statusColumns}
-                    data={statuses}
-                    rowKey={(row) => row.StatusId || row.Id || ''}
-                    onRowClick={openEditStatus}
-                    emptyMessage="No statuses configured"
-                    embedded
-                    showColumnPicker={false}
-                  />
-                )}
-              </TableCard>
+                </div>
+                <div className="p-3">
+                  {statusesLoading ? (
+                    <div className="flex justify-center py-8"><LoadingSpinner /></div>
+                  ) : (
+                    <DataTable<ProjectTypeStatus>
+                      id="project-type-statuses"
+                      columns={statusColumns}
+                      data={statuses}
+                      rowKey={(row) => row.StatusId || row.Id || ''}
+                      onRowClick={openEditStatus}
+                      emptyMessage="No statuses configured"
+                    />
+                  )}
+                </div>
+              </div>
 
               {/* Fields section */}
-              <div className="rounded-lg border border-border bg-surface-raised overflow-hidden">
-                <div className="px-4 py-3 border-b border-border">
-                  <h3 className="text-sm font-medium text-semantic-text-secondary">
+              <div className="rounded-lg border border-dark-200 bg-dark-50 overflow-hidden">
+                <div className="px-4 py-3 border-b border-dark-200">
+                  <h3 className="text-sm font-medium text-dark-600">
                     Field Visibility — {TASK_TYPE_LABELS[selectedTaskType]}
                   </h3>
                 </div>
-                <div className="divide-y divide-border">
+                <div className="divide-y divide-dark-200">
                   {displayFields.map((f) => (
                     <div key={f.FieldName} className="flex items-center justify-between px-4 py-2.5">
-                      <span className="text-sm text-semantic-text-secondary">{FIELD_LABELS[f.FieldName] || f.FieldName}</span>
+                      <span className="text-sm text-dark-600">{FIELD_LABELS[f.FieldName] || f.FieldName}</span>
                       <div className="flex items-center gap-4">
                         <select
                           value={f.Visibility}
@@ -456,14 +463,14 @@ export default function ProjectTypesPage() {
                           <option value="read-only">Read-only</option>
                           <option value="hidden">Hidden</option>
                         </select>
-                        <label className="flex items-center gap-1.5 text-xs text-semantic-text-faint cursor-pointer">
+                        <label className="flex items-center gap-1.5 text-xs text-dark-400 cursor-pointer">
                           <input
                             type="checkbox"
                             checked={f.IsRequired}
                             onChange={(e) =>
                               updateFieldMutation.mutate({ taskType: selectedTaskType, fieldName: f.FieldName, isRequired: e.target.checked })
                             }
-                            className="w-4 h-4 rounded border-border"
+                            className="w-4 h-4 rounded border-dark-300"
                             title="Required"
                           />
                           Required
@@ -521,9 +528,9 @@ export default function ProjectTypesPage() {
                 className="sr-only peer"
                 title="Default"
               />
-              <div className="w-9 h-5 bg-surface-subtle peer-focus:ring-2 peer-focus:ring-interactive-focus-ring rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-semantic-text-faint after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent-primary peer-checked:after:bg-semantic-text-on-primary" />
+              <div className="w-9 h-5 bg-dark-200 peer-focus:ring-2 peer-focus:ring-primary/50 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-dark-400 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-dark" />
             </label>
-            <span className="text-sm text-semantic-text-secondary">Set as default</span>
+            <span className="text-sm text-dark-600">Set as default</span>
           </div>
         </div>
       </Modal>
@@ -543,8 +550,8 @@ export default function ProjectTypesPage() {
           </>
         }
       >
-        <p className="text-sm text-semantic-text-subtle">
-          Are you sure you want to delete <strong className="text-semantic-text-default">{deleteModal.data?.Name}</strong>?
+        <p className="text-sm text-dark-500">
+          Are you sure you want to delete <strong className="text-dark-700">{deleteModal.data?.Name}</strong>?
           This will remove all associated statuses and field configurations.
         </p>
       </Modal>
@@ -594,7 +601,7 @@ export default function ProjectTypesPage() {
                   type="color"
                   value={statusForm.badgeColor}
                   onChange={(e) => setStatusForm({ ...statusForm, badgeColor: e.target.value })}
-                  className="w-8 h-8 rounded border border-border cursor-pointer"
+                  className="w-8 h-8 rounded border border-dark-300 cursor-pointer"
                   title="Badge color"
                 />
                 <input
@@ -619,21 +626,21 @@ export default function ProjectTypesPage() {
             </FormField>
           </div>
           <div className="flex items-center gap-6">
-            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer">
+            <label className="flex items-center gap-2 text-sm text-dark-600 cursor-pointer">
               <input
                 type="checkbox"
                 checked={statusForm.isDefault}
                 onChange={(e) => setStatusForm({ ...statusForm, isDefault: e.target.checked })}
-                className="w-4 h-4 rounded border-border"
+                className="w-4 h-4 rounded border-dark-300"
               />
               Default status
             </label>
-            <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer">
+            <label className="flex items-center gap-2 text-sm text-dark-600 cursor-pointer">
               <input
                 type="checkbox"
                 checked={statusForm.isFinal}
                 onChange={(e) => setStatusForm({ ...statusForm, isFinal: e.target.checked })}
-                className="w-4 h-4 rounded border-border"
+                className="w-4 h-4 rounded border-dark-300"
               />
               Terminal (final)
             </label>
@@ -663,9 +670,9 @@ export default function ProjectTypesPage() {
           </>
         }
       >
-        <p className="text-sm text-semantic-text-subtle">
+        <p className="text-sm text-dark-500">
           Are you sure you want to delete the status{' '}
-          <strong className="text-semantic-text-default">{deleteStatusModal.data?.DisplayLabel}</strong>?
+          <strong className="text-dark-700">{deleteStatusModal.data?.DisplayLabel}</strong>?
         </p>
       </Modal>
     </div>
@@ -679,7 +686,7 @@ export default function ProjectTypesPage() {
 function FormField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-semantic-text-subtle mb-1">
+      <label className="block text-xs font-medium text-dark-500 mb-1">
         {label}
         {required && <span className="text-danger ml-0.5">*</span>}
       </label>

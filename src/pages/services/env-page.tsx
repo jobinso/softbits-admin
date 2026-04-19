@@ -4,6 +4,7 @@ import CodeMirror from '@uiw/react-codemirror';
 import toast from 'react-hot-toast';
 import { AlertTriangle, Save, RotateCcw } from 'lucide-react';
 import { Button, LoadingSpinner } from '@/components/shared';
+import type { ApiError } from '@/types';
 import { getEnvConfig, updateEnvConfig } from '@/services/admin-service';
 
 export default function EnvPage() {
@@ -30,7 +31,7 @@ export default function EnvPage() {
       setIsDirty(false);
       toast.success('Environment file updated. Restart services for changes to take effect.');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.error || 'Failed to save environment file');
     },
   });

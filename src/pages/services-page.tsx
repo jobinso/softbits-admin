@@ -4,17 +4,15 @@ import {
   Activity,
   FileText,
   Cog,
-  Globe,
-  Mail,
   Server,
   Download,
   Trash2,
   RefreshCw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Button, Card, Tabs, StatusBadge, LoadingSpinner, PageHeader } from '@/components/shared';
+import { Button, Card, Tabs, StatusBadge, LoadingSpinner } from '@/components/shared';
 import type { TabItem } from '@/components/shared';
-import type { ServiceInfo, DevTask } from '@/types';
+import type { ServiceInfo, DevTask, ApiError } from '@/types';
 import {
   getServices,
   updateService,
@@ -22,61 +20,42 @@ import {
   clearServiceLogs,
   getDevTasks,
   executeDevTask,
-  getServiceVersions,
-  getHealth,
 } from '@/services/admin-service';
-import { EndpointsPage, ProvidersPage } from '@/pages/services';
 
 // ===== Constants =====
 
 const SERVICE_NAMES: Record<string, string> = {
   'softbits-bridge': 'SoftBITS Bridge',
-  'softbits-sync': 'Bridge Sync',
-  'softbits-poller': 'Bridge Poller',
+  'softbits-valkey': 'SoftBITS Valkey',
   'softbits-connect': 'SoftBITS Connect',
   'connect-sync': 'Connect Sync Engine',
   'softbits-flip': 'SoftBITS Flip',
   'softbits-stack': 'SoftBITS Stack',
-  'softbits-floor': 'SoftBITS Floor',
-  'softbits-pulp': 'SoftBITS Pulp',
-  'softbits-service': 'SoftBITS Service',
   'softbits-shop': 'SoftBITS Shop',
-  'softbits-lic': 'SoftBITS Lic',
-  'softbits-admin': 'SoftBITS Admin',
-  'softbits-frame': 'SoftBITS Frame',
+  'softbits-floor': 'SoftBITS Floor',
   'infuse-mcp': 'Infuse MCP',
-  'infuse-app': 'Infuse App',
   'infuse-http': 'Infuse HTTP',
   'infuse-work': 'Infuse Work',
 };
 
 const APP_SERVICES = [
-  { key: 'connect', name: 'ConnectIT', description: 'CRM synchronization and integration', envVar: 'SOFTBITS_CONNECT_ENABLED' },
   { key: 'flip', name: 'FlipIT', description: 'Mobile Point of Sale for truck sales', envVar: 'SOFTBITS_FLIP_ENABLED' },
-  { key: 'floor', name: 'FloorIT', description: 'Shop Floor Labor Capture', envVar: 'SOFTBITS_FLOOR_ENABLED' },
+  { key: 'connect', name: 'ConnectIT', description: 'CRM synchronization and integration', envVar: 'SOFTBITS_CONNECT_ENABLED' },
   { key: 'stack', name: 'StackIT', description: 'Warehouse Management System', envVar: 'SOFTBITS_STACK_ENABLED' },
-  { key: 'pulp', name: 'PulpIT', description: 'Document Management System', envVar: 'SOFTBITS_PULP_ENABLED' },
-  { key: 'service', name: 'ServiceIT', description: 'Field Service Management', envVar: 'SOFTBITS_SERVICE_ENABLED' },
-  { key: 'shop', name: 'ShopIT', description: 'E-commerce and ordering system', envVar: 'SOFTBITS_SHOP_ENABLED' },
-  { key: 'infuse', name: 'InfuseIT', description: 'AI/MCP integration services', envVar: 'SOFTBITS_INFUSE_ENABLED' },
+  { key: 'floor', name: 'FloorIT', description: 'Shop Floor Labor Capture', envVar: 'SOFTBITS_FLOOR_ENABLED' },
+  { key: 'infuse', name: 'InfuseIT - MCP', description: 'AI/MCP integration services', envVar: 'SOFTBITS_INFUSE_ENABLED' },
 ];
 
 const LOG_SERVICES = [
   { value: 'softbits-bridge', label: 'Bridge' },
-  { value: 'softbits-sync', label: 'Bridge Sync' },
-  { value: 'softbits-poller', label: 'Bridge Poller' },
+  { value: 'softbits-valkey', label: 'Valkey' },
   { value: 'softbits-connect', label: 'Connect' },
   { value: 'connect-sync', label: 'Connect Sync' },
   { value: 'softbits-flip', label: 'Flip' },
-  { value: 'softbits-floor', label: 'Floor' },
   { value: 'softbits-stack', label: 'Stack' },
-  { value: 'softbits-pulp', label: 'Pulp' },
-  { value: 'softbits-service', label: 'Service' },
   { value: 'softbits-shop', label: 'Shop' },
-  { value: 'softbits-lic', label: 'Lic' },
-  { value: 'softbits-admin', label: 'Admin' },
+  { value: 'softbits-floor', label: 'Floor' },
   { value: 'infuse-mcp', label: 'Infuse MCP' },
-  { value: 'infuse-app', label: 'Infuse App' },
   { value: 'infuse-http', label: 'Infuse HTTP' },
   { value: 'infuse-work', label: 'Infuse Work' },
 ];
@@ -85,8 +64,6 @@ const tabs: TabItem[] = [
   { id: 'health', label: 'Health', icon: <Activity className="w-4 h-4" /> },
   { id: 'logs', label: 'Logs', icon: <FileText className="w-4 h-4" /> },
   { id: 'tasks', label: 'Tasks', icon: <Cog className="w-4 h-4" /> },
-  { id: 'endpoints', label: 'Endpoints', icon: <Globe className="w-4 h-4" /> },
-  { id: 'providers', label: 'Provider', icon: <Mail className="w-4 h-4" /> },
 ];
 
 // ===== Helpers =====
@@ -105,8 +82,8 @@ function getLogLineColor(line: string): string {
   if (lower.includes('error') || lower.includes('"level":"error"')) return 'text-danger';
   if (lower.includes('warn') || lower.includes('"level":"warn"')) return 'text-warning';
   if (lower.includes('info') || lower.includes('"level":"info"')) return 'text-info';
-  if (lower.includes('debug') || lower.includes('"level":"debug"')) return 'text-semantic-text-faint';
-  return 'text-semantic-text-secondary';
+  if (lower.includes('debug') || lower.includes('"level":"debug"')) return 'text-dark-400';
+  return 'text-dark-600';
 }
 
 // ===== Sub-components =====
@@ -128,19 +105,19 @@ function HealthCard({
   };
 
   return (
-    <div className="bg-surface-raised border border-border rounded-xl p-4">
+    <div className="bg-dark-50 border border-dark-200 rounded-xl p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Server className="w-4 h-4 text-semantic-text-subtle" />
-          <h3 className="text-sm font-semibold text-semantic-text-default">{title}</h3>
+          <Server className="w-4 h-4 text-dark-500" />
+          <h3 className="text-sm font-semibold text-dark-700">{title}</h3>
         </div>
         <StatusBadge status={badge[status].status} label={badge[status].label} size="sm" />
       </div>
       <div className="space-y-2">
         {items.map((item) => (
           <div key={item.label} className="flex items-center justify-between text-sm">
-            <span className="text-semantic-text-faint">{item.label}</span>
-            <span className="text-semantic-text-secondary font-medium">{item.value}</span>
+            <span className="text-dark-400">{item.label}</span>
+            <span className="text-dark-600 font-medium">{item.value}</span>
           </div>
         ))}
       </div>
@@ -153,23 +130,21 @@ function ServiceToggle({
   enabled,
   onToggle,
   toggling,
-  version,
 }: {
   service: { key: string; name: string; description: string; envVar: string };
   enabled: boolean;
   onToggle: (key: string, enabled: boolean) => void;
   toggling: boolean;
-  version?: string;
 }) {
   return (
-    <div className="flex items-center justify-between p-3 bg-interactive-hover border border-border rounded-lg">
+    <div className="flex items-center justify-between p-3 bg-dark-100/50 border border-dark-200 rounded-lg">
       <div className="min-w-0">
         <div className="flex items-center gap-2">
-          <p className="text-sm font-medium text-semantic-text-default">{service.name}</p>
-          {version && version !== 'unknown' && <span className="text-xs text-semantic-text-faint">v{version}</span>}
+          <p className="text-sm font-medium text-dark-700">{service.name}</p>
           <StatusBadge status={enabled ? 'success' : 'neutral'} label={enabled ? 'Enabled' : 'Disabled'} size="sm" />
         </div>
-        <p className="text-xs text-semantic-text-faint">{service.description}</p>
+        <p className="text-xs text-dark-400">{service.description}</p>
+        <p className="text-xs text-dark-400 font-mono">{service.envVar}</p>
       </div>
       <label className="relative inline-flex items-center cursor-pointer">
         <input
@@ -179,7 +154,7 @@ function ServiceToggle({
           disabled={toggling}
           className="sr-only peer"
         />
-        <div className="w-9 h-5 bg-surface-subtle peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-interactive-focus-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary" />
+        <div className="w-9 h-5 bg-dark-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary" />
       </label>
     </div>
   );
@@ -196,18 +171,18 @@ function DevTaskCard({
 }) {
   return (
     <div
-      className="bg-interactive-hover border border-border rounded-lg p-3.5 hover:border-accent-primary transition-colors cursor-pointer"
+      className="bg-dark-100/50 border border-dark-200 rounded-lg p-3.5 hover:border-primary/50 transition-colors cursor-pointer"
       onClick={() => !running && onRun(task.id)}
     >
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-sm font-medium text-semantic-text-default">
+        <span className="text-sm font-medium text-dark-700">
           {task.icon} {task.name}
         </span>
         {running && (
           <div className="w-2 h-2 rounded-full bg-warning animate-pulse" />
         )}
       </div>
-      <p className="text-xs text-semantic-text-faint leading-relaxed">{task.description}</p>
+      <p className="text-xs text-dark-400 leading-relaxed">{task.description}</p>
     </div>
   );
 }
@@ -235,8 +210,9 @@ export default function ServicesPage() {
   const { data: healthRaw, isLoading: healthLoading } = useQuery({
     queryKey: ['health'],
     queryFn: async () => {
-      const res = await getHealth();
-      return res.data ?? res;
+      const res = await fetch('/health');
+      if (!res.ok) throw new Error('Health check failed');
+      return res.json();
     },
     refetchInterval: 15000,
   });
@@ -245,13 +221,6 @@ export default function ServicesPage() {
     queryKey: ['admin', 'services'],
     queryFn: getServices,
   });
-
-  const { data: versionsData } = useQuery({
-    queryKey: ['admin', 'services', 'versions'],
-    queryFn: getServiceVersions,
-  });
-
-  const versions: Record<string, string> = versionsData?.data || {};
 
   const { data: logsData, refetch: refetchLogs } = useQuery({
     queryKey: ['admin', 'logs', logService, logLines],
@@ -274,7 +243,7 @@ export default function ServicesPage() {
       queryClient.invalidateQueries({ queryKey: ['health'] });
       toast.success('Service updated');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.error || 'Failed to update service');
       queryClient.invalidateQueries({ queryKey: ['admin', 'services'] });
     },
@@ -286,7 +255,7 @@ export default function ServicesPage() {
       queryClient.invalidateQueries({ queryKey: ['admin', 'logs'] });
       toast.success('Logs cleared');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.error || 'Failed to clear logs');
     },
   });
@@ -301,22 +270,15 @@ export default function ServicesPage() {
         duration: data.duration,
       });
       setRunningTask(null);
-      if (data.success) {
-        toast.success(`Task completed in ${data.duration}ms`);
-      } else {
-        toast.error(`Task failed: ${(data.output || 'Unknown error').slice(0, 120)}`);
-      }
     },
-    onError: (error: any) => {
-      const msg = error.response?.data?.error || error.message;
+    onError: (error: ApiError) => {
       setTaskOutput({
         id: runningTask || '',
-        output: `Error: ${msg}`,
+        output: `Error: ${error.response?.data?.error || error.message}`,
         success: false,
         duration: 0,
       });
       setRunningTask(null);
-      toast.error(`Task failed: ${msg}`);
     },
   });
 
@@ -446,11 +408,8 @@ export default function ServicesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Services"
-        description="Monitor and manage running services"
-      />
+    <div className="p-6 space-y-6 overflow-y-auto h-full">
+      <h1 className="text-lg font-semibold text-dark-700">Services</h1>
 
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
@@ -506,7 +465,6 @@ export default function ServicesPage() {
                   enabled={appStatuses[svc.key] ?? false}
                   onToggle={handleToggleService}
                   toggling={toggleServiceMutation.isPending}
-                  version={versions[svc.key]}
                 />
               ))}
             </div>
@@ -517,10 +475,10 @@ export default function ServicesPage() {
             <Card title="API Services">
               <div className="space-y-2">
                 {Object.entries(apiServices).map(([key, svc]) => (
-                  <div key={key} className="flex items-center justify-between p-3 bg-interactive-hover border border-border rounded-lg">
+                  <div key={key} className="flex items-center justify-between p-3 bg-dark-100/50 border border-dark-200 rounded-lg">
                     <div>
-                      <p className="text-sm font-medium text-semantic-text-default">{svc.name}</p>
-                      <p className="text-xs text-semantic-text-faint">{svc.description}</p>
+                      <p className="text-sm font-medium text-dark-700">{svc.name}</p>
+                      <p className="text-xs text-dark-400">{svc.description}</p>
                     </div>
                     <StatusBadge
                       status={svc.enabled ? 'success' : 'neutral'}
@@ -544,7 +502,7 @@ export default function ServicesPage() {
               <select
                 value={logService}
                 onChange={(e) => setLogService(e.target.value)}
-                className="px-3 py-2 bg-surface-overlay border border-border rounded-lg text-sm text-semantic-text-default focus:outline-none focus:ring-2 focus:ring-interactive-focus-ring"
+                className="px-3 py-2 bg-dark-100 border border-dark-200 rounded-lg text-sm text-dark-700 focus:outline-none focus:ring-2 focus:ring-primary/50"
               >
                 <option value="">Select service...</option>
                 {LOG_SERVICES.map((svc) => (
@@ -554,7 +512,7 @@ export default function ServicesPage() {
               <select
                 value={logLines}
                 onChange={(e) => setLogLines(e.target.value)}
-                className="px-3 py-2 bg-surface-overlay border border-border rounded-lg text-sm text-semantic-text-default focus:outline-none focus:ring-2 focus:ring-interactive-focus-ring"
+                className="px-3 py-2 bg-dark-100 border border-dark-200 rounded-lg text-sm text-dark-700 focus:outline-none focus:ring-2 focus:ring-primary/50"
               >
                 <option value="50">50 lines</option>
                 <option value="100">100 lines</option>
@@ -570,12 +528,12 @@ export default function ServicesPage() {
               >
                 Load
               </Button>
-              <label className="flex items-center gap-2 text-sm text-semantic-text-subtle cursor-pointer">
+              <label className="flex items-center gap-2 text-sm text-dark-500 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={autoRefresh}
                   onChange={(e) => handleAutoRefresh(e.target.checked)}
-                  className="rounded border-border bg-surface-subtle text-primary focus:ring-interactive-focus-ring"
+                  className="rounded border-dark-300 bg-dark-200 text-primary focus:ring-primary/50"
                 />
                 Auto-refresh
               </label>
@@ -613,12 +571,12 @@ export default function ServicesPage() {
                 value={logFilter}
                 onChange={(e) => setLogFilter(e.target.value)}
                 placeholder="Filter logs..."
-                className="flex-1 px-3 py-2 bg-surface-overlay border border-border rounded-lg text-sm text-semantic-text-default placeholder:text-semantic-text-faint focus:outline-none focus:ring-2 focus:ring-interactive-focus-ring"
+                className="flex-1 px-3 py-2 bg-dark-100 border border-dark-200 rounded-lg text-sm text-dark-700 placeholder:text-dark-400 focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
               <select
                 value={logLevelFilter}
                 onChange={(e) => setLogLevelFilter(e.target.value)}
-                className="px-3 py-2 bg-surface-overlay border border-border rounded-lg text-sm text-semantic-text-default focus:outline-none focus:ring-2 focus:ring-interactive-focus-ring"
+                className="px-3 py-2 bg-dark-100 border border-dark-200 rounded-lg text-sm text-dark-700 focus:outline-none focus:ring-2 focus:ring-primary/50"
               >
                 <option value="">All Levels</option>
                 <option value="error">Error</option>
@@ -626,7 +584,7 @@ export default function ServicesPage() {
                 <option value="info">Info</option>
                 <option value="debug">Debug</option>
               </select>
-              <span className="text-xs text-semantic-text-faint">
+              <span className="text-xs text-dark-400">
                 {filteredLogLines.length} {logFilter || logLevelFilter ? `of ${logContent.split('\n').length}` : ''} lines
               </span>
             </div>
@@ -634,7 +592,7 @@ export default function ServicesPage() {
 
           {/* Log Content */}
           {logContent ? (
-            <div className="bg-surface-raised border border-border rounded-xl overflow-hidden">
+            <div className="bg-dark-50 border border-dark-200 rounded-xl overflow-hidden">
               <div className="overflow-auto max-h-[500px] p-4 font-mono text-xs leading-relaxed">
                 {filteredLogLines.map((line, idx) => (
                   <div key={idx} className={getLogLineColor(line)}>
@@ -642,16 +600,16 @@ export default function ServicesPage() {
                   </div>
                 ))}
                 {filteredLogLines.length === 0 && (
-                  <p className="text-semantic-text-faint">No matching log entries</p>
+                  <p className="text-dark-400">No matching log entries</p>
                 )}
               </div>
             </div>
           ) : logService ? (
-            <div className="text-center py-12 text-sm text-semantic-text-faint">
+            <div className="text-center py-12 text-sm text-dark-400">
               Click Load to view logs for {SERVICE_NAMES[logService] || logService}
             </div>
           ) : (
-            <div className="text-center py-12 text-sm text-semantic-text-faint">
+            <div className="text-center py-12 text-sm text-dark-400">
               Select a service to view its logs
             </div>
           )}
@@ -662,7 +620,7 @@ export default function ServicesPage() {
       {activeTab === 'tasks' && (
         <div className="space-y-6">
           {groupedTasks.length === 0 ? (
-            <div className="text-center py-12 text-sm text-semantic-text-faint">
+            <div className="text-center py-12 text-sm text-dark-400">
               {devTasksData ? 'No tasks available' : <LoadingSpinner size="md" />}
             </div>
           ) : (
@@ -689,7 +647,7 @@ export default function ServicesPage() {
               headerAction={
                 <div className="flex items-center gap-3">
                   {taskOutput.duration > 0 && (
-                    <span className="text-xs text-semantic-text-faint">{(taskOutput.duration / 1000).toFixed(1)}s</span>
+                    <span className="text-xs text-dark-400">{(taskOutput.duration / 1000).toFixed(1)}s</span>
                   )}
                   <StatusBadge
                     status={taskOutput.success ? 'success' : 'danger'}
@@ -699,20 +657,13 @@ export default function ServicesPage() {
                 </div>
               }
             >
-              <pre className="bg-surface-overlay rounded-lg p-4 text-xs text-semantic-text-secondary font-mono overflow-auto max-h-[300px] whitespace-pre-wrap">
+              <pre className="bg-dark-100 rounded-lg p-4 text-xs text-dark-600 font-mono overflow-auto max-h-[300px] whitespace-pre-wrap">
                 {taskOutput.output}
               </pre>
             </Card>
           )}
         </div>
       )}
-
-
-      {/* Tab: Endpoints */}
-      {activeTab === 'endpoints' && <EndpointsPage />}
-
-      {/* Tab: Provider */}
-      {activeTab === 'providers' && <ProvidersPage />}
     </div>
   );
 }

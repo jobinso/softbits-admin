@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit, Trash2, Printer, FileText, History, Settings, Wifi, WifiOff } from 'lucide-react';
+import { Tag, Plus, Edit, Trash2, Printer, FileText, History, Settings, Wifi, WifiOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   DataTable,
@@ -10,12 +10,9 @@ import {
   StatusBadge,
   Tabs,
   LoadingSpinner,
-  PageHeader,
-  TableCard,
 } from '@/components/shared';
 import type { ColumnDef, TabItem } from '@/components/shared';
 import {
-  getAbout,
   getLabelConfig,
   saveLabelConfig,
   testLabelConnection,
@@ -119,22 +116,12 @@ export default function LabelAdminPage() {
   const [configLoaded, setConfigLoaded] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'connected' | 'failed'>('idle');
 
-  // ---- Module enabled check ----
-
-  const { data: aboutData, isLoading: aboutLoading } = useQuery({
-    queryKey: ['admin', 'about'],
-    queryFn: getAbout,
-    staleTime: 60_000,
-  });
-
-  const labelsEnabled = aboutData?.apps?.labels?.enabled === true;
-
   // ---- Queries ----
 
   const { data: configData } = useQuery({
     queryKey: ['admin', 'labels', 'config'],
     queryFn: getLabelConfig,
-    enabled: labelsEnabled && activeTab === 'config',
+    enabled: activeTab === 'config',
   });
 
   // Load config into form when data arrives
@@ -152,19 +139,19 @@ export default function LabelAdminPage() {
   const { data: printersData, isLoading: printersLoading } = useQuery({
     queryKey: ['admin', 'labels', 'printers'],
     queryFn: getLabelPrinters,
-    enabled: labelsEnabled && (activeTab === 'printers' || activeTab === 'templates'),
+    enabled: activeTab === 'printers' || activeTab === 'templates',
   });
 
   const { data: templatesData, isLoading: templatesLoading } = useQuery({
     queryKey: ['admin', 'labels', 'templates'],
     queryFn: getLabelTemplates,
-    enabled: labelsEnabled && (activeTab === 'templates' || activeTab === 'history'),
+    enabled: activeTab === 'templates' || activeTab === 'history',
   });
 
   const { data: historyData, isLoading: historyLoading } = useQuery({
     queryKey: ['admin', 'labels', 'history'],
     queryFn: () => getLabelHistory({ limit: 50 }),
-    enabled: labelsEnabled && activeTab === 'history',
+    enabled: activeTab === 'history',
   });
 
   // ---- Derived data ----
@@ -352,33 +339,33 @@ export default function LabelAdminPage() {
   // ---- Column Definitions ----
 
   const printerColumns: ColumnDef<LabelPrinter>[] = [
-    { key: 'PrinterName', label: 'Name', sortable: true, filterable: true, render: (val) => <span className="font-semibold text-semantic-text-default">{val}</span> },
-    { key: 'PrinterPath', label: 'Path', sortable: true, render: (val) => <code className="text-xs text-semantic-text-faint">{val || '-'}</code> },
-    { key: 'PrinterType', label: 'Type', width: 100, sortable: true, filterable: true, filterType: 'select', filterOptions: PRINTER_TYPES.map(t => ({ value: t, label: t })), render: (val) => <span className="text-semantic-text-subtle">{val || '-'}</span> },
-    { key: 'Location', label: 'Location', width: 140, sortable: true, render: (val) => <span className="text-semantic-text-faint">{val || '-'}</span> },
-    { key: 'IsDefault', label: 'Default', width: 80, render: (val) => val ? <StatusBadge status="success" label="Default" size="sm" /> : <span className="text-semantic-text-faint">-</span> },
+    { key: 'PrinterName', label: 'Name', sortable: true, filterable: true, render: (val) => <span className="font-semibold text-dark-700">{val}</span> },
+    { key: 'PrinterPath', label: 'Path', sortable: true, render: (val) => <code className="text-xs text-dark-400">{val || '-'}</code> },
+    { key: 'PrinterType', label: 'Type', width: 100, sortable: true, filterable: true, filterType: 'select', filterOptions: PRINTER_TYPES.map(t => ({ value: t, label: t })), render: (val) => <span className="text-dark-500">{val || '-'}</span> },
+    { key: 'Location', label: 'Location', width: 140, sortable: true, render: (val) => <span className="text-dark-400">{val || '-'}</span> },
+    { key: 'IsDefault', label: 'Default', width: 80, render: (val) => val ? <StatusBadge status="success" label="Default" size="sm" /> : <span className="text-dark-400">-</span> },
     { key: 'IsActive', label: 'Status', width: 80, render: (val) => <StatusBadge status={val ? 'success' : 'neutral'} label={val ? 'Active' : 'Inactive'} size="sm" /> },
     {
       key: 'PrinterId', label: 'Actions', width: 100, sortable: false,
       render: (_val, row) => (
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={() => openEditPrinter(row)} className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors" title="Edit"><Edit className="w-4 h-4" /></button>
-          <button type="button" onClick={() => deletePrinterModal.open(row)} className="p-1.5 text-semantic-text-faint hover:text-danger rounded hover:bg-interactive-hover transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+          <button type="button" onClick={() => openEditPrinter(row)} className="p-1.5 text-dark-400 hover:text-primary rounded hover:bg-dark-100 transition-colors" title="Edit"><Edit className="w-4 h-4" /></button>
+          <button type="button" onClick={() => deletePrinterModal.open(row)} className="p-1.5 text-dark-400 hover:text-danger rounded hover:bg-dark-100 transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
         </div>
       ),
     },
   ];
 
   const templateColumns: ColumnDef<LabelTemplate>[] = [
-    { key: 'TemplateName', label: 'Name', sortable: true, filterable: true, render: (val) => <span className="font-semibold text-semantic-text-default">{val}</span> },
-    { key: 'TemplateFile', label: 'File', sortable: true, render: (val) => <code className="text-xs text-semantic-text-faint">{val}</code> },
-    { key: 'Context', label: 'Context', width: 110, sortable: true, filterable: true, filterType: 'select', filterOptions: TEMPLATE_CONTEXTS.map(c => ({ value: c, label: c })), render: (val) => <span className="text-semantic-text-subtle">{val}</span> },
-    { key: 'Application', label: 'App', width: 90, sortable: true, render: (val) => <span className="text-semantic-text-faint">{val}</span> },
+    { key: 'TemplateName', label: 'Name', sortable: true, filterable: true, render: (val) => <span className="font-semibold text-dark-700">{val}</span> },
+    { key: 'TemplateFile', label: 'File', sortable: true, render: (val) => <code className="text-xs text-dark-400">{val}</code> },
+    { key: 'Context', label: 'Context', width: 110, sortable: true, filterable: true, filterType: 'select', filterOptions: TEMPLATE_CONTEXTS.map(c => ({ value: c, label: c })), render: (val) => <span className="text-dark-500">{val}</span> },
+    { key: 'Application', label: 'App', width: 90, sortable: true, render: (val) => <span className="text-dark-400">{val}</span> },
     {
       key: 'DefaultPrinterId', label: 'Default Printer', width: 140,
       render: (val) => {
         const p = printers.find(pr => pr.PrinterId === val);
-        return <span className="text-semantic-text-faint">{p ? p.PrinterName : '-'}</span>;
+        return <span className="text-dark-400">{p ? p.PrinterName : '-'}</span>;
       },
     },
     { key: 'IsActive', label: 'Status', width: 80, render: (val) => <StatusBadge status={val ? 'success' : 'neutral'} label={val ? 'Active' : 'Inactive'} size="sm" /> },
@@ -386,75 +373,48 @@ export default function LabelAdminPage() {
       key: 'TemplateId', label: 'Actions', width: 100, sortable: false,
       render: (_val, row) => (
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={() => openEditTemplate(row)} className="p-1.5 text-semantic-text-faint hover:text-primary rounded hover:bg-interactive-hover transition-colors" title="Edit"><Edit className="w-4 h-4" /></button>
-          <button type="button" onClick={() => deleteTemplateModal.open(row)} className="p-1.5 text-semantic-text-faint hover:text-danger rounded hover:bg-interactive-hover transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+          <button type="button" onClick={() => openEditTemplate(row)} className="p-1.5 text-dark-400 hover:text-primary rounded hover:bg-dark-100 transition-colors" title="Edit"><Edit className="w-4 h-4" /></button>
+          <button type="button" onClick={() => deleteTemplateModal.open(row)} className="p-1.5 text-dark-400 hover:text-danger rounded hover:bg-dark-100 transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
         </div>
       ),
     },
   ];
 
   const historyColumns: ColumnDef<LabelHistoryEntry>[] = [
-    { key: 'PrintedAt', label: 'Time', width: 170, sortable: true, render: (val) => <span className="text-semantic-text-subtle">{val ? new Date(val).toLocaleString() : '-'}</span> },
-    { key: 'TemplateId', label: 'Template', render: (val) => { const t = templates.find(tpl => tpl.TemplateId === val); return <span className="text-semantic-text-secondary">{t ? t.TemplateName : '-'}</span>; } },
-    { key: 'PrinterId', label: 'Printer', render: (val) => { const p = printers.find(pr => pr.PrinterId === val); return <span className="text-semantic-text-faint">{p ? p.PrinterName : '-'}</span>; } },
-    { key: 'Copies', label: 'Copies', width: 70, render: (val) => <span className="text-semantic-text-faint">{val}</span> },
-    { key: 'PrintedBy', label: 'Printed By', width: 120, render: (val) => <span className="text-semantic-text-faint">{val || '-'}</span> },
-    { key: 'Application', label: 'App', width: 90, render: (val) => <span className="text-semantic-text-faint">{val || '-'}</span> },
+    { key: 'PrintedAt', label: 'Time', width: 170, sortable: true, render: (val) => <span className="text-dark-500">{val ? new Date(val).toLocaleString() : '-'}</span> },
+    { key: 'TemplateId', label: 'Template', render: (val) => { const t = templates.find(tpl => tpl.TemplateId === val); return <span className="text-dark-600">{t ? t.TemplateName : '-'}</span>; } },
+    { key: 'PrinterId', label: 'Printer', render: (val) => { const p = printers.find(pr => pr.PrinterId === val); return <span className="text-dark-400">{p ? p.PrinterName : '-'}</span>; } },
+    { key: 'Copies', label: 'Copies', width: 70, render: (val) => <span className="text-dark-400">{val}</span> },
+    { key: 'PrintedBy', label: 'Printed By', width: 120, render: (val) => <span className="text-dark-400">{val || '-'}</span> },
+    { key: 'Application', label: 'App', width: 90, render: (val) => <span className="text-dark-400">{val || '-'}</span> },
     { key: 'Status', label: 'Status', width: 90, render: (val) => <StatusBadge status={val === 'PRINTED' || val === 'Success' ? 'success' : val === 'FAILED' || val === 'Failed' ? 'danger' : 'warning'} label={val} size="sm" /> },
   ];
 
   // ---- Render ----
 
-  if (aboutLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
-
-  if (!labelsEnabled) {
-    return (
-      <div className="space-y-6">
-        <PageHeader title="Labels" description="Label printing configuration" />
-        <Card>
-          <div className="text-center py-12">
-            <Printer className="w-10 h-10 mx-auto mb-3 text-semantic-text-faint" />
-            <h3 className="text-lg font-medium text-semantic-text-primary mb-1">LabelIT Module Not Enabled</h3>
-            <p className="text-sm text-semantic-text-faint">
-              Set <code className="px-1.5 py-0.5 rounded bg-surface-subtle text-xs font-mono">SOFTBITS_LABELS_ENABLED=true</code> in Bridge environment to enable label printing.
-            </p>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Labels"
-        description="Label printing configuration"
-        actions={
-          <div className="flex items-center gap-4 text-sm text-semantic-text-faint">
-            <span><Printer className="w-3.5 h-3.5 inline mr-1" />{printers.length} printers</span>
-            <span><FileText className="w-3.5 h-3.5 inline mr-1" />{templates.length} templates</span>
-          </div>
-        }
-      />
+    <div className="p-6 space-y-6 overflow-y-auto h-full">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Tag className="w-5 h-5 text-primary" />
+          <h1 className="text-lg font-semibold text-dark-700">LabelIT Admin</h1>
+        </div>
+        <div className="flex items-center gap-4 text-sm text-dark-400">
+          <span><Printer className="w-3.5 h-3.5 inline mr-1" />{printers.length} printers</span>
+          <span><FileText className="w-3.5 h-3.5 inline mr-1" />{templates.length} templates</span>
+        </div>
+      </div>
 
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
       {/* Tab: Printers */}
       {activeTab === 'printers' && (
-        <TableCard
-          title="Printers"
-          icon={<Printer className="w-4 h-4" />}
-          count={printers.length}
-          headerActions={
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-dark-400">{printers.length} printers</span>
             <Button icon={<Plus className="w-4 h-4" />} onClick={openCreatePrinter}>Add Printer</Button>
-          }
-        >
+          </div>
           {printersLoading ? <div className="flex justify-center py-8"><LoadingSpinner /></div> : (
             <DataTable<LabelPrinter>
               id="label-printers"
@@ -465,23 +425,18 @@ export default function LabelAdminPage() {
               emptyMessage="No printers configured"
               emptyIcon={Printer}
               showFilters
-              embedded
-              showColumnPicker={false}
             />
           )}
-        </TableCard>
+        </div>
       )}
 
       {/* Tab: Templates */}
       {activeTab === 'templates' && (
-        <TableCard
-          title="Templates"
-          icon={<FileText className="w-4 h-4" />}
-          count={templates.length}
-          headerActions={
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-dark-400">{templates.length} templates</span>
             <Button icon={<Plus className="w-4 h-4" />} onClick={openCreateTemplate}>Add Template</Button>
-          }
-        >
+          </div>
           {templatesLoading ? <div className="flex justify-center py-8"><LoadingSpinner /></div> : (
             <DataTable<LabelTemplate>
               id="label-templates"
@@ -492,20 +447,14 @@ export default function LabelAdminPage() {
               emptyMessage="No templates configured"
               emptyIcon={FileText}
               showFilters
-              embedded
-              showColumnPicker={false}
             />
           )}
-        </TableCard>
+        </div>
       )}
 
       {/* Tab: History */}
       {activeTab === 'history' && (
-        <TableCard
-          title="Print History"
-          icon={<History className="w-4 h-4" />}
-          count={history.length}
-        >
+        <div className="space-y-4">
           {historyLoading ? <div className="flex justify-center py-8"><LoadingSpinner /></div> : (
             <DataTable<LabelHistoryEntry>
               id="label-history"
@@ -514,11 +463,9 @@ export default function LabelAdminPage() {
               rowKey="PrintedAt"
               emptyMessage="No print history found"
               emptyIcon={History}
-              embedded
-              showColumnPicker={false}
             />
           )}
-        </TableCard>
+        </div>
       )}
 
       {/* Tab: Configuration */}
@@ -533,7 +480,6 @@ export default function LabelAdminPage() {
               </Button>
             </div>
           }>
-            <form id="label-config-form" onSubmit={(e) => { e.preventDefault(); handleSaveConfig(); }}>
             <div className="space-y-4">
               <FormField label="Provider Type" required>
                 <select value={configForm.providerType} onChange={(e) => setConfigForm({ ...configForm, providerType: e.target.value })} className="form-input" title="Provider type">
@@ -560,10 +506,9 @@ export default function LabelAdminPage() {
                 </FormField>
               )}
               <div className="flex justify-end">
-                <Button type="submit" loading={saveConfigMutation.isPending}>Save Configuration</Button>
+                <Button onClick={handleSaveConfig} loading={saveConfigMutation.isPending}>Save Configuration</Button>
               </div>
             </div>
-            </form>
           </Card>
         </div>
       )}
@@ -608,8 +553,8 @@ export default function LabelAdminPage() {
               <input type="text" value={printerForm.warehouse} onChange={(e) => setPrinterForm({ ...printerForm, warehouse: e.target.value })} className="form-input" placeholder="WH01" />
             </FormField>
           </div>
-          <label className="flex items-center gap-2 text-sm text-semantic-text-secondary cursor-pointer">
-            <input type="checkbox" checked={printerForm.isDefault} onChange={(e) => setPrinterForm({ ...printerForm, isDefault: e.target.checked })} className="rounded border-border bg-surface-subtle text-primary focus:ring-interactive-focus-ring" />
+          <label className="flex items-center gap-2 text-sm text-dark-600 cursor-pointer">
+            <input type="checkbox" checked={printerForm.isDefault} onChange={(e) => setPrinterForm({ ...printerForm, isDefault: e.target.checked })} className="rounded border-dark-300 bg-dark-200 text-primary focus:ring-primary/50" />
             Default printer
           </label>
         </div>
@@ -622,7 +567,7 @@ export default function LabelAdminPage() {
           <Button variant="danger" onClick={() => deletePrinterModal.data && deletePrinterMutation.mutate(deletePrinterModal.data.PrinterId)} loading={deletePrinterMutation.isPending}>Delete</Button>
         </>
       }>
-        <p className="text-sm text-semantic-text-subtle">Are you sure you want to delete <strong className="text-semantic-text-default">{deletePrinterModal.data?.PrinterName}</strong>?</p>
+        <p className="text-sm text-dark-500">Are you sure you want to delete <strong className="text-dark-700">{deletePrinterModal.data?.PrinterName}</strong>?</p>
       </Modal>
 
       {/* Template Modal */}
@@ -678,7 +623,7 @@ export default function LabelAdminPage() {
           <Button variant="danger" onClick={() => deleteTemplateModal.data && deleteTemplateMutation.mutate(deleteTemplateModal.data.TemplateId)} loading={deleteTemplateMutation.isPending}>Delete</Button>
         </>
       }>
-        <p className="text-sm text-semantic-text-subtle">Are you sure you want to delete <strong className="text-semantic-text-default">{deleteTemplateModal.data?.TemplateName}</strong>?</p>
+        <p className="text-sm text-dark-500">Are you sure you want to delete <strong className="text-dark-700">{deleteTemplateModal.data?.TemplateName}</strong>?</p>
       </Modal>
     </div>
   );
@@ -691,7 +636,7 @@ export default function LabelAdminPage() {
 function FormField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-semantic-text-subtle mb-1">
+      <label className="block text-xs font-medium text-dark-500 mb-1">
         {label}
         {required && <span className="text-danger ml-0.5">*</span>}
       </label>

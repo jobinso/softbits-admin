@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { ApiError } from '@/types';
 import { Mail, Shield, Route, Activity, Plus, Edit3, Trash2, RefreshCw, AlertTriangle, CheckCircle, XCircle, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -200,7 +201,9 @@ function StatusTab({ providers, circuitBreakers, clamav, pollerRunning }: { prov
       toast.success('Poll triggered');
       queryClient.invalidateQueries({ queryKey: ['email-poller-status'] });
     },
-    onError: (err: any) => toast.error(`Trigger failed: ${err?.response?.data?.error?.message || err.message}`),
+    onError: (err: ApiError) => {
+      toast.error(`Trigger failed: ${err.response?.data?.error || err.message}`);
+    },
   });
 
   const providerColumns: ColumnDef<ProviderStatus>[] = [

@@ -4,7 +4,7 @@ import { Search, Save, RotateCcw, FileCode, AlignLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button, LoadingSpinner } from '@/components/shared';
 import { getConfigFiles, getConfigFile, updateConfigFile } from '@/services/admin-service';
-import type { ErpConfigFile } from '@/types';
+import type { ErpConfigFile, ApiError } from '@/types';
 import JsonEditor from './json-editor';
 
 // ===== Helpers =====
@@ -87,7 +87,7 @@ export default function ErpConfigFileManager({ folder }: ErpConfigFileManagerPro
       queryClient.invalidateQueries({ queryKey: ['erp-config-file', folder, selectedFile] });
       toast.success('File saved successfully');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.error || 'Failed to save file');
     },
   });
@@ -107,8 +107,8 @@ export default function ErpConfigFileManager({ folder }: ErpConfigFileManagerPro
     try {
       JSON.parse(value);
       setJsonError(null);
-    } catch (e: any) {
-      setJsonError(e.message);
+    } catch (e: unknown) {
+      setJsonError(e instanceof Error ? e.message : String(e));
     }
   }, []);
 
@@ -134,8 +134,8 @@ export default function ErpConfigFileManager({ folder }: ErpConfigFileManagerPro
       const formatted = JSON.stringify(JSON.parse(editedContent), null, 2);
       setEditedContent(formatted);
       setJsonError(null);
-    } catch (e: any) {
-      setJsonError(e.message);
+    } catch (e: unknown) {
+      setJsonError(e instanceof Error ? e.message : String(e));
     }
   }, [editedContent]);
 

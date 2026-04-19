@@ -854,8 +854,7 @@ function EntityMappingView({
         {/* SVG connection lines */}
         <svg
           ref={svgRef}
-          className="absolute inset-0 w-full h-full pointer-events-none z-0"
-          style={{ overflow: 'visible' }}
+          className="absolute inset-0 w-full h-full pointer-events-none z-0 overflow-visible"
         >
           {lines.map(line => {
             const isSelected = selectedMapping === line.sysproField;
