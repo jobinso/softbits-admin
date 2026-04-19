@@ -1218,6 +1218,21 @@ export async function getBillingRoles(): Promise<ApiResponse<BillingRole[]>> {
   return response.data;
 }
 
+export async function createBillingRole(data: Partial<BillingRole>) {
+  const response = await api.post('/connect/billing-roles', data);
+  return response.data;
+}
+
+export async function updateBillingRole(id: string, data: Partial<BillingRole>) {
+  const response = await api.put(`/connect/billing-roles/${id}`, data);
+  return response.data;
+}
+
+export async function deleteBillingRole(id: string) {
+  const response = await api.delete(`/connect/billing-roles/${id}`);
+  return response.data;
+}
+
 
 export async function getConnectMappings(entity?: string) {
   const url = entity ? `/connect/config/mappings/${entity}` : '/connect/config/mappings';

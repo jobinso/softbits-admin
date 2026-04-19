@@ -6,8 +6,10 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
   const bridgeUrl = env.VITE_BRIDGE_URL || 'http://localhost:3000';
+  const infuseWorkUrl = env.VITE_INFUSE_WORK_URL || 'http://localhost:3990';
 
   console.log(`[Vite] AdminIT → Bridge: ${bridgeUrl}`);
+  console.log(`[Vite] AdminIT → Infuse Work: ${infuseWorkUrl}`);
 
   return {
     plugins: [react()],
@@ -38,6 +40,11 @@ export default defineConfig(({ mode }) => {
         '/health': {
           target: bridgeUrl,
           changeOrigin: true,
+        },
+        '/work': {
+          target: infuseWorkUrl,
+          changeOrigin: true,
+          rewrite: (p) => p.replace(/^\/work/, ''),
         },
       },
     },
