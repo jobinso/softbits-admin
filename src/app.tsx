@@ -10,6 +10,11 @@ import LoginPage from '@/pages/login-page';
 const DashboardPage = lazy(() => import('@/pages/dashboard-page'));
 const NotFoundPage = lazy(() => import('@/pages/not-found-page'));
 
+// Top-level wrapper pages (tabbed sections linked from sidebar)
+const SecurityPage = lazy(() => import('@/pages/security-page'));
+const ConfigPage = lazy(() => import('@/pages/config-page'));
+const ProvidersPage = lazy(() => import('@/pages/providers-page'));
+
 // Security pages
 const UsersPage = lazy(() => import('@/pages/security').then(m => ({ default: m.UsersPage })));
 const RolesPage = lazy(() => import('@/pages/security').then(m => ({ default: m.RolesPage })));
@@ -57,16 +62,19 @@ function App() {
         <Routes>
           <Route element={<AdminLayout />}>
             <Route path="/" element={<DashboardPage />} />
+            <Route path="/security" element={<SecurityPage />} />
             <Route path="/security/users" element={<UsersPage />} />
             <Route path="/security/roles" element={<RolesPage />} />
             <Route path="/security/tokens" element={<TokensPage />} />
             <Route path="/security/devices" element={<DevicesPage />} />
             <Route path="/services" element={<ServicesPage />} />
             <Route path="/cache" element={<CachePage />} />
+            <Route path="/config" element={<ConfigPage />} />
             <Route path="/config/project-types" element={<ProjectTypesPage />} />
             <Route path="/config/currencies" element={<CurrenciesPage />} />
             <Route path="/config/option-sets" element={<OptionSetsPage />} />
             <Route path="/config/warehouses" element={<WarehousesPage />} />
+            <Route path="/providers" element={<ProvidersPage />} />
             <Route path="/licensing" element={<LicensingPage />} />
             <Route path="/patches" element={<PatchesPage />} />
             <Route path="/apps/connect" element={<ConnectAdminPage />} />

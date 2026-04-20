@@ -8,8 +8,9 @@ export default {
   ],
   theme: {
     extend: {
-      colors: tokens.colors,
+      colors: { ...tokens.colors, ...tokens.semanticColors },
       fontFamily: tokens.fontFamily,
+      boxShadow: tokens.boxShadow,
     },
   },
   plugins: [],
