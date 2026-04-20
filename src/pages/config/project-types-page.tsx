@@ -9,6 +9,7 @@ import {
   StatusBadge,
   LoadingSpinner,
   Tabs,
+  PageHeader,
 } from '@/components/shared';
 import type { ColumnDef, TabItem } from '@/components/shared';
 import {
@@ -337,18 +338,17 @@ export default function ProjectTypesPage() {
   }
 
   return (
-    <div className="p-6 space-y-4 overflow-y-auto h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <FolderKanban className="w-5 h-5 text-primary" />
-          <h1 className="text-lg font-semibold text-dark-700">Project Types</h1>
-          <span className="text-sm text-dark-400">{projectTypes.length} total</span>
-        </div>
-        <Button icon={<Plus className="w-4 h-4" />} onClick={openCreateType}>
-          Add Type
-        </Button>
-      </div>
+    <div className="space-y-4">
+      <PageHeader
+        title="Project Types"
+        description={`${projectTypes.length} total — configure statuses, fields, and task types`}
+        icon={<FolderKanban className="w-5 h-5" />}
+        actions={
+          <Button icon={<Plus className="w-4 h-4" />} onClick={openCreateType}>
+            Add Type
+          </Button>
+        }
+      />
 
       {/* Main content: two-panel layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

@@ -13,8 +13,10 @@ import {
   StatusBadge,
   Tabs,
   LoadingSpinner,
+  PageHeader,
+  PageStatusBar,
 } from '@/components/shared';
-import type { ColumnDef, TabItem } from '@/components/shared';
+import type { ColumnDef, TabItem, StatusBarItem } from '@/components/shared';
 import {
   getShopStatus,
   getShopConfig,
@@ -513,18 +515,19 @@ export default function ShopAdminPage() {
   const markitStatus = status.markit || {};
 
   return (
-    <div className="p-6 space-y-6 overflow-y-auto h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <ShoppingCart className="w-5 h-5 text-primary" />
-          <h1 className="text-lg font-semibold text-dark-700">ShopIT Admin</h1>
-        </div>
-        <div className="flex items-center gap-4 text-sm text-dark-400">
-          <span>E-com: <StatusBadge status={ecomStatus.enabled ? 'success' : 'neutral'} label={ecomStatus.enabled ? 'Enabled' : 'Disabled'} size="sm" /></span>
-          <span>Marketing: <StatusBadge status={markitStatus.enabled ? 'success' : 'neutral'} label={markitStatus.enabled ? 'Enabled' : 'Disabled'} size="sm" /></span>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="ShopIT Admin"
+        description="Manage e-commerce, marketing, products, and orders"
+        icon={<ShoppingCart className="w-5 h-5" />}
+      />
+
+      <PageStatusBar
+        items={[
+          { type: 'badge', label: 'E-com', status: ecomStatus.enabled ? 'success' : 'neutral', badgeLabel: ecomStatus.enabled ? 'Enabled' : 'Disabled' },
+          { type: 'badge', label: 'Marketing', status: markitStatus.enabled ? 'success' : 'neutral', badgeLabel: markitStatus.enabled ? 'Enabled' : 'Disabled' },
+        ] as StatusBarItem[]}
+      />
 
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 

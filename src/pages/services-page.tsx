@@ -10,7 +10,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Button, Card, Tabs, StatusBadge, LoadingSpinner } from '@/components/shared';
+import { Button, Card, Tabs, StatusBadge, LoadingSpinner, PageHeader } from '@/components/shared';
 import type { TabItem } from '@/components/shared';
 import type { ServiceInfo, DevTask, ApiError } from '@/types';
 import {
@@ -33,6 +33,7 @@ const SERVICE_NAMES: Record<string, string> = {
   'softbits-stack': 'SoftBITS Stack',
   'softbits-shop': 'SoftBITS Shop',
   'softbits-floor': 'SoftBITS Floor',
+  'softbits-cast': 'SoftBITS Cast',
   'infuse-mcp': 'Infuse MCP',
   'infuse-http': 'Infuse HTTP',
   'infuse-work': 'Infuse Work',
@@ -44,6 +45,7 @@ const APP_SERVICES = [
   { key: 'stack', name: 'StackIT', description: 'Warehouse Management System', envVar: 'SOFTBITS_STACK_ENABLED' },
   { key: 'floor', name: 'FloorIT', description: 'Shop Floor Labor Capture', envVar: 'SOFTBITS_FLOOR_ENABLED' },
   { key: 'infuse', name: 'InfuseIT - MCP', description: 'AI/MCP integration services', envVar: 'SOFTBITS_INFUSE_ENABLED' },
+  { key: 'forecast', name: 'CastIT', description: 'Sales & Inventory Forecasting', envVar: 'SOFTBITS_FORECAST_ENABLED' },
 ];
 
 const LOG_SERVICES = [
@@ -55,6 +57,7 @@ const LOG_SERVICES = [
   { value: 'softbits-stack', label: 'Stack' },
   { value: 'softbits-shop', label: 'Shop' },
   { value: 'softbits-floor', label: 'Floor' },
+  { value: 'softbits-cast', label: 'Cast' },
   { value: 'infuse-mcp', label: 'Infuse MCP' },
   { value: 'infuse-http', label: 'Infuse HTTP' },
   { value: 'infuse-work', label: 'Infuse Work' },
@@ -408,8 +411,12 @@ export default function ServicesPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 overflow-y-auto h-full">
-      <h1 className="text-lg font-semibold text-dark-700">Services</h1>
+    <div className="space-y-6">
+      <PageHeader
+        title="Services"
+        description="Monitor service health, view logs, and run maintenance tasks"
+        icon={<Server className="w-5 h-5" />}
+      />
 
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 

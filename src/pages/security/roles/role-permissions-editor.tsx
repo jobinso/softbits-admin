@@ -24,6 +24,7 @@ const AVAILABLE_TABS: Array<{ id: string; name: string; category: string }> = [
   { id: 'pulpit', name: 'PulpIT', category: 'Applications' },
   { id: 'edit', name: 'EdIT', category: 'Applications' },
   { id: 'email-poller', name: 'PollIT', category: 'Applications' },
+  { id: 'castit', name: 'CastIT', category: 'Applications' },
 ];
 
 const ENTITY_PERM_ENTITIES: Array<{ id: string; label: string }> = [

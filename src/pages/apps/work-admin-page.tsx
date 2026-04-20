@@ -10,6 +10,7 @@ import {
   Tabs,
   StatusBadge,
   LoadingSpinner,
+  PageHeader,
 } from '@/components/shared';
 import type { TabItem, ColumnDef } from '@/components/shared';
 import { useModal } from '@shared/hooks';
@@ -459,12 +460,15 @@ export default function WorkAdminPage() {
   // ===== Render =====
 
   return (
-    <div className="p-6 space-y-6 overflow-y-auto h-full">
-      <div className="flex items-center gap-3">
-        <Workflow className="w-5 h-5 text-primary" />
-        <h1 className="text-lg font-semibold text-dark-700">WorkIT Administration</h1>
-        <StatusBadge status={serviceConnected ? 'success' : 'danger'} label={serviceConnected ? 'Connected' : 'Offline'} size="sm" />
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="WorkIT Admin"
+        description="Manage workflows, executions, event mappings, and API keys"
+        icon={<Workflow className="w-5 h-5" />}
+        actions={
+          <StatusBadge status={serviceConnected ? 'success' : 'danger'} label={serviceConnected ? 'Connected' : 'Offline'} size="sm" />
+        }
+      />
 
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 

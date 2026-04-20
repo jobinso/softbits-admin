@@ -14,8 +14,10 @@ import {
   LoadingSpinner,
   Tabs,
   Card,
+  PageHeader,
+  PageStatusBar,
 } from '@/components/shared';
-import type { TabItem } from '@/components/shared';
+import type { TabItem, StatusBarItem } from '@/components/shared';
 import {
   getStackStatus,
   getStackDashboard,
@@ -149,37 +151,32 @@ export default function StackAdminPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 overflow-y-auto h-full">
-      <div className="flex items-center gap-3">
-        <Package className="w-5 h-5 text-primary" />
-        <h1 className="text-lg font-semibold text-dark-700">StackIT Admin</h1>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="StackIT Admin"
+        description="Manage warehouse services, configuration, and real-time operations"
+        icon={<Package className="w-5 h-5" />}
+      />
 
-      {/* Status Bar */}
-      <div className="flex flex-wrap items-center gap-4 text-xs">
-        <div className="flex items-center gap-1.5">
-          <span className="text-dark-400">Service:</span>
-          <StatusBadge status={isConnected ? 'success' : 'danger'} label={isConnected ? 'Connected' : 'Offline'} size="sm" />
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-dark-400">Uptime:</span>
-          <span className="text-dark-600 font-medium">{formatUptime(uptime)}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-dark-400">Services:</span>
-          <span className="text-dark-600 font-medium">
-            {status?.services ? Object.values(status.services as Record<string, { running: boolean }>).filter((s) => s.running).length : '-'}
-          </span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-dark-400">WebSocket:</span>
-          <StatusBadge
-            status={wsData?.enabled ? 'success' : 'neutral'}
-            label={wsData?.enabled ? `Active (${wsData.connections ?? 0})` : 'Inactive'}
-            size="sm"
-          />
-        </div>
-      </div>
+      <PageStatusBar
+        items={[
+          { type: 'badge', label: 'Service', status: isConnected ? 'success' : 'danger', badgeLabel: isConnected ? 'Connected' : 'Offline' },
+          { type: 'text', label: 'Uptime', value: formatUptime(uptime) },
+          {
+            type: 'text',
+            label: 'Services',
+            value: status?.services
+              ? Object.values(status.services as Record<string, { running: boolean }>).filter((s) => s.running).length
+              : '-',
+          },
+          {
+            type: 'badge',
+            label: 'WebSocket',
+            status: wsData?.enabled ? 'success' : 'neutral',
+            badgeLabel: wsData?.enabled ? `Active (${wsData.connections ?? 0})` : 'Inactive',
+          },
+        ] as StatusBarItem[]}
+      />
 
       <Tabs tabs={STACK_TABS} activeTab={activeTab} onChange={setActiveTab} />
 

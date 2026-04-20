@@ -9,8 +9,8 @@ import {
   Play,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Button, Card, Tabs, StatusBadge, LoadingSpinner, Modal, DataTable } from '@/components/shared';
-import type { TabItem, ColumnDef } from '@/components/shared';
+import { Button, Card, Tabs, StatusBadge, LoadingSpinner, Modal, DataTable, PageHeader, PageStatusBar } from '@/components/shared';
+import type { TabItem, ColumnDef, StatusBarItem } from '@/components/shared';
 import type { Patch, PatchHistoryEntry, ApiError } from '@/types';
 import {
   getPatches,
@@ -273,29 +273,27 @@ export default function PatchesPage() {
   // ===== Render =====
 
   return (
-    <div className="p-6 space-y-6 overflow-y-auto h-full">
-      <h1 className="text-lg font-semibold text-dark-700">Updates &amp; Patches</h1>
+    <div className="space-y-6">
+      <PageHeader
+        title="Updates & Patches"
+        description="Review pending patches, apply updates, and view history"
+        icon={<Package className="w-5 h-5" />}
+      />
 
-      {/* Status Bar */}
-      <div className="flex flex-wrap items-center gap-6 p-4 bg-dark-50 border border-dark-200 rounded-xl">
-        <div>
-          <p className="text-xs text-dark-400 mb-1">Bridge Version</p>
-          <p className="text-sm font-semibold text-dark-700">2.1.0</p>
-        </div>
-        <div>
-          <p className="text-xs text-dark-400 mb-1">Patches Applied</p>
-          <p className="text-sm font-semibold text-primary">{level.TotalApplied ?? 0}</p>
-        </div>
-        <div>
-          <p className="text-xs text-dark-400 mb-1">Latest Patch</p>
-          <p className="text-sm font-medium text-dark-700 font-mono">{level.LatestPatch || 'None'}</p>
-        </div>
-        {(level.PendingCritical ?? 0) > 0 && (
-          <div className="px-3 py-1.5 bg-danger/10 border border-danger/20 rounded-lg">
-            <span className="text-sm font-semibold text-danger">{level.PendingCritical} critical pending</span>
-          </div>
-        )}
-      </div>
+      <PageStatusBar
+        items={[
+          { type: 'text', label: 'Bridge Version', value: '2.1.0' },
+          { type: 'text', label: 'Patches Applied', value: level.TotalApplied ?? 0, colorClass: 'text-primary' },
+          { type: 'text', label: 'Latest Patch', value: level.LatestPatch || 'None' },
+          {
+            type: 'text',
+            label: 'Critical Pending',
+            value: (level.PendingCritical ?? 0) > 0 ? `${level.PendingCritical}` : '0',
+            colorClass: (level.PendingCritical ?? 0) > 0 ? 'text-danger' : undefined,
+            visible: (level.PendingCritical ?? 0) > 0,
+          },
+        ] as StatusBarItem[]}
+      />
 
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 

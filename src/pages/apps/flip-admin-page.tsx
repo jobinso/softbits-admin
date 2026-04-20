@@ -14,8 +14,10 @@ import {
   LoadingSpinner,
   Tabs,
   Card,
+  PageHeader,
+  PageStatusBar,
 } from '@/components/shared';
-import type { ColumnDef, TabItem } from '@/components/shared';
+import type { ColumnDef, TabItem, StatusBarItem } from '@/components/shared';
 import {
   getPosTerminals,
   getGpsTerminalsFilter,
@@ -153,31 +155,21 @@ export default function FlipAdminPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 overflow-y-auto h-full">
-      <div className="flex items-center gap-3">
-        <ShoppingCart className="w-5 h-5 text-primary" />
-        <h1 className="text-lg font-semibold text-dark-700">FlipIT Admin</h1>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="FlipIT Admin"
+        description="Manage point-of-sale terminals, trucks, and sales activity"
+        icon={<ShoppingCart className="w-5 h-5" />}
+      />
 
-      {/* Status Bar */}
-      <div className="flex flex-wrap items-center gap-4 text-xs">
-        <div className="flex items-center gap-1.5">
-          <span className="text-dark-400">Terminals:</span>
-          <span className="text-dark-600 font-medium">{totalTerminals}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-dark-400">Active:</span>
-          <span className="text-dark-600 font-medium">{activeTerminals}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-dark-400">Today Txns:</span>
-          <span className="text-dark-600 font-medium">{todayTxns}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-dark-400">Today Sales:</span>
-          <span className="text-primary font-medium">R{todaySales.toFixed(2)}</span>
-        </div>
-      </div>
+      <PageStatusBar
+        items={[
+          { type: 'text', label: 'Terminals', value: totalTerminals },
+          { type: 'text', label: 'Active', value: activeTerminals },
+          { type: 'text', label: 'Today Txns', value: todayTxns },
+          { type: 'text', label: 'Today Sales', value: `R${todaySales.toFixed(2)}`, colorClass: 'text-primary' },
+        ] as StatusBarItem[]}
+      />
 
       <Tabs tabs={FLIP_TABS} activeTab={activeTab} onChange={setActiveTab} />
 

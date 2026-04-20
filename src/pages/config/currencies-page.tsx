@@ -9,6 +9,7 @@ import {
   StatusBadge,
   LoadingSpinner,
   Tabs,
+  PageHeader,
 } from '@/components/shared';
 import type { ColumnDef, TabItem } from '@/components/shared';
 import {
@@ -385,14 +386,13 @@ export default function CurrenciesPage() {
   }
 
   return (
-    <div className="p-6 space-y-4 overflow-y-auto h-full">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <Coins className="w-5 h-5 text-primary" />
-        <h1 className="text-lg font-semibold text-dark-700">Currencies & Exchange Rates</h1>
-      </div>
+    <div className="space-y-4">
+      <PageHeader
+        title="Currencies & Exchange Rates"
+        description="Manage supported currencies and exchange rate providers"
+        icon={<Coins className="w-5 h-5" />}
+      />
 
-      {/* Tabs */}
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
       {/* Currencies Tab */}

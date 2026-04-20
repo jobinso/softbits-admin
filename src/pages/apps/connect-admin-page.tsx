@@ -13,8 +13,10 @@ import {
   StatusBadge,
   LoadingSpinner,
   Tabs,
+  PageHeader,
+  PageStatusBar,
 } from '@/components/shared';
-import type { TabItem } from '@/components/shared';
+import type { TabItem, StatusBarItem } from '@/components/shared';
 import { getConnectSyncStatus } from '@/services/admin-service';
 import type { ConnectSyncStatus } from '@/types';
 import { ConnectStatusTab } from './connect/connect-status-tab';
@@ -75,33 +77,27 @@ export default function ConnectAdminPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 overflow-y-auto h-full">
-      <div className="flex items-center gap-3">
-        <MapPin className="w-5 h-5 text-primary" />
-        <h1 className="text-lg font-semibold text-dark-700">ConnectIT Admin</h1>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="ConnectIT Admin"
+        description="Manage CRM sync, teams, sales cycles, rate cards, and billing roles"
+        icon={<MapPin className="w-5 h-5" />}
+      />
 
-      {/* Status Bar */}
-      <div className="flex flex-wrap items-center gap-4 text-xs">
-        <div className="flex items-center gap-1.5">
-          <span className="text-dark-400">Service:</span>
-          <StatusBadge status={syncStatus ? 'success' : 'danger'} label={syncStatus ? 'Connected' : 'Offline'} size="sm" />
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-dark-400">Sync:</span>
-          <StatusBadge status={syncStatus?.isRunning ? 'warning' : 'success'} label={syncStatus?.isRunning ? 'Syncing...' : 'Ready'} size="sm" />
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-dark-400">Last Sync:</span>
-          <span className="text-dark-600 font-medium">{formatTimeAgo(syncStatus?.lastSync)}</span>
-        </div>
-        {(syncStatus?.queuePending ?? 0) > 0 && (
-          <div className="flex items-center gap-1.5">
-            <span className="text-dark-400">Pending:</span>
-            <span className="text-warning font-medium">{syncStatus?.queuePending}</span>
-          </div>
-        )}
-      </div>
+      <PageStatusBar
+        items={[
+          { type: 'badge', label: 'Service', status: syncStatus ? 'success' : 'danger', badgeLabel: syncStatus ? 'Connected' : 'Offline' },
+          { type: 'badge', label: 'Sync', status: syncStatus?.isRunning ? 'warning' : 'success', badgeLabel: syncStatus?.isRunning ? 'Syncing...' : 'Ready' },
+          { type: 'text', label: 'Last Sync', value: formatTimeAgo(syncStatus?.lastSync) },
+          {
+            type: 'text',
+            label: 'Pending',
+            value: syncStatus?.queuePending ?? 0,
+            colorClass: 'text-warning',
+            visible: (syncStatus?.queuePending ?? 0) > 0,
+          },
+        ] as StatusBarItem[]}
+      />
 
       <Tabs tabs={CONNECT_TABS} activeTab={activeTab} onChange={setActiveTab} />
 

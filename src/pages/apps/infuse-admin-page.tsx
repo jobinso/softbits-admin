@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Brain, Cpu, Save, Zap, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Button, Card, Tabs, StatusBadge, LoadingSpinner } from '@/components/shared';
+import { Button, Card, Tabs, StatusBadge, LoadingSpinner, PageHeader } from '@/components/shared';
 import type { TabItem } from '@/components/shared';
 import type { InfuseConfig } from '@/types';
 import {
@@ -245,16 +245,19 @@ export default function InfuseAdminPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 overflow-y-auto h-full">
-      <div className="flex items-center gap-3">
-        <Brain className="w-5 h-5 text-primary" />
-        <h1 className="text-lg font-semibold text-dark-700">InfuseIT Administration</h1>
-        <StatusBadge
-          status={enabled ? 'success' : 'neutral'}
-          label={enabled ? 'Enabled' : 'Disabled'}
-          size="sm"
-        />
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="InfuseIT Admin"
+        description="Configure AI providers, models, and MCP integration"
+        icon={<Brain className="w-5 h-5" />}
+        actions={
+          <StatusBadge
+            status={enabled ? 'success' : 'neutral'}
+            label={enabled ? 'Enabled' : 'Disabled'}
+            size="sm"
+          />
+        }
+      />
 
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 

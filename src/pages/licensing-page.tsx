@@ -12,8 +12,8 @@ import {
   X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Button, Card, Tabs, StatusBadge, LoadingSpinner, Modal } from '@/components/shared';
-import type { TabItem } from '@/components/shared';
+import { Button, Card, Tabs, StatusBadge, LoadingSpinner, Modal, PageHeader, PageStatusBar } from '@/components/shared';
+import type { TabItem, StatusBarItem } from '@/components/shared';
 import type { LicenseModule, LicenseUser, ComplianceData, ApiError } from '@/types';
 import {
   getLicense,
@@ -313,61 +313,51 @@ export default function LicensingPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 overflow-y-auto h-full">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-dark-700">Licensing</h1>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={<Upload className="w-3.5 h-3.5" />}
-            onClick={() => setShowUploadModal(true)}
-          >
-            Upload License
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={<RefreshCw className="w-3.5 h-3.5" />}
-            onClick={() => validateMutation.mutate()}
-            loading={validateMutation.isPending}
-          >
-            Validate
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Licensing"
+        description="Manage subscriptions, modules, users, and compliance"
+        icon={<Shield className="w-5 h-5" />}
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<Upload className="w-3.5 h-3.5" />}
+              onClick={() => setShowUploadModal(true)}
+            >
+              Upload License
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<RefreshCw className="w-3.5 h-3.5" />}
+              onClick={() => validateMutation.mutate()}
+              loading={validateMutation.isPending}
+            >
+              Validate
+            </Button>
+          </>
+        }
+      />
 
-      {/* Status Bar */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 p-4 bg-dark-50 border border-dark-200 rounded-xl">
-        <div>
-          <p className="text-xs text-dark-400 mb-1">Status</p>
-          <StatusBadge status={statusBadge.status} label={statusBadge.label} size="sm" />
-        </div>
-        <div>
-          <p className="text-xs text-dark-400 mb-1">Tier</p>
-          <p className="text-sm font-medium text-dark-700">{tier || '-'}</p>
-        </div>
-        <div>
-          <p className="text-xs text-dark-400 mb-1">Expiration</p>
-          <p className="text-sm font-medium text-dark-700">{expiresAt ? formatDate(expiresAt) : 'Perpetual'}</p>
-        </div>
-        <div>
-          <p className="text-xs text-dark-400 mb-1">Days Remaining</p>
-          <p className={`text-sm font-semibold ${getDaysColor(daysRemaining)}`}>
-            {daysRemaining !== undefined && daysRemaining !== null
+      <PageStatusBar
+        items={[
+          { type: 'badge', label: 'Status', status: statusBadge.status, badgeLabel: statusBadge.label },
+          { type: 'text', label: 'Tier', value: tier || '-' },
+          { type: 'text', label: 'Expiration', value: expiresAt ? formatDate(expiresAt) : 'Perpetual' },
+          {
+            type: 'text',
+            label: 'Days Remaining',
+            value: daysRemaining !== undefined && daysRemaining !== null
               ? daysRemaining < 0 ? `${Math.abs(daysRemaining)} overdue` : `${daysRemaining} days`
-              : expiresAt ? '-' : 'Unlimited'}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs text-dark-400 mb-1">Active Users</p>
-          <p className="text-sm font-medium text-dark-700">{(licenseData as any)?.activeUsers ?? 0}</p>
-        </div>
-        <div>
-          <p className="text-xs text-dark-400 mb-1">Sessions</p>
-          <p className="text-sm font-medium text-dark-700">{(licenseData as any)?.activeSessions ?? 0}</p>
-        </div>
-      </div>
+              : expiresAt ? '-' : 'Unlimited',
+            colorClass: getDaysColor(daysRemaining),
+          },
+          { type: 'text', label: 'Active Users', value: (licenseData as any)?.activeUsers ?? 0 },
+          { type: 'text', label: 'Sessions', value: (licenseData as any)?.activeSessions ?? 0 },
+        ] as StatusBarItem[]}
+      />
 
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 

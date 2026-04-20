@@ -10,8 +10,10 @@ import {
   StatusBadge,
   Tabs,
   LoadingSpinner,
+  PageHeader,
+  PageStatusBar,
 } from '@/components/shared';
-import type { ColumnDef, TabItem } from '@/components/shared';
+import type { ColumnDef, TabItem, StatusBarItem } from '@/components/shared';
 import {
   getLabelConfig,
   saveLabelConfig,
@@ -393,18 +395,19 @@ export default function LabelAdminPage() {
   // ---- Render ----
 
   return (
-    <div className="p-6 space-y-6 overflow-y-auto h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Tag className="w-5 h-5 text-primary" />
-          <h1 className="text-lg font-semibold text-dark-700">LabelIT Admin</h1>
-        </div>
-        <div className="flex items-center gap-4 text-sm text-dark-400">
-          <span><Printer className="w-3.5 h-3.5 inline mr-1" />{printers.length} printers</span>
-          <span><FileText className="w-3.5 h-3.5 inline mr-1" />{templates.length} templates</span>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="LabelIT Admin"
+        description="Manage label printers, templates, and print history"
+        icon={<Tag className="w-5 h-5" />}
+      />
+
+      <PageStatusBar
+        items={[
+          { type: 'text', label: 'Printers', value: printers.length },
+          { type: 'text', label: 'Templates', value: templates.length },
+        ] as StatusBarItem[]}
+      />
 
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 

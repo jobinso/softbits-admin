@@ -10,8 +10,10 @@ import {
   StatusBadge,
   Tabs,
   LoadingSpinner,
+  PageHeader,
+  PageStatusBar,
 } from '@/components/shared';
-import type { ColumnDef, TabItem } from '@/components/shared';
+import type { ColumnDef, TabItem, StatusBarItem } from '@/components/shared';
 import {
   getFloorStatus,
   getFloorDashboard,
@@ -443,24 +445,27 @@ export default function FloorAdminPage() {
   // ---- Render ----
 
   return (
-    <div className="p-6 space-y-6 overflow-y-auto h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Factory className="w-5 h-5 text-primary" />
-          <h1 className="text-lg font-semibold text-dark-700">FloorIT Admin</h1>
+    <div className="space-y-6">
+      <PageHeader
+        title="FloorIT Admin"
+        description="Manage shop floor labor capture, reason codes, and checkpoints"
+        icon={<Factory className="w-5 h-5" />}
+        actions={
           <StatusBadge
             status={status.enabled !== false ? 'success' : 'neutral'}
             label={status.enabled !== false ? 'Connected' : 'Offline'}
             size="sm"
           />
-        </div>
-        <div className="flex items-center gap-4 text-sm text-dark-400">
-          <span><Users className="w-3.5 h-3.5 inline mr-1" />{status.activeOperators ?? '-'} operators</span>
-          <span><Briefcase className="w-3.5 h-3.5 inline mr-1" />{status.activeJobs ?? '-'} jobs</span>
-          <span>Sync: {status.syncStatus || '-'}</span>
-        </div>
-      </div>
+        }
+      />
+
+      <PageStatusBar
+        items={[
+          { type: 'text', label: 'Operators', value: status.activeOperators ?? '-' },
+          { type: 'text', label: 'Jobs', value: status.activeJobs ?? '-' },
+          { type: 'text', label: 'Sync', value: status.syncStatus || '-' },
+        ] as StatusBarItem[]}
+      />
 
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 

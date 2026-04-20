@@ -15,7 +15,7 @@ import {
   Save,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Button, Card, Modal, Tabs, StatusBadge, LoadingSpinner } from '@/components/shared';
+import { Button, Card, Modal, Tabs, StatusBadge, LoadingSpinner, PageHeader } from '@/components/shared';
 import type { TabItem } from '@/components/shared';
 import type { CacheStats, CacheTtlConfig, WarmerStatus, WarmerTarget, ApiError } from '@/types';
 import {
@@ -403,8 +403,12 @@ export default function CachePage() {
   }
 
   return (
-    <div className="p-6 space-y-6 overflow-y-auto h-full">
-      <h1 className="text-lg font-semibold text-dark-700">Cache Management</h1>
+    <div className="space-y-6">
+      <PageHeader
+        title="Cache Management"
+        description="Monitor and control the two-tier cache (Redis + NodeCache)"
+        icon={<HardDrive className="w-5 h-5" />}
+      />
 
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 

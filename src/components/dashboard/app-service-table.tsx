@@ -14,6 +14,8 @@ const APP_METADATA: Record<string, { port: number; description: string }> = {
   infuse:    { port: 3900, description: 'AI Integration (MCP)' },
   infuseApp: { port: 3910, description: 'AI Integration (App)' },
   work:      { port: 3990, description: 'Workflow Automation' },
+  pulp:      { port: 4380, description: 'Document Management' },
+  cast:      { port: 4480, description: 'Sales & Inventory Forecasting' },
 };
 
 // ===== Types =====
