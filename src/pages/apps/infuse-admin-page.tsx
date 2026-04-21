@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Brain, Cpu, Save, Zap, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -91,42 +91,44 @@ export default function InfuseAdminPage() {
 
   // ===== Queries =====
 
-  const { isLoading } = useQuery({
+  const { data: configData, isLoading } = useQuery<{ config?: InfuseConfig }>({
     queryKey: ['admin', 'infuse', 'config'],
     queryFn: getInfuseConfig,
-    onSuccess: (data: { config?: InfuseConfig }) => {
-      const config = data.config || {} as InfuseConfig;
-      setEnabled(config.enabled || false);
-      setProvider(config.aiProvider || 'anthropic');
-      setSystemPrompt(config.systemPrompt || '');
-      setIncludeUserProfile(config.context?.includeUserProfile !== false);
-      setIncludeCurrentView(config.context?.includeCurrentView !== false);
-      setIncludeSelectedEntity(config.context?.includeSelectedEntity !== false);
+  });
 
-      const p = config.aiProvider || 'anthropic';
-      const providerConfig = (config as Record<string, any>)[p] || {};
-      if (providerConfig.apiKey) {
-        setApiKey('\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022' + providerConfig.apiKey.slice(-4));
-        setApiKeyMasked(true);
-      } else {
-        setApiKey('');
-        setApiKeyMasked(false);
-      }
-      setBaseUrl(providerConfig.baseUrl || '');
-      setModel(providerConfig.model || '');
-      setCustomModel('');
+  useEffect(() => {
+    if (!configData) return;
+    const config = (configData.config || {}) as InfuseConfig;
+    setEnabled(config.enabled || false);
+    setProvider(config.aiProvider || 'anthropic');
+    setSystemPrompt(config.systemPrompt || '');
+    setIncludeUserProfile(config.context?.includeUserProfile !== false);
+    setIncludeCurrentView(config.context?.includeCurrentView !== false);
+    setIncludeSelectedEntity(config.context?.includeSelectedEntity !== false);
 
-      if (p === 'vllm' && providerConfig.multiSession) {
-        const ms = providerConfig.multiSession;
-        setVllmMultiEnabled(ms.enabled !== false);
-        setVllmMaxConcurrent(ms.maxConcurrent || 10);
-        setVllmRateLimit(ms.rateLimitPerUser || 20);
-        setVllmQueueSize(ms.userQueueSize || 5);
-        setVllmTimeout(ms.requestTimeout || 120000);
-      }
-      setConfigLoaded(true);
-    },
-  } as any);
+    const p = config.aiProvider || 'anthropic';
+    const providerConfig = (config as Record<string, any>)[p] || {};
+    if (providerConfig.apiKey) {
+      setApiKey('\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022' + providerConfig.apiKey.slice(-4));
+      setApiKeyMasked(true);
+    } else {
+      setApiKey('');
+      setApiKeyMasked(false);
+    }
+    setBaseUrl(providerConfig.baseUrl || '');
+    setModel(providerConfig.model || '');
+    setCustomModel('');
+
+    if (p === 'vllm' && providerConfig.multiSession) {
+      const ms = providerConfig.multiSession;
+      setVllmMultiEnabled(ms.enabled !== false);
+      setVllmMaxConcurrent(ms.maxConcurrent || 10);
+      setVllmRateLimit(ms.rateLimitPerUser || 20);
+      setVllmQueueSize(ms.userQueueSize || 5);
+      setVllmTimeout(ms.requestTimeout || 120000);
+    }
+    setConfigLoaded(true);
+  }, [configData]);
 
   // ===== Mutations =====
 

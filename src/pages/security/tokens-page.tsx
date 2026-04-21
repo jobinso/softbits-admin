@@ -8,7 +8,6 @@ import {
   DataTable,
   StatusBadge,
   LoadingSpinner,
-  PageHeader,
   TableCard,
   TableFilterDropdown,
   TableColumnPicker,
@@ -103,7 +102,7 @@ export default function TokensPage() {
     queryFn: getTokens,
   });
 
-  const tokens: ApiToken[] = tokensResponse?.tokens || [];
+  const tokens: ApiToken[] = useMemo(() => tokensResponse?.tokens || [], [tokensResponse]);
 
   const { data: usersResponse } = useQuery({
     queryKey: ['admin', 'users'],

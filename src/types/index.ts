@@ -1118,3 +1118,59 @@ export interface ApprovalWorkflow {
   SequentialApproval: boolean;
   AutoPublishOnApproval: boolean;
 }
+
+// ===== CastIT (Forecast) Admin Types =====
+
+export interface CastDashboardSummary {
+  forecastsByStatus?: Record<string, number>;
+  totalForecasts?: number;
+  activeVersions?: number;
+  accuracyMetrics?: unknown[];
+}
+
+export interface CastCalendar {
+  Id: string;
+  Name: string;
+  CalendarType: string;
+  FiscalYearStart?: number;
+  WorkingDaysPerWeek?: number;
+  IsDefault: boolean;
+  IsActive: boolean;
+  CreatedAt?: string;
+  UpdatedAt?: string;
+}
+
+export interface CastVersion {
+  Id: string;
+  Name: string;
+  VersionType: string;
+  CalendarId: string;
+  Status: string;
+  IsActive?: boolean;
+  CreatedBy?: string;
+  CreatedAt?: string;
+  UpdatedAt?: string;
+}
+
+export interface CastApprovalItem {
+  Id: string;
+  VersionId: string;
+  Name: string;
+  ForecastType: string;
+  DimensionType?: string;
+  DimensionValue?: string;
+  DimensionLabel?: string;
+  Source: string;
+  Status: string;
+  Notes?: string;
+  CreatedBy?: string;
+  CreatedAt?: string;
+  UpdatedAt?: string;
+}
+
+export interface CastAccuracySummary {
+  TotalPeriods?: number;
+  AvgMAPE?: number;
+  OverforecastCount?: number;
+  UnderforecastCount?: number;
+}

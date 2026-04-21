@@ -33,7 +33,7 @@ export default function OptionsPage() {
     queryFn: getOptionSets,
   });
 
-  const allOptionSets: OptionSet[] = setsResponse?.data?.optionSets ?? setsResponse?.data ?? [];
+  const allOptionSets: OptionSet[] = useMemo(() => setsResponse?.data?.optionSets ?? setsResponse?.data ?? [], [setsResponse]);
 
   // ---- Filter by search ----
 

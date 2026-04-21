@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Shield, Server, Globe, Wifi, WifiOff, RefreshCw, Copy, ExternalLink, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card, StatusBadge, LoadingSpinner } from '@/components/shared';
-import { getInternalServices, testProvider, getProviderApiDetails } from '@/services/admin-service';
+import { getInternalServices, testProvider } from '@/services/admin-service';
 import type { Provider, SystemService, OAuthServerInfo } from '@/types';
 
 // ---------------------------------------------------------------------------

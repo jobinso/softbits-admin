@@ -38,7 +38,7 @@ export default function ConfigurationPage() {
     queryFn: getSystemSettings,
   });
 
-  const allSettings: SystemSetting[] = settingsResponse?.data ?? [];
+  const allSettings: SystemSetting[] = useMemo(() => settingsResponse?.data ?? [], [settingsResponse]);
 
   // ---- Group settings by category ----
 

@@ -1,3 +1,4 @@
+export { default as CastAdminPage } from './cast-admin-page';
 export { default as ConnectAdminPage } from './connect-admin-page';
 export { default as StackAdminPage } from './stack-admin-page';
 export { default as FlipAdminPage } from './flip-admin-page';

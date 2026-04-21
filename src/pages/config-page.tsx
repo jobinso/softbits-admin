@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DollarSign, ArrowLeftRight, Sliders, ListTree } from 'lucide-react';
+import { DollarSign, ArrowLeftRight, Sliders, ListTree, Settings } from 'lucide-react';
 import { Tabs, PageHeader } from '@/components/shared';
 import type { TabItem } from '@/components/shared';
 import { CurrenciesPage, ExchangeRatesPage, ConfigurationPage, OptionsPage } from '@/pages/config';
@@ -19,6 +19,7 @@ export default function ConfigPage() {
       <PageHeader
         title="Configuration"
         description="System settings and preferences"
+        icon={<Settings className="w-5 h-5" />}
       />
 
       <Tabs tabs={CONFIG_TABS} activeTab={activeTab} onChange={setActiveTab} />

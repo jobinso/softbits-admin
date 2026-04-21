@@ -29,6 +29,7 @@ import {
   FileCode,
   Plug,
   Mail,
+  TrendingUp,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import clsx from 'clsx';
@@ -63,6 +64,7 @@ const iconMap: Record<string, LucideIcon> = {
   FileCode,
   Plug,
   Mail,
+  TrendingUp,
 };
 
 interface SubNavItem {

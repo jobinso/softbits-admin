@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Settings, Plug, Plus, X, Shield, Globe, Server, AlertTriangle, CheckCircle, XCircle, ExternalLink, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Settings, Plug, Shield, Globe, Server, AlertTriangle, CheckCircle, XCircle, ExternalLink, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import {
   Button,
   Modal,

@@ -91,7 +91,7 @@ export default function OptionSetDetail({ setName, optionSet }: OptionSetDetailP
   });
 
   const setDetail = setDetailResponse?.data?.optionSet ?? setDetailResponse?.data;
-  const items: OptionSetItem[] = setDetail?.items ?? [];
+  const items: OptionSetItem[] = useMemo(() => setDetail?.items ?? [], [setDetail]);
 
   const categories = useMemo(() => {
     const cats = new Set<string>();

@@ -9,7 +9,7 @@ import {
   Play,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Button, Card, Tabs, StatusBadge, LoadingSpinner, Modal, DataTable, PageHeader, PageStatusBar } from '@/components/shared';
+import { Button, Tabs, StatusBadge, LoadingSpinner, Modal, DataTable, PageHeader, PageStatusBar } from '@/components/shared';
 import type { TabItem, ColumnDef, StatusBarItem } from '@/components/shared';
 import type { Patch, PatchHistoryEntry, ApiError } from '@/types';
 import {

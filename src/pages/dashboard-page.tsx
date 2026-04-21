@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Database, HardDrive, Cpu, Users, Smartphone, Key, Layers, Info } from 'lucide-react';
+import { Database, HardDrive, Cpu, Users, Smartphone, Key, Layers, Info, LayoutDashboard } from 'lucide-react';
 import { LoadingSpinner, PageHeader } from '@/components/shared';
 import { StatusCard, AppServiceTable } from '@/components/dashboard';
 import { getUsers, getDevices, getTokens, getHealth, getAbout } from '@/services/admin-service';
@@ -123,7 +123,11 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Dashboard" description="System health overview and service status" />
+      <PageHeader
+        title="Dashboard"
+        description="System health overview and service status"
+        icon={<LayoutDashboard className="w-5 h-5" />}
+      />
 
       {/* Section 1: System Status Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

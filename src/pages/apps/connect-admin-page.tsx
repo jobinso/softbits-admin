@@ -10,7 +10,6 @@ import {
   MapPin,
 } from 'lucide-react';
 import {
-  StatusBadge,
   LoadingSpinner,
   Tabs,
   PageHeader,
@@ -18,7 +17,6 @@ import {
 } from '@/components/shared';
 import type { TabItem, StatusBarItem } from '@/components/shared';
 import { getConnectSyncStatus } from '@/services/admin-service';
-import type { ConnectSyncStatus } from '@/types';
 import { ConnectStatusTab } from './connect/connect-status-tab';
 import { ConnectSyncTab } from './connect/connect-sync-tab';
 import { ConnectTeamsTab } from './connect/connect-teams-tab';

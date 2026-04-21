@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ShoppingCart, Plus, Edit, Trash2, RefreshCw, Settings, Link2, BarChart3, Mail,
-  Play, Square, Zap, Wifi, WifiOff, Copy,
+  Play, Square, Zap, Wifi, Copy,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {

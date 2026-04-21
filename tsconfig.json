@@ -23,7 +23,7 @@
 
     /* Paths */
     "paths": {
-      "@/*": ["src/*"],
+      "@/*": ["./src/*"],
       "@shared/components": ["../softbits-shared/components/index.ts"],
       "@shared/components/*": ["../softbits-shared/components/*"],
       "@shared/hooks": ["../softbits-shared/hooks/index.ts"],

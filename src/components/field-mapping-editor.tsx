@@ -1009,7 +1009,7 @@ export function FieldMappingEditor({ entityType, baseMapping, customOverrides, d
   const queryClient = useQueryClient();
   const resetModal = useModal();
 
-  const entities = baseMapping?.entities || {};
+  const entities = useMemo(() => baseMapping?.entities || {}, [baseMapping]);
   const entityNames = Object.keys(entities);
   const [activeEntity, setActiveEntity] = useState<string>(entityNames[0] || '');
   const [isDirty, setIsDirty] = useState(false);

@@ -1,6 +1,6 @@
 import { api, attachAuthInterceptor, attachTokenRefreshInterceptor } from './api';
 import axios, { type AxiosResponse } from 'axios';
-import type { ApiResponse, User, AdminRole, Device, SystemHealth, SystemSetting, ProjectType, ProjectTypeStatus, ProjectTypeField, Currency, ExchangeRateProvider, ExchangeRate, OptionSet, OptionSetItem, Warehouse, WarehouseErpLink, ErpWarehouseBrowse, Patch, PatchLevel, PatchHistoryEntry, ComplianceData, ConnectSyncStatus, ConnectSyncHistoryEntry, Territory, SalesRep, Pipeline, Stage, CaseType, CaseTypeStep, RateCard, RateCardLineItem, BillingRole, PosTerminal, GpsSalesData, GpsTerminalFilter, InfuseTestResult, McpTestConnectionResult, DocumentStats, StorageProvider, StagedDocument, RetentionPolicy, ExpiringDocument, RetentionLogEntry, ApprovalWorkflow, DocumentTypeConfig, Provider, ProviderType, InternalServicesResponse, InfuseDashboardData, EditVanProvider, EditTradingPartner, EditTransaction, EditDocumentStage, EditErrorLog, EditTransactionType, EditFormatSpec, EditFormatSpecField, EditWorkflowProviderConfig, EditDashboardSummary, EditDashboardStats } from '../types';
+import type { ApiResponse, User, AdminRole, Device, SystemHealth, SystemSetting, ProjectType, ProjectTypeStatus, ProjectTypeField, Currency, ExchangeRateProvider, ExchangeRate, OptionSet, OptionSetItem, Warehouse, WarehouseErpLink, ErpWarehouseBrowse, Patch, PatchLevel, PatchHistoryEntry, ComplianceData, ConnectSyncStatus, ConnectSyncHistoryEntry, Territory, SalesRep, Pipeline, Stage, CaseType, CaseTypeStep, RateCard, RateCardLineItem, BillingRole, PosTerminal, GpsSalesData, GpsTerminalFilter, InfuseTestResult, McpTestConnectionResult, DocumentStats, StorageProvider, StagedDocument, RetentionPolicy, ExpiringDocument, RetentionLogEntry, ApprovalWorkflow, DocumentTypeConfig, Provider, ProviderType, InternalServicesResponse, InfuseDashboardData, EditVanProvider, EditTradingPartner, EditTransaction, EditDocumentStage, EditErrorLog, EditTransactionType, EditFormatSpec, EditFormatSpecField, EditWorkflowProviderConfig, EditDashboardSummary, EditDashboardStats, CastDashboardSummary, CastCalendar, CastVersion, CastApprovalItem, CastAccuracySummary } from '../types';
 
 /**
  * Unwrap the softbits standard response envelope.
@@ -1958,4 +1958,34 @@ export async function getEditWorkflowProviders(): Promise<EditWorkflowProviderCo
 export async function testEditWorkflowProvider(code: string) {
   const response = await api.post(`/edi/workflow-providers/${code}/test`);
   return unwrapResponse(response);
+}
+
+// ===== CastIT (Forecast) =====
+// Backend lives at softbits-bridge/src/apps/forecast (mounted at /api/forecast).
+// The `api` axios client has baseURL '/api', so we call '/forecast/...' here.
+// Admin page is read-only for v1 — all endpoints are GET.
+
+export async function getCastDashboard(): Promise<CastDashboardSummary> {
+  const response = await api.get('/forecast/dashboard');
+  return unwrapResponse<CastDashboardSummary>(response);
+}
+
+export async function getCastCalendars(): Promise<CastCalendar[]> {
+  const response = await api.get('/forecast/calendars');
+  return unwrapResponse<CastCalendar[]>(response);
+}
+
+export async function getCastVersions(): Promise<CastVersion[]> {
+  const response = await api.get('/forecast/versions');
+  return unwrapResponse<CastVersion[]>(response);
+}
+
+export async function getCastApprovalsPending(): Promise<CastApprovalItem[]> {
+  const response = await api.get('/forecast/approvals');
+  return unwrapResponse<CastApprovalItem[]>(response);
+}
+
+export async function getCastAccuracySummary(): Promise<CastAccuracySummary> {
+  const response = await api.get('/forecast/accuracy/summary');
+  return unwrapResponse<CastAccuracySummary>(response);
 }

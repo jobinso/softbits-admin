@@ -262,13 +262,13 @@ export default function EditAdminPage() {
     enabled: activeTab === 'config',
   });
 
-  const transactions: EditTransaction[] = transactionsData || [];
+  const transactions: EditTransaction[] = useMemo(() => transactionsData || [], [transactionsData]);
   const vans: EditVanProvider[] = vansData || [];
   const partners: EditTradingPartner[] = partnersData || [];
   const txTypes: EditTransactionType[] = txTypesData || [];
   const formatSpecs: EditFormatSpec[] = formatSpecsData || [];
   const wfProviders: EditWorkflowProviderConfig[] = wfProvidersData || [];
-  const errors: EditErrorLog[] = recentErrors || [];
+  const errors: EditErrorLog[] = useMemo(() => recentErrors || [], [recentErrors]);
 
   const serviceConnected = !!healthData;
 

@@ -36,7 +36,7 @@ export default function EndpointsPage() {
     queryFn: getEndpointGroups,
   });
 
-  const endpoints: ApiEndpoint[] = endpointsResponse?.data ?? endpointsResponse?.endpoints ?? [];
+  const endpoints: ApiEndpoint[] = useMemo(() => endpointsResponse?.data ?? endpointsResponse?.endpoints ?? [], [endpointsResponse]);
   const groups: EndpointGroup[] = groupsResponse?.data ?? groupsResponse?.groups ?? [];
 
   const { data: entitiesResponse } = useQuery({

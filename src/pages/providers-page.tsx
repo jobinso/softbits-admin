@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Edit, Trash2, Plug, Star, Zap, Wifi, WifiOff, CheckCircle, XCircle, AlertTriangle, Server, Globe } from 'lucide-react';
@@ -18,7 +18,6 @@ import {
   getProviderTypes,
   createProvider,
   updateProvider,
-  deleteProvider,
   destroyProvider,
   testProvider,
   setProviderDefault,
@@ -110,8 +109,8 @@ export default function ProvidersPage() {
 
   // ---- Derived data ----
 
-  const allProviders: Provider[] = providersData?.data || [];
-  const allTypes: ProviderType[] = typesData?.data || [];
+  const allProviders: Provider[] = useMemo(() => providersData?.data || [], [providersData]);
+  const allTypes: ProviderType[] = useMemo(() => typesData?.data || [], [typesData]);
 
   // Build a type lookup for checking IsBuiltIn on provider cards
   const typeMap = useMemo(() => {
@@ -315,6 +314,7 @@ export default function ProvidersPage() {
       <PageHeader
         title="Providers"
         description="Manage service provider configurations"
+        icon={<Plug className="w-5 h-5" />}
         actions={
           <div className="flex items-center gap-4 text-sm text-semantic-text-faint">
             <span><Plug className="w-3.5 h-3.5 inline mr-1" />{allProviders.length} providers</span>

@@ -5,7 +5,6 @@
  * - rawApi (no /api prefix) for /admin/* and /health routes
  * - api (baseURL /api) for /api/admin/* routes
  */
-import axios from 'axios';
 
 // Mock axios.create to track calls
 const mockRawPost = jest.fn().mockResolvedValue({ data: {} });

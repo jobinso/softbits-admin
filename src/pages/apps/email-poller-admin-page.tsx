@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ApiError } from '@/types';
-import { Mail, Shield, Route, Activity, Plus, Edit3, Trash2, RefreshCw, AlertTriangle, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Mail, Shield, Route, Activity, Plus, Edit3, Trash2, RefreshCw, AlertTriangle, XCircle, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   DataTable,
@@ -27,7 +27,6 @@ import {
   getEmailPollerWorkflows,
   getEmailPollerSecurityEvents,
   getEmailPollerSecuritySummary,
-  getEmailPollerCircuitBreakers,
   triggerEmailPoll,
 } from '@/services/admin-service';
 

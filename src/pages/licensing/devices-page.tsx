@@ -8,7 +8,6 @@ import {
   DataTable,
   StatusBadge,
   LoadingSpinner,
-  PageHeader,
   TableCard,
   TableFilterDropdown,
   TableColumnPicker,
@@ -118,7 +117,7 @@ export default function DevicesPage() {
     queryFn: () => getDevices(),
   });
 
-  const devices: Device[] = devicesResponse?.data || [];
+  const devices: Device[] = useMemo(() => devicesResponse?.data || [], [devicesResponse]);
 
   // ---- Filtered data ----
 

@@ -43,6 +43,7 @@ const ShopAdminPage = lazy(() => import('@/pages/apps').then(m => ({ default: m.
 const InfuseAdminPage = lazy(() => import('@/pages/apps').then(m => ({ default: m.InfuseAdminPage })));
 const WorkAdminPage = lazy(() => import('@/pages/apps').then(m => ({ default: m.WorkAdminPage })));
 const PulpAdminPage = lazy(() => import('@/pages/apps').then(m => ({ default: m.PulpAdminPage })));
+const CastAdminPage = lazy(() => import('@/pages/apps').then(m => ({ default: m.CastAdminPage })));
 
 function App() {
   const { isAuthenticated } = useAuth();
@@ -86,6 +87,7 @@ function App() {
             <Route path="/apps/infuse" element={<InfuseAdminPage />} />
             <Route path="/apps/work" element={<WorkAdminPage />} />
             <Route path="/apps/pulp" element={<PulpAdminPage />} />
+            <Route path="/apps/cast" element={<CastAdminPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Routes>
