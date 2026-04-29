@@ -157,6 +157,8 @@ export interface WarmerTarget {
   stats?: {
     warmed: number;
     failed: number;
+    lastWarmedAt?: string | null;
+    lastDurationMs?: number | null;
   };
 }
 

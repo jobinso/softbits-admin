@@ -50,6 +50,7 @@ const APP_SERVICES = [
 
 const LOG_SERVICES = [
   { value: 'softbits-bridge', label: 'Bridge' },
+  { value: 'cache-warmer', label: 'Cache Warmer' },
   { value: 'softbits-valkey', label: 'Valkey' },
   { value: 'softbits-connect', label: 'Connect' },
   { value: 'connect-sync', label: 'Connect Sync' },

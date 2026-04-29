@@ -88,6 +88,19 @@ function formatDuration(ms: number): string {
   return `${(ms / 60000).toFixed(1)}min`;
 }
 
+function formatLastWarmed(dateStr?: string | null): string {
+  if (!dateStr) return 'Never';
+  const ts = new Date(dateStr).getTime();
+  if (Number.isNaN(ts)) return 'Never';
+  const diffSecs = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+  if (diffSecs < 60) return `${diffSecs}s ago`;
+  const diffMins = Math.floor(diffSecs / 60);
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return `${Math.floor(diffHours / 24)}d ago`;
+}
+
 // ===== Sub-components =====
 
 function StatCard({ label, value, subtext }: { label: string; value: string | number; subtext?: string }) {
@@ -118,6 +131,9 @@ function WarmerTargetCard({
       <div className="flex items-center gap-4 ml-4 text-xs text-dark-400">
         <span>TTL: {formatTTL(target.ttl)}</span>
         <span>Variants: {target.variants}</span>
+        <span title={target.stats?.lastWarmedAt ?? 'Never warmed'}>
+          Last warmed: {formatLastWarmed(target.stats?.lastWarmedAt)}
+        </span>
         {target.stats && (
           <>
             <span className="text-success">{target.stats.warmed} warmed</span>

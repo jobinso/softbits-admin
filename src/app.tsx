@@ -19,6 +19,7 @@ const ProvidersPage = lazy(() => import('@/pages/providers-page'));
 const UsersPage = lazy(() => import('@/pages/security').then(m => ({ default: m.UsersPage })));
 const RolesPage = lazy(() => import('@/pages/security').then(m => ({ default: m.RolesPage })));
 const TokensPage = lazy(() => import('@/pages/security').then(m => ({ default: m.TokensPage })));
+const InfuseToolsPage = lazy(() => import('@/pages/security').then(m => ({ default: m.InfuseToolsPage })));
 const DevicesPage = lazy(() => import('@/pages/security').then(m => ({ default: m.DevicesPage })));
 
 // Infrastructure pages
@@ -67,6 +68,7 @@ function App() {
             <Route path="/security/users" element={<UsersPage />} />
             <Route path="/security/roles" element={<RolesPage />} />
             <Route path="/security/tokens" element={<TokensPage />} />
+            <Route path="/security/infuse-tools" element={<InfuseToolsPage />} />
             <Route path="/security/devices" element={<DevicesPage />} />
             <Route path="/services" element={<ServicesPage />} />
             <Route path="/cache" element={<CachePage />} />

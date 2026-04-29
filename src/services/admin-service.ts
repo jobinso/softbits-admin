@@ -182,6 +182,48 @@ export async function deleteToken(tokenId: string) {
   return response.data;
 }
 
+// ===== Infuse Tool Exposure (per-role MCP entity/action matrix) =====
+
+export type InfuseToolAction = 'get' | 'browse' | 'post' | 'build';
+
+export interface InfuseCatalogEntity {
+  entity: string;
+  group?: string;
+  icon?: string;
+  color?: string;
+  actions: InfuseToolAction[];
+  isDangerous?: boolean;
+}
+
+export interface InfuseExposureEntry {
+  entity: string;
+  action: InfuseToolAction;
+  isExposed: boolean;
+  source?: 'manual' | 'seed' | 'inherited';
+}
+
+export type InfuseExposurePreset = 'read-only' | 'read-write' | 'all' | 'none';
+
+export async function getInfuseToolCatalog() {
+  const response = await rawApi.get('/admin/infuse-tools/catalog');
+  return unwrapResponse<{ entities: InfuseCatalogEntity[] }>(response);
+}
+
+export async function getInfuseToolExposure(roleId: string) {
+  const response = await rawApi.get('/admin/infuse-tools/exposure', { params: { roleId } });
+  return unwrapResponse<{ roleId: string; entries: InfuseExposureEntry[] }>(response);
+}
+
+export async function updateInfuseToolExposure(roleId: string, entries: Array<Pick<InfuseExposureEntry, 'entity' | 'action' | 'isExposed'>>) {
+  const response = await rawApi.put('/admin/infuse-tools/exposure', { roleId, entries });
+  return unwrapResponse<{ updated: number }>(response);
+}
+
+export async function applyInfuseToolPreset(roleId: string, preset: InfuseExposurePreset) {
+  const response = await rawApi.post('/admin/infuse-tools/exposure/preset', { roleId, preset });
+  return unwrapResponse<{ updated: number }>(response);
+}
+
 // ===== Devices =====
 
 export async function getDevices(params?: { appCode?: string; status?: string; type?: string }) {

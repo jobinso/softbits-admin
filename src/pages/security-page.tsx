@@ -1,13 +1,14 @@
 import { useState } from 'react';
-import { Users, ShieldCheck, KeyRound, Shield } from 'lucide-react';
+import { Users, ShieldCheck, KeyRound, Shield, Bot } from 'lucide-react';
 import { Tabs, PageHeader } from '@/components/shared';
 import type { TabItem } from '@/components/shared';
-import { UsersPage, RolesPage, TokensPage } from './security';
+import { UsersPage, RolesPage, TokensPage, InfuseToolsPage } from './security';
 
 const tabs: TabItem[] = [
   { id: 'users', label: 'Users', icon: <Users className="w-4 h-4" /> },
   { id: 'roles', label: 'Roles', icon: <ShieldCheck className="w-4 h-4" /> },
   { id: 'tokens', label: 'Tokens', icon: <KeyRound className="w-4 h-4" /> },
+  { id: 'infuse-tools', label: 'Infuse Tools', icon: <Bot className="w-4 h-4" /> },
 ];
 
 export default function SecurityPage() {
@@ -17,7 +18,7 @@ export default function SecurityPage() {
     <div className="space-y-6">
       <PageHeader
         title="Security"
-        description="Manage users, roles, tokens, and devices"
+        description="Manage users, roles, tokens, devices, and Infuse tool exposure"
         icon={<Shield className="w-5 h-5" />}
       />
 
@@ -26,6 +27,7 @@ export default function SecurityPage() {
       {activeTab === 'users' && <UsersPage />}
       {activeTab === 'roles' && <RolesPage />}
       {activeTab === 'tokens' && <TokensPage />}
+      {activeTab === 'infuse-tools' && <InfuseToolsPage />}
     </div>
   );
 }
