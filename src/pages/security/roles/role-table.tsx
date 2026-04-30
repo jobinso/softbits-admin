@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ShieldCheck, Plus, Trash2, Pencil } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import { ShieldCheck, Plus, Trash2, Pencil, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   DataTable,
@@ -12,7 +13,8 @@ import {
   TableColumnPicker,
 } from '@/components/shared';
 import type { ColumnDef, TableFilterField, TableColumnPickerColumn } from '@/components/shared';
-import { deleteRole } from '@/services/admin-service';
+import { deleteRole, getAccessSummary } from '@/services/admin-service';
+import type { AccessSummary } from '@/services/admin-service';
 import { useModal } from '@shared/hooks';
 
 // ---------------------------------------------------------------------------
@@ -24,7 +26,6 @@ export interface RoleRow {
   name: string;
   description?: string;
   tabs?: string[];
-  permissions?: Record<string, string[]>;
   isSystem?: boolean;
 }
 
@@ -42,6 +43,11 @@ export function RoleTable({ roles, onEdit, onCreate }: RoleTableProps) {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const deleteModal = useModal<RoleRow>();
+
+  const { data: accessSummary } = useQuery({
+    queryKey: ['admin', 'access', 'summary'],
+    queryFn: getAccessSummary,
+  });
 
   // ---- Filters & column visibility ----
 
@@ -65,7 +71,7 @@ export function RoleTable({ roles, onEdit, onCreate }: RoleTableProps) {
     { key: 'name', label: 'Role Name' },
     { key: 'description', label: 'Description' },
     { key: 'tabs', label: 'Allowed Tabs' },
-    { key: 'permissions', label: 'Entities' },
+    { key: 'access', label: 'Access' },
   ], []);
 
   // ---- Filtered data ----
@@ -155,19 +161,32 @@ export function RoleTable({ roles, onEdit, onCreate }: RoleTableProps) {
       },
     },
     {
-      key: 'permissions',
-      label: 'Entities',
-      width: 120,
+      key: 'access',
+      label: 'Access',
+      width: 200,
       sortable: false,
-      hidden: columnVisibility.permissions === false,
-      render: (val) => {
-        const count = val && typeof val === 'object' ? Object.keys(val).length : 0;
+      hidden: columnVisibility.access === false,
+      render: (_val, row) => {
+        const summary: AccessSummary | undefined = accessSummary?.[row.id];
+        const granted = summary?.granted ?? 0;
+        const total = summary?.total ?? 0;
+        const isWildcard = row.id === 'admin';
         return (
-          <StatusBadge
-            status={count > 0 ? 'info' : 'neutral'}
-            label={`${count} entit${count !== 1 ? 'ies' : 'y'}`}
-            size="sm"
-          />
+          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            <StatusBadge
+              status={granted > 0 ? 'info' : 'neutral'}
+              label={isWildcard ? 'wildcard' : `${granted} / ${total}`}
+              size="sm"
+            />
+            <Link
+              to={`/security/access?roleId=${encodeURIComponent(row.id)}`}
+              className="inline-flex items-center gap-0.5 text-xs text-primary hover:text-primary-400"
+              title="Configure access"
+            >
+              Configure
+              <ExternalLink className="w-3 h-3" />
+            </Link>
+          </div>
         );
       },
     },

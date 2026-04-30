@@ -1,12 +1,14 @@
 import { useState, useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import { ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   Button,
   Modal,
 } from '@/components/shared';
 import { createRole, updateRole } from '@/services/admin-service';
-import { AllowedTabsGrid, PermissionMatrix } from './role-permissions-editor';
+import { AllowedTabsGrid } from './role-permissions-editor';
 import type { RoleRow } from './role-table';
 import type { ApiError } from '@/types';
 
@@ -19,7 +21,6 @@ interface RoleFormData {
   name: string;
   description: string;
   tabs: string[];
-  permissions: Record<string, string[]>;
 }
 
 const INITIAL_FORM: RoleFormData = {
@@ -27,7 +28,6 @@ const INITIAL_FORM: RoleFormData = {
   name: '',
   description: '',
   tabs: [],
-  permissions: {},
 };
 
 interface RoleFormModalProps {
@@ -51,7 +51,6 @@ export function RoleFormModal({ isOpen, onClose, role }: RoleFormModalProps) {
         name: role.name,
         description: role.description || '',
         tabs: role.tabs || [],
-        permissions: role.permissions || {},
       };
     }
     return INITIAL_FORM;
@@ -103,7 +102,6 @@ export function RoleFormModal({ isOpen, onClose, role }: RoleFormModalProps) {
       name: form.name,
       description: form.description,
       tabs: form.tabs,
-      permissions: form.permissions,
     };
 
     if (isEditing) {
@@ -185,14 +183,25 @@ export function RoleFormModal({ isOpen, onClose, role }: RoleFormModalProps) {
           <AllowedTabsGrid selectedTabs={form.tabs} onToggle={toggleTab} />
         </div>
 
-        {/* Entity Permissions Matrix */}
-        <div>
-          <h3 className="text-sm font-medium text-semantic-text-secondary mb-3">Entity Permissions</h3>
-          <PermissionMatrix
-            permissions={form.permissions}
-            onChange={(permissions) => setForm({ ...form, permissions })}
-          />
-        </div>
+        {/* Access pointer — entity x action grants live in the Access tab */}
+        {isEditing && (
+          <div className="rounded-md border border-border bg-surface-overlay/40 p-3 flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-medium text-semantic-text-secondary">Entity Access</h3>
+              <p className="text-xs text-semantic-text-faint mt-0.5">
+                Manage entity x action grants (REST + MCP) in the Access tab.
+              </p>
+            </div>
+            <Link
+              to={`/security/access?roleId=${encodeURIComponent(form.id)}`}
+              onClick={onClose}
+              className="inline-flex items-center gap-1 text-sm text-primary hover:text-primary-400"
+            >
+              Configure access
+              <ExternalLink className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        )}
       </div>
     </Modal>
   );

@@ -1,36 +1,37 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bot, RotateCcw, Save } from 'lucide-react';
+import { KeySquare, RotateCcw, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button, EmptyState, LoadingSpinner } from '@/components/shared';
 import {
-  applyInfuseToolPreset,
-  getInfuseToolCatalog,
-  getInfuseToolExposure,
+  applyAccessPreset,
+  getAccessCatalog,
+  getRoleAccess,
   getRoles,
-  updateInfuseToolExposure,
+  updateRoleAccess,
 } from '@/services/admin-service';
 import type {
-  InfuseCatalogEntity,
-  InfuseExposureEntry,
-  InfuseExposurePreset,
-  InfuseToolAction,
+  AccessCatalogEntity,
+  AccessEntry,
+  AccessPreset,
+  AccessAction,
 } from '@/services/admin-service';
 import type { ApiError } from '@/types';
-import { ExposureMatrix } from './infuse-tools/exposure-matrix';
+import { ExposureMatrix } from './access/exposure-matrix';
 
-const ALL_ACTIONS: InfuseToolAction[] = ['get', 'browse', 'post', 'build'];
+const ALL_ACTIONS: AccessAction[] = ['get', 'browse', 'post', 'build'];
 
 interface RoleOption {
   id: string;
   name: string;
 }
 
-function exposureKey(entity: string, action: InfuseToolAction): string {
+function exposureKey(entity: string, action: AccessAction): string {
   return `${entity}::${action}`;
 }
 
-function entriesToMap(entries: InfuseExposureEntry[]): Map<string, boolean> {
+function entriesToMap(entries: AccessEntry[]): Map<string, boolean> {
   const map = new Map<string, boolean>();
   for (const entry of entries) {
     map.set(exposureKey(entry.entity, entry.action), entry.isExposed);
@@ -41,9 +42,9 @@ function entriesToMap(entries: InfuseExposureEntry[]): Map<string, boolean> {
 function diffExposure(
   initial: Map<string, boolean>,
   current: Map<string, boolean>,
-  catalog: InfuseCatalogEntity[]
-): Array<{ entity: string; action: InfuseToolAction; isExposed: boolean }> {
-  const changes: Array<{ entity: string; action: InfuseToolAction; isExposed: boolean }> = [];
+  catalog: AccessCatalogEntity[]
+): Array<{ entity: string; action: AccessAction; isExposed: boolean }> {
+  const changes: Array<{ entity: string; action: AccessAction; isExposed: boolean }> = [];
   for (const entity of catalog) {
     for (const action of entity.actions) {
       const key = exposureKey(entity.entity, action);
@@ -57,8 +58,9 @@ function diffExposure(
   return changes;
 }
 
-export default function InfuseToolsPage() {
+export default function AccessPage() {
   const queryClient = useQueryClient();
+  const location = useLocation();
   const [selectedRoleId, setSelectedRoleId] = useState<string>('');
   const [exposure, setExposure] = useState<Map<string, boolean>>(new Map());
   const [initialExposure, setInitialExposure] = useState<Map<string, boolean>>(new Map());
@@ -75,26 +77,31 @@ export default function InfuseToolsPage() {
     return list.map((r) => ({ id: r.id, name: r.name }));
   }, [rolesResponse]);
 
-  // Pick initial role once roles load
+  // Pick initial role: ?roleId=X (from "Configure access" link in Roles tab),
+  // otherwise default to admin (or first role).
   useEffect(() => {
-    if (!selectedRoleId && roles.length > 0) {
-      const adminRole = roles.find((r) => r.id === 'admin') ?? roles[0];
-      setSelectedRoleId(adminRole.id);
+    if (selectedRoleId || roles.length === 0) return;
+    const params = new URLSearchParams(location.search);
+    const requested = params.get('roleId');
+    if (requested && roles.some((r) => r.id === requested)) {
+      setSelectedRoleId(requested);
+      return;
     }
-  }, [roles, selectedRoleId]);
+    const adminRole = roles.find((r) => r.id === 'admin') ?? roles[0];
+    setSelectedRoleId(adminRole.id);
+  }, [roles, selectedRoleId, location.search]);
 
   const { data: catalog, isLoading: catalogLoading } = useQuery({
-    queryKey: ['admin', 'infuse-tools', 'catalog'],
-    queryFn: getInfuseToolCatalog,
+    queryKey: ['admin', 'access', 'catalog'],
+    queryFn: getAccessCatalog,
   });
 
   const { data: exposureResponse, isLoading: exposureLoading } = useQuery({
-    queryKey: ['admin', 'infuse-tools', 'exposure', selectedRoleId],
-    queryFn: () => getInfuseToolExposure(selectedRoleId),
+    queryKey: ['admin', 'access', 'exposure', selectedRoleId],
+    queryFn: () => getRoleAccess(selectedRoleId),
     enabled: !!selectedRoleId,
   });
 
-  // Hydrate local exposure state when role changes
   useEffect(() => {
     if (exposureResponse) {
       const map = entriesToMap(exposureResponse.entries ?? []);
@@ -106,27 +113,29 @@ export default function InfuseToolsPage() {
   // ---- Mutations ----
 
   const saveMutation = useMutation({
-    mutationFn: (entries: Array<{ entity: string; action: InfuseToolAction; isExposed: boolean }>) =>
-      updateInfuseToolExposure(selectedRoleId, entries),
+    mutationFn: (entries: Array<{ entity: string; action: AccessAction; isExposed: boolean }>) =>
+      updateRoleAccess(selectedRoleId, entries),
     onSuccess: (data) => {
       toast.success(`Saved ${data.updated} change${data.updated === 1 ? '' : 's'}`);
       setInitialExposure(new Map(exposure));
       queryClient.invalidateQueries({
-        queryKey: ['admin', 'infuse-tools', 'exposure', selectedRoleId],
+        queryKey: ['admin', 'access', 'exposure', selectedRoleId],
       });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'access', 'summary'] });
     },
     onError: (err: ApiError) => {
-      toast.error(err.response?.data?.error || err.message || 'Failed to save exposure');
+      toast.error(err.response?.data?.error || err.message || 'Failed to save access');
     },
   });
 
   const presetMutation = useMutation({
-    mutationFn: (preset: InfuseExposurePreset) => applyInfuseToolPreset(selectedRoleId, preset),
+    mutationFn: (preset: AccessPreset) => applyAccessPreset(selectedRoleId, preset),
     onSuccess: (data) => {
       toast.success(`Preset applied (${data.updated} changes)`);
       queryClient.invalidateQueries({
-        queryKey: ['admin', 'infuse-tools', 'exposure', selectedRoleId],
+        queryKey: ['admin', 'access', 'exposure', selectedRoleId],
       });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'access', 'summary'] });
     },
     onError: (err: ApiError) => {
       toast.error(err.response?.data?.error || err.message || 'Failed to apply preset');
@@ -161,7 +170,7 @@ export default function InfuseToolsPage() {
 
   // ---- Handlers ----
 
-  function handleToggle(entity: string, action: InfuseToolAction) {
+  function handleToggle(entity: string, action: AccessAction) {
     setExposure((prev) => {
       const next = new Map(prev);
       const key = exposureKey(entity, action);
@@ -192,7 +201,7 @@ export default function InfuseToolsPage() {
     saveMutation.mutate(dirtyChanges);
   }
 
-  function handlePreset(preset: InfuseExposurePreset) {
+  function handlePreset(preset: AccessPreset) {
     presetMutation.mutate(preset);
   }
 
@@ -209,9 +218,9 @@ export default function InfuseToolsPage() {
   if (roles.length === 0) {
     return (
       <EmptyState
-        icon={<Bot className="w-12 h-12" />}
+        icon={<KeySquare className="w-12 h-12" />}
         title="No roles defined"
-        description="Create at least one role to configure Infuse tool exposure."
+        description="Create at least one role to configure access."
       />
     );
   }
@@ -279,8 +288,8 @@ export default function InfuseToolsPage() {
       <div className="flex items-center justify-between text-sm">
         <p className="text-semantic-text-faint">
           {isWildcard
-            ? 'The admin role has wildcard access to all Infuse tools — exposure is not configurable.'
-            : 'Configure which Infuse MCP tools (entity × action) this role can call.'}
+            ? 'The admin role has wildcard access to every entity and action — not configurable.'
+            : 'Grant the role access to entity x action combinations. Applies to both REST endpoints and Infuse MCP tools.'}
         </p>
         <p className="text-semantic-text-secondary tabular-nums">
           {exposedCount.exposed} of {exposedCount.total} cells exposed
@@ -336,7 +345,7 @@ function PresetButton({
   );
 }
 
-function actionDescription(action: InfuseToolAction): string {
+function actionDescription(action: AccessAction): string {
   switch (action) {
     case 'get':
       return 'read single record';

@@ -1,7 +1,9 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo } from 'react';
 
 // ---------------------------------------------------------------------------
-// Constants (mirrored from admin-security.js)
+// AllowedTabsGrid — controls which admin console tabs the role can see.
+// Entity x action access lives in the Access tab (see access-page.tsx),
+// not here.
 // ---------------------------------------------------------------------------
 
 const AVAILABLE_TABS: Array<{ id: string; name: string; category: string }> = [
@@ -27,34 +29,10 @@ const AVAILABLE_TABS: Array<{ id: string; name: string; category: string }> = [
   { id: 'castit', name: 'CastIT', category: 'Applications' },
 ];
 
-const ENTITY_PERM_ENTITIES: Array<{ id: string; label: string }> = [
-  { id: 'customer', label: 'Customer' },
-  { id: 'supplier', label: 'Supplier' },
-  { id: 'sales_order', label: 'Sales Order' },
-  { id: 'purchase_order', label: 'Purchase Order' },
-  { id: 'requisition', label: 'Requisition' },
-  { id: 'dispatch', label: 'Dispatch' },
-  { id: 'inventory', label: 'Inventory' },
-  { id: 'bom', label: 'Bill of Materials' },
-  { id: 'wip_job', label: 'WIP Job' },
-  { id: 'mrp', label: 'MRP' },
-  { id: 'gl_history', label: 'GL History' },
-  { id: 'cash_book', label: 'Cash Book' },
-  { id: 'contact', label: 'Contact' },
-  { id: 'lot', label: 'Lot' },
-  { id: 'serial', label: 'Serial' },
-];
-
-const ENTITY_PERM_ACTIONS = ['get', 'browse', 'post', 'build'] as const;
-
 const CATEGORY_COLORS: Record<string, string> = {
   Bridge: 'text-primary',
   Applications: 'text-purple-400',
 };
-
-// ---------------------------------------------------------------------------
-// AllowedTabsGrid
-// ---------------------------------------------------------------------------
 
 export function AllowedTabsGrid({
   selectedTabs,
@@ -100,122 +78,6 @@ export function AllowedTabsGrid({
           </div>
         </div>
       ))}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// PermissionMatrix
-// ---------------------------------------------------------------------------
-
-interface PermissionMatrixProps {
-  permissions: Record<string, string[]>;
-  onChange: (permissions: Record<string, string[]>) => void;
-}
-
-export function PermissionMatrix({ permissions, onChange }: PermissionMatrixProps) {
-  const wildcard = useMemo(() => {
-    if (Object.keys(permissions).length === 0) return false;
-    return ENTITY_PERM_ENTITIES.every(entity => {
-      const perms = permissions[entity.id];
-      return perms && ENTITY_PERM_ACTIONS.every(action => perms.includes(action));
-    });
-  }, [permissions]);
-
-  const toggleWildcard = useCallback(
-    (checked: boolean) => {
-      if (checked) {
-        const allPerms: Record<string, string[]> = {};
-        for (const entity of ENTITY_PERM_ENTITIES) {
-          allPerms[entity.id] = [...ENTITY_PERM_ACTIONS];
-        }
-        onChange(allPerms);
-      } else {
-        onChange({});
-      }
-    },
-    [onChange]
-  );
-
-  const togglePermission = useCallback(
-    (entityId: string, action: string) => {
-      const current = permissions[entityId] || [];
-      let next: string[];
-      if (current.includes(action)) {
-        next = current.filter((a) => a !== action);
-      } else {
-        next = [...current, action];
-      }
-
-      const updated = { ...permissions };
-      if (next.length > 0) {
-        updated[entityId] = next;
-      } else {
-        delete updated[entityId];
-      }
-      onChange(updated);
-    },
-    [permissions, onChange]
-  );
-
-  return (
-    <div>
-      {/* Wildcard toggle */}
-      <label className="flex items-center gap-2 mb-3 text-sm text-semantic-text-subtle cursor-pointer">
-        <input
-          type="checkbox"
-          checked={wildcard}
-          onChange={(e) => toggleWildcard(e.target.checked)}
-          className="rounded border-border bg-surface-subtle text-primary focus:ring-interactive-focus-ring"
-        />
-        Select All (grant full access to all entities)
-      </label>
-
-      {/* Matrix table */}
-      {!wildcard && (
-        <div className="border border-border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-surface-overlay">
-                <th className="text-left px-3 py-2 text-xs font-medium text-semantic-text-faint uppercase tracking-wider">
-                  Entity
-                </th>
-                {ENTITY_PERM_ACTIONS.map((action) => (
-                  <th
-                    key={action}
-                    className="text-center px-2 py-2 text-xs font-medium text-semantic-text-faint uppercase tracking-wider w-20"
-                  >
-                    {action}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {ENTITY_PERM_ENTITIES.map((entity, idx) => {
-                const allowed = permissions[entity.id] || [];
-                return (
-                  <tr
-                    key={entity.id}
-                    className={idx % 2 === 0 ? 'bg-surface-raised' : 'bg-surface-raised/50'}
-                  >
-                    <td className="px-3 py-2 text-semantic-text-secondary">{entity.label}</td>
-                    {ENTITY_PERM_ACTIONS.map((action) => (
-                      <td key={action} className="text-center px-2 py-2">
-                        <input
-                          type="checkbox"
-                          checked={allowed.includes(action)}
-                          onChange={() => togglePermission(entity.id, action)}
-                          className="rounded border-border bg-surface-subtle text-primary focus:ring-interactive-focus-ring cursor-pointer"
-                        />
-                      </td>
-                    ))}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
     </div>
   );
 }

@@ -182,46 +182,56 @@ export async function deleteToken(tokenId: string) {
   return response.data;
 }
 
-// ===== Infuse Tool Exposure (per-role MCP entity/action matrix) =====
+// ===== Role Access (per-role entity/action grants for both REST and MCP) =====
 
-export type InfuseToolAction = 'get' | 'browse' | 'post' | 'build';
+export type AccessAction = 'get' | 'browse' | 'post' | 'build';
 
-export interface InfuseCatalogEntity {
+export interface AccessCatalogEntity {
   entity: string;
   group?: string;
   icon?: string;
   color?: string;
-  actions: InfuseToolAction[];
+  actions: AccessAction[];
   isDangerous?: boolean;
 }
 
-export interface InfuseExposureEntry {
+export interface AccessEntry {
   entity: string;
-  action: InfuseToolAction;
+  action: AccessAction;
   isExposed: boolean;
   source?: 'manual' | 'seed' | 'inherited';
 }
 
-export type InfuseExposurePreset = 'read-only' | 'read-write' | 'all' | 'none';
+export type AccessPreset = 'read-only' | 'read-write' | 'all' | 'none';
 
-export async function getInfuseToolCatalog() {
-  const response = await rawApi.get('/admin/infuse-tools/catalog');
-  return unwrapResponse<{ entities: InfuseCatalogEntity[] }>(response);
+export interface AccessSummary {
+  granted: number;
+  total: number;
 }
 
-export async function getInfuseToolExposure(roleId: string) {
-  const response = await rawApi.get('/admin/infuse-tools/exposure', { params: { roleId } });
-  return unwrapResponse<{ roleId: string; entries: InfuseExposureEntry[] }>(response);
+export async function getAccessCatalog() {
+  const response = await rawApi.get('/admin/access/catalog');
+  return unwrapResponse<{ entities: AccessCatalogEntity[] }>(response);
 }
 
-export async function updateInfuseToolExposure(roleId: string, entries: Array<Pick<InfuseExposureEntry, 'entity' | 'action' | 'isExposed'>>) {
-  const response = await rawApi.put('/admin/infuse-tools/exposure', { roleId, entries });
+export async function getRoleAccess(roleId: string) {
+  const response = await rawApi.get('/admin/access/exposure', { params: { roleId } });
+  return unwrapResponse<{ roleId: string; entries: AccessEntry[] }>(response);
+}
+
+export async function updateRoleAccess(roleId: string, entries: Array<Pick<AccessEntry, 'entity' | 'action' | 'isExposed'>>) {
+  const response = await rawApi.put('/admin/access/exposure', { roleId, entries });
   return unwrapResponse<{ updated: number }>(response);
 }
 
-export async function applyInfuseToolPreset(roleId: string, preset: InfuseExposurePreset) {
-  const response = await rawApi.post('/admin/infuse-tools/exposure/preset', { roleId, preset });
+export async function applyAccessPreset(roleId: string, preset: AccessPreset) {
+  const response = await rawApi.post('/admin/access/exposure/preset', { roleId, preset });
   return unwrapResponse<{ updated: number }>(response);
+}
+
+export async function getAccessSummary() {
+  const response = await rawApi.get('/admin/access/summary');
+  return unwrapResponse<Record<string, AccessSummary>>(response);
 }
 
 // ===== Devices =====

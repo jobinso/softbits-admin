@@ -22,7 +22,6 @@ export interface AdminRole {
   RoleName: string;
   Description?: string;
   AllowedTabs: string[];
-  EntityPermissions?: Record<string, string[]>;
   IsActive: boolean;
 }
 

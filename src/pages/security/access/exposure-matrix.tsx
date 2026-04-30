@@ -1,13 +1,13 @@
 import { useMemo } from 'react';
-import type { InfuseCatalogEntity, InfuseToolAction } from '@/services/admin-service';
+import type { AccessCatalogEntity, AccessAction } from '@/services/admin-service';
 
-const ALL_ACTIONS: InfuseToolAction[] = ['get', 'browse', 'post', 'build'];
+const ALL_ACTIONS: AccessAction[] = ['get', 'browse', 'post', 'build'];
 
 interface ExposureMatrixProps {
-  catalog: InfuseCatalogEntity[];
+  catalog: AccessCatalogEntity[];
   exposure: Map<string, boolean>;
   isWildcard: boolean;
-  onToggle: (entity: string, action: InfuseToolAction) => void;
+  onToggle: (entity: string, action: AccessAction) => void;
   onToggleEntityRow: (entity: string, value: boolean) => void;
 }
 
@@ -19,7 +19,7 @@ export function ExposureMatrix({
   onToggleEntityRow,
 }: ExposureMatrixProps) {
   const grouped = useMemo(() => {
-    const map = new Map<string, InfuseCatalogEntity[]>();
+    const map = new Map<string, AccessCatalogEntity[]>();
     for (const entity of catalog) {
       const group = entity.group || 'Other';
       if (!map.has(group)) map.set(group, []);
@@ -31,7 +31,7 @@ export function ExposureMatrix({
   if (catalog.length === 0) {
     return (
       <div className="border border-border rounded-lg p-8 text-center text-semantic-text-faint text-sm">
-        No tool catalog entries available. Register endpoints with <code>@endpoint</code> annotations
+        No access catalog entries available. Register endpoints with <code>@endpoint</code> annotations
         to populate this matrix.
       </div>
     );
@@ -85,10 +85,10 @@ function GroupRows({
   onToggleEntityRow,
 }: {
   group: string;
-  entities: InfuseCatalogEntity[];
+  entities: AccessCatalogEntity[];
   exposure: Map<string, boolean>;
   isWildcard: boolean;
-  onToggle: (entity: string, action: InfuseToolAction) => void;
+  onToggle: (entity: string, action: AccessAction) => void;
   onToggleEntityRow: (entity: string, value: boolean) => void;
 }) {
   return (
@@ -169,7 +169,7 @@ function GroupRows({
 function isExposed(
   exposure: Map<string, boolean>,
   entity: string,
-  action: InfuseToolAction,
+  action: AccessAction,
   isWildcard: boolean
 ): boolean {
   if (isWildcard) return true;
